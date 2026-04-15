@@ -29,7 +29,7 @@ android {
         minSdk 21
         targetSdk 36
         versionCode 306
-        versionName "v6.15.1-EXPERIMENTAL-v1"
+        versionName "v6.15.1-EXPERIMENTAL-v2"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
