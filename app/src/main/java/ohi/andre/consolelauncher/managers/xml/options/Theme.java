@@ -87,6 +87,39 @@ public enum Theme implements XMLPrefsSave {
             return "Battery label color when the battery level is low";
         }
     },
+    battery_progress_bar_full_color {
+        @Override
+        public String defaultValue() {
+            return "#4CAF50";
+        }
+
+        @Override
+        public String info() {
+            return "The color of the full part of the battery progress bar";
+        }
+    },
+    battery_progress_bar_empty_color {
+        @Override
+        public String defaultValue() {
+            return "#555555";
+        }
+
+        @Override
+        public String info() {
+            return "The color of the empty part of the battery progress bar";
+        }
+    },
+    ascii_color {
+        @Override
+        public String defaultValue() {
+            return "#00FF00";
+        }
+
+        @Override
+        public String info() {
+            return "Color of the ASCII art (requires show_ascii true in ui.xml)";
+        }
+    },
     time_color {
         @Override
         public String defaultValue() {
@@ -128,7 +161,7 @@ public enum Theme implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "";
+            return "The color of the network info label";
         }
     },
     toolbar_bg {
@@ -172,7 +205,7 @@ public enum Theme implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "";
+            return "The color of the cursor";
         }
     },
     overlay_color {
@@ -343,7 +376,7 @@ public enum Theme implements XMLPrefsSave {
     status_lines_bgrectcolor {
         @Override
         public String defaultValue() {
-            return "#00000000,#00000000,#00000000,#00000000,#00000000,#00000000,#00000000,#00000000,#00000000";
+            return "#00000000,#00000000,#00000000,#00000000,#00000000,#00000000,#00000000,#00000000,#00000000,#00000000";
         }
 
         @Override
@@ -353,7 +386,7 @@ public enum Theme implements XMLPrefsSave {
 
         @Override
         public String[] invalidValues() {
-            return new String[] {"#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000"};
+            return new String[] {"#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000"};
         }
     },
     input_bgrectcolor {
@@ -423,7 +456,7 @@ public enum Theme implements XMLPrefsSave {
     status_lines_bg {
         @Override
         public String defaultValue() {
-            return "#00000000,#00000000,#00000000,#00000000,#00000000,#00000000,#00000000,#00000000,#00000000";
+            return "#00000000,#00000000,#00000000,#00000000,#00000000,#00000000,#00000000,#00000000,#00000000,#00000000";
         }
 
         @Override
@@ -433,7 +466,7 @@ public enum Theme implements XMLPrefsSave {
 
         @Override
         public String[] invalidValues() {
-            return new String[] {"#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000"};
+            return new String[] {"#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000"};
         }
     },
     input_bg {
@@ -487,7 +520,7 @@ public enum Theme implements XMLPrefsSave {
     status_lines_shadow_color {
         @Override
         public String defaultValue() {
-            return "#00000000,#00000000,#00000000,#00000000,#00000000,#00000000,#00000000,#00000000,#00000000";
+            return "#00000000,#00000000,#00000000,#00000000,#00000000,#00000000,#00000000,#00000000,#00000000,#00000000";
         }
 
         @Override
@@ -497,7 +530,7 @@ public enum Theme implements XMLPrefsSave {
 
         @Override
         public String[] invalidValues() {
-            return new String[] {"#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000"};
+            return new String[] {"#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000,#ff000000"};
         }
     },
     input_shadow_color {

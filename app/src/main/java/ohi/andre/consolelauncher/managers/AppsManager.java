@@ -415,7 +415,7 @@ public class AppsManager implements XMLPrefsElement {
                     query.setPackage(li.componentName.getPackageName());
                     li.setShortcuts(launcherApps.getShortcuts(query, Process.myUserHandle()));
                 } catch (Throwable e) {
-//                    t-ui is not the default launcher
+//                    Re:T-UI is not the default launcher
                     Tuils.log(e);
                 }
 

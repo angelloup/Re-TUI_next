@@ -1,8 +1,10 @@
 apply plugin: 'com.android.application'
+apply plugin: 'com.google.gms.google-services'
+apply plugin: 'com.google.firebase.appdistribution'
 
 android {
     namespace "ohi.andre.consolelauncher"
-    compileSdk 34
+    compileSdk 36
 
     def keystorePropertiesFile = rootProject.file("local.properties")
     def keystoreProperties = new Properties()
@@ -12,19 +14,22 @@ android {
 
     signingConfigs {
         release {
-            storeFile file("../" + (keystoreProperties["storeFile"] ?: "release.jks"))
-            storePassword = keystoreProperties["storePassword"] ?: ""
-            keyAlias = keystoreProperties["keyAlias"] ?: "tui-alias"
-            keyPassword = keystoreProperties["keyPassword"] ?: ""
+            def ksFile = file("../" + (keystoreProperties["storeFile"] ?: "release.jks"))
+            if (ksFile.exists()) {
+                storeFile ksFile
+                storePassword = keystoreProperties["storePassword"] ?: ""
+                keyAlias = keystoreProperties["keyAlias"] ?: "tui-alias"
+                keyPassword = keystoreProperties["keyPassword"] ?: ""
+            }
         }
     }
 
     defaultConfig {
-        applicationId "ohi.andre.consolelauncher"
+        applicationId "com.dvil.tui_renewed"
         minSdk 21
-        targetSdk 34
-        versionCode 301
-        versionName "v6.15.1-updated-v2"
+        targetSdk 36
+        versionCode 302
+        versionName "v6.15.1-updated-v3"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -35,13 +40,21 @@ android {
 
     buildTypes {
         debug {
-            signingConfig signingConfigs.release
+            if (signingConfigs.release.storeFile != null && signingConfigs.release.storeFile.exists()) {
+                signingConfig signingConfigs.release
+            }
         }
         release {
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.release
+            if (signingConfigs.release.storeFile != null && signingConfigs.release.storeFile.exists()) {
+                signingConfig signingConfigs.release
+            }
+            firebaseAppDistribution {
+                artifactType = "APK"
+                testers = "mekiranjayan@gmail.com"
+            }
         }
     }
 
@@ -66,13 +79,15 @@ android {
 }
 
 dependencies {
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.11.0'
+    implementation 'androidx.appcompat:appcompat:1.7.1'
+    implementation 'com.google.android.material:material:1.13.0'
     implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.1.0'
+    implementation 'androidx.recyclerview:recyclerview:1.4.0'
+    implementation 'androidx.cardview:cardview:1.0.0'
     
-    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+    implementation 'com.squareup.okhttp3:okhttp:5.3.2'
     implementation 'net.sourceforge.htmlcleaner:htmlcleaner:2.29'
-    implementation 'com.jayway.jsonpath:json-path:2.9.0'
-    implementation 'org.jsoup:jsoup:1.17.2'
+    implementation 'com.jayway.jsonpath:json-path:3.0.0'
+    implementation 'org.jsoup:jsoup:1.22.1'
     implementation 'it.andreuzzi:CompareString2:1.0.9'
 }

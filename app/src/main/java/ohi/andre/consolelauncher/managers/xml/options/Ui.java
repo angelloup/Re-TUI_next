@@ -31,7 +31,7 @@ public enum Ui implements XMLPrefsSave {
     system_font {
         @Override
         public String defaultValue() {
-            return "false";
+            return "true";
         }
 
         @Override
@@ -41,7 +41,7 @@ public enum Ui implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "If false, the default t-ui font (\"Lucida Console\") will be used for all texts";
+            return "If false, the default Re:T-UI font (\"Lucida Console\") will be used for all texts";
         }
     },
     ram_size {
@@ -367,7 +367,7 @@ public enum Ui implements XMLPrefsSave {
     fullscreen {
         @Override
         public String defaultValue() {
-            return "false";
+            return "true";
         }
 
         @Override
@@ -377,13 +377,13 @@ public enum Ui implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "If true, t-ui will run in fullscreen mode";
+            return "If true, Re:T-UI will run in fullscreen mode";
         }
     },
     device_index {
         @Override
         public String defaultValue() {
-            return "0";
+            return "9";
         }
 
         @Override
@@ -444,6 +444,54 @@ public enum Ui implements XMLPrefsSave {
             return "This is used to order the labels on top of the screen";
         }
     },
+    show_ascii {
+        @Override
+        public String defaultValue() {
+            return "true";
+        }
+
+        @Override
+        public String type() {
+            return XMLPrefsSave.BOOLEAN;
+        }
+
+        @Override
+        public String info() {
+            return "Show the ASCII art from ascii.txt. WARNING: wide art may overflow or wrap on small screens.";
+        }
+    },
+    ascii_index {
+        @Override
+        public String defaultValue() {
+            return "9";
+        }
+
+        @Override
+        public String type() {
+            return XMLPrefsSave.INTEGER;
+        }
+
+        @Override
+        public String info() {
+            return "Order of the ASCII art in the status area";
+        }
+    },
+    ascii_size {
+        @Override
+        public String defaultValue() {
+            return "12";
+        }
+
+        @Override
+        public String type() {
+            return XMLPrefsSave.INTEGER;
+        }
+
+        @Override
+        public String info() {
+            return "ASCII art size";
+        }
+    },
     storage_index {
         @Override
         public String defaultValue() {
@@ -495,7 +543,7 @@ public enum Ui implements XMLPrefsSave {
     status_lines_alignment {
         @Override
         public String defaultValue() {
-            return "0,-1,-1,-1,-1,-1,-1,-1,-1";
+            return "0,-1,-1,-1,-1,-1,-1,-1,-1,-1";
         }
 
         @Override
@@ -559,7 +607,7 @@ public enum Ui implements XMLPrefsSave {
     ignore_bar_color {
         @Override
         public String defaultValue() {
-            return "false";
+            return "true";
         }
 
         @Override
@@ -687,7 +735,7 @@ public enum Ui implements XMLPrefsSave {
     notes_max_lines {
         @Override
         public String defaultValue() {
-            return "10";
+            return "12";
         }
 
         @Override
@@ -719,7 +767,7 @@ public enum Ui implements XMLPrefsSave {
     show_weather {
         @Override
         public String defaultValue() {
-            return "false";
+            return "true";
         }
 
         @Override

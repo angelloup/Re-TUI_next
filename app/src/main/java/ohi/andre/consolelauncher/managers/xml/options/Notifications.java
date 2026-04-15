@@ -18,7 +18,7 @@ public enum Notifications implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "If true, t-ui will show every incoming notification";
+            return "If true, Re:T-UI will show every incoming notification";
         }
     },
     app_notification_enabled_default {
@@ -29,7 +29,7 @@ public enum Notifications implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "If true, t-ui will show notifications from all apps, unless they are explicitly excluded. If false, t-ui won't show a notification from a specific app unless it was \texplicitly included";
+            return "If true, Re:T-UI will show notifications from all apps, unless they are explicitly excluded. If false, Re:T-UI won't show a notification from a specific app unless it was \texplicitly included";
         }
     },
     default_notification_color {
@@ -72,7 +72,7 @@ public enum Notifications implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "If true, T-UI will perform the operation associated with the original notification when you click it";
+            return "If true, Re:T-UI will perform the operation associated with the original notification when you click it";
         }
     },
     long_click_notification {

@@ -273,7 +273,7 @@ public enum Suggestions implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "If true, t-ui will simulate a click on the current first suggestion if you double-click the space bar";
+            return "If true, Re:T-UI will simulate a click on the current first suggestion if you double-click the space bar";
         }
     },
     noinput_suggestions_order {
@@ -385,7 +385,7 @@ public enum Suggestions implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "If the input is shorter than n characters, t-ui will try to show you the entries which start with those characters";
+            return "If the input is shorter than n characters, Re:T-UI will try to show you the entries which start with those characters";
         }
     },
     hide_suggestions_when_empty {

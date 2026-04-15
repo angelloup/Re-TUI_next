@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp"
+    android:background="#000000">
+
+    <TextView
+        android:id="@+id/picker_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="COLOR PICKER"
+        android:textColor="#00FF00"
+        android:textStyle="bold"
+        android:fontFamily="monospace"
+        android:textSize="18sp"
+        android:layout_marginBottom="10dp"/>
+
+    <View
+        android:id="@+id/color_preview"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:layout_marginBottom="20dp"
+        android:background="#FFFFFF" />
+
+    <!-- Alpha -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="OPACITY (ALPHA)"
+        android:textColor="#888888"
+        android:textSize="12sp"
+        android:fontFamily="monospace" />
+    <SeekBar
+        android:id="@+id/seek_alpha"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:max="255"
+        android:progress="255" />
+
+    <!-- Hue -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="HUE"
+        android:textColor="#888888"
+        android:textSize="12sp"
+        android:fontFamily="monospace" />
+    <SeekBar
+        android:id="@+id/seek_hue"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:max="360" />
+
+    <!-- Saturation -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="SATURATION"
+        android:textColor="#888888"
+        android:textSize="12sp"
+        android:fontFamily="monospace" />
+    <SeekBar
+        android:id="@+id/seek_sat"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:max="100" />
+
+    <!-- Brightness -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="BRIGHTNESS (VALUE)"
+        android:textColor="#888888"
+        android:textSize="12sp"
+        android:fontFamily="monospace" />
+    <SeekBar
+        android:id="@+id/seek_val"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:max="100" />
+
+    <TextView
+        android:id="@+id/hex_preview"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:layout_marginTop="10dp"
+        android:textColor="#FFFFFF"
+        android:fontFamily="monospace"
+        android:textSize="16sp" />
+
+</LinearLayout>

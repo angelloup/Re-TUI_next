@@ -32,6 +32,7 @@ import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsElement;
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsList;
+import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsEntry;
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave;
 import ohi.andre.consolelauncher.managers.xml.options.Reply;
 import ohi.andre.consolelauncher.tuils.PrivateIOReceiver;
@@ -88,7 +89,8 @@ public class ReplyManager implements XMLPrefsElement {
 
         load(true);
 
-        enabled = Boolean.parseBoolean(values.get(Reply.reply_enabled).value);
+        XMLPrefsEntry enabledEntry = values.get(Reply.reply_enabled);
+        enabled = enabledEntry != null && Boolean.parseBoolean(enabledEntry.value);
         if(!enabled) {
             notificationWears = null;
             boundApps = null;

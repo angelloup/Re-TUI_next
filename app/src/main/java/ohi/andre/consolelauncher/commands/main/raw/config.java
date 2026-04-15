@@ -295,15 +295,15 @@ public class config extends ParamCommand {
                 File file = pack.get(File.class);
 
                 if(!file.getName().endsWith(".xml")) {
-//                    is font
-                    if(Tuils.fontPath != null) {
-                        File font = new File(Tuils.fontPath);
-                        if (font.exists()) {
-                            File[] files = font.listFiles();
-                            if (files.length > 0) Tuils.insertOld(files[0]);
-                            Tuils.deleteContentOnly(font);
-                        } else {
-                            font.mkdir();
+                    // is font - remove existing fonts first
+                    File tuiFolder = Tuils.getFolder();
+                    File[] files = tuiFolder.listFiles();
+                    if (files != null) {
+                        for (File f : files) {
+                            String name = f.getName().toLowerCase();
+                            if (name.endsWith(".ttf") || name.endsWith(".otf")) {
+                                Tuils.insertOld(f);
+                            }
                         }
                     }
                 } else {
@@ -325,7 +325,7 @@ public class config extends ParamCommand {
 
             @Override
             public String exec(ExecutePack pack) {
-                pack.context.startActivity(Tuils.webPage("https://github.com/Andre1299/TUI-ConsoleLauncher/wiki/Customize-T_UI"));
+                pack.context.startActivity(Tuils.webPage("https://github.com/DvilSpawn/Re-T-UI/wiki/Customize-T_UI"));
                 return null;
             }
         };

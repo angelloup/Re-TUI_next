@@ -49,6 +49,11 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+
 import org.w3c.dom.Node;
 import org.xml.sax.SAXParseException;
 
@@ -162,33 +167,42 @@ public class Tuils {
             if(systemFont) globalTypeface = Typeface.DEFAULT;
             else {
                 File tui = Tuils.getFolder();
-                if(tui == null) {
-                    return Typeface.createFromAsset(context.getAssets(), "lucida_console.ttf");
-                }
-
-                Pattern p = Pattern.compile(".[ot]tf$");
-
                 File font = null;
-                for(File f : tui.listFiles()) {
-                    String name = f.getName();
-                    if(p.matcher(name).find()) {
-                        font = f;
-                        fontPath = f.getAbsolutePath();
-                        break;
+                if(tui != null) {
+                    File[] files = tui.listFiles();
+                    if (files != null) {
+                        for(File f : files) {
+                            if (f.isDirectory()) continue;
+                            String name = f.getName().toLowerCase();
+                            if(name.endsWith(".ttf") || name.endsWith(".otf")) {
+                                font = f;
+                                fontPath = f.getAbsolutePath();
+                                break;
+                            }
+                        }
                     }
                 }
 
-                if(font != null) {
+                if(font != null && font.exists() && font.length() > 0) {
                     try {
+                        Log.e("TUI-FONT", "Attempting to create Typeface from: " + font.getAbsolutePath());
                         globalTypeface = Typeface.createFromFile(font);
-                        if(globalTypeface == null) throw new UnsupportedOperationException();
                     } catch (Exception e) {
+                        Log.e("TUI-FONT", "Failed to load font from " + font.getAbsolutePath(), e);
+                        Tuils.log(e);
+                        Tuils.toFile(e);
                         globalTypeface = null;
                     }
                 }
             }
 
-            if(globalTypeface == null) globalTypeface = systemFont ? Typeface.DEFAULT : Typeface.createFromAsset(context.getAssets(), "lucida_console.ttf");
+            if(globalTypeface == null) {
+                try {
+                    globalTypeface = Typeface.createFromAsset(context.getAssets(), "lucida_console.ttf");
+                } catch (Exception e) {
+                    globalTypeface = Typeface.DEFAULT;
+                }
+            }
         }
         return globalTypeface;
     }
@@ -289,7 +303,11 @@ public class Tuils {
     }
 
     public static void unregisterBatteryReceiver(Context context) {
-        if(batteryReceiver != null) context.unregisterReceiver(batteryReceiver);
+        if(batteryReceiver != null) {
+            try {
+                context.unregisterReceiver(batteryReceiver);
+            } catch (Exception e) {}
+        }
     }
 
     public static boolean containsExtension(String[] array, String value) {
@@ -334,6 +352,10 @@ public class Tuils {
 
         java.util.Scanner s = new java.util.Scanner(is).useDelimiter("\\A");
         return s.hasNext() ? s.next() : Tuils.EMPTYSTRING;
+    }
+
+    public static void copy(File from, File to) throws Exception {
+        download(new FileInputStream(from), to);
     }
 
     public static long download(InputStream in, File file) throws Exception {
@@ -700,17 +722,26 @@ public class Tuils {
     }
 
     public static boolean insertOld(File oldFile) {
-        if(oldFile == null || !oldFile.exists()) return false;
+        if(oldFile == null || !oldFile.exists() || oldFile.isDirectory()) return false;
 
-        String oldPath = oldFile.getAbsolutePath();
-
-        File oldFolder = new File(Tuils.getFolder(), "old");
-        if(!oldFolder.exists()) oldFolder.mkdir();
+        File oldFolder = new File(getFolder(), "old");
+        if(!oldFolder.exists()) oldFolder.mkdirs();
 
         File dest = new File(oldFolder, oldFile.getName());
         if(dest.exists()) dest.delete();
 
-        return oldFile.renameTo(dest) && new File(oldPath).delete();
+        boolean success = oldFile.renameTo(dest);
+        if (!success) {
+            // Fallback for Android 11+ where renameTo often fails due to Scoped Storage
+            try {
+                copy(oldFile, dest);
+                return oldFile.delete();
+            } catch (Exception e) {
+                toFile("insertOld fallback failed: " + e.getMessage());
+                return false;
+            }
+        }
+        return success;
     }
 
     public static File getOld(String name) {
@@ -1171,47 +1202,33 @@ public class Tuils {
     }
 
     public static void toFile(String s) {
+        if(s == null) return;
         try {
-            RandomAccessFile f = new RandomAccessFile(new File(Tuils.getFolder(), "crash.txt"), "rw");
-            f.seek(0);
-            f.write((new Date().toString() + Tuils.NEWLINE + Tuils.NEWLINE).getBytes());
-            OutputStream is = Channels.newOutputStream(f.getChannel());
-            is.write(s.getBytes());
-            f.write((Tuils.NEWLINE + Tuils.NEWLINE).getBytes());
-
-            is.close();
-            f.close();
+            File f = new File(getFolder(), "crash.txt");
+            PrintWriter pw = new PrintWriter(new FileOutputStream(f, true));
+            pw.println(new Date().toString());
+            pw.println(s);
+            pw.println();
+            pw.flush();
+            pw.close();
         } catch (Exception e1) {}
     }
 
     public static void toFile(Object o) {
         if(o == null) return;
-
-//            RandomAccessFile f = new RandomAccessFile(new File(Tuils.getFolder(), "crash.txt"), "rw");
-//            f.seek(0);
-//            f.write((new Date().toString() + Tuils.NEWLINE + Tuils.NEWLINE).getBytes());
-//            OutputStream is = Channels.newOutputStream(f.getChannel());
-//            e.printStackTrace(new PrintStream(is));
-//            f.write((Tuils.NEWLINE + Tuils.NEWLINE).getBytes());
-//
-//            is.close();
-//            f.close();
-
         try {
-            FileOutputStream stream = new FileOutputStream(new File(Tuils.getFolder(), "crash.txt"));
-            stream.write((Tuils.NEWLINE + Tuils.NEWLINE).getBytes());
-
-            if(o instanceof Throwable) {
-                PrintStream ps = new PrintStream(stream);
-                ((Throwable) o).printStackTrace(ps);
+            File f = new File(getFolder(), "crash.txt");
+            PrintWriter pw = new PrintWriter(new FileOutputStream(f, true));
+            pw.println(new Date().toString());
+            if (o instanceof Throwable) {
+                ((Throwable) o).printStackTrace(pw);
             } else {
-                stream.write(o.toString().getBytes());
+                pw.println(o.toString());
             }
-
-            stream.write((Tuils.NEWLINE + "----------------------------").getBytes());
-
-            stream.close();
-        } catch (Exception e1) {}
+            pw.println();
+            pw.flush();
+            pw.close();
+        } catch (Exception e) {}
     }
 
     public static String toPlanString(List<String> strings, String separator) {
@@ -1476,10 +1493,72 @@ public class Tuils {
     private static File folder = null;
 
     public static void init(Context context) {
-        if (folder != null) return;
-        folder = context.getExternalFilesDir(null);
-        if (folder == null) {
-            folder = context.getFilesDir();
+        Log.e("TUI-INIT", "Starting Tuils.init()");
+        try {
+            File root = Environment.getExternalStorageDirectory();
+            File newFolder = new File(root, "Re:T-UI");
+            Log.e("TUI-INIT", "Target folder: " + newFolder.getAbsolutePath());
+            
+            if (!newFolder.exists()) {
+                boolean created = newFolder.mkdirs();
+                Log.e("TUI-INIT", "Root folder created: " + created);
+
+                if (created) {
+                    File oldFolder = new File(root, "T-UI");
+                    if (oldFolder.exists() && oldFolder.isDirectory()) {
+                        Log.e("TUI-INIT", "Old T-UI folder found, migrating...");
+                        copyDirectory(oldFolder, newFolder);
+                    }
+                }
+            }
+
+            if (newFolder.exists()) {
+                folder = newFolder;
+                String[] subfolders = {"fonts", "rss", "old"};
+                for (String sub : subfolders) {
+                    File f = new File(folder, sub);
+                    if (!f.exists()) {
+                        f.mkdirs();
+                    }
+                }
+                Log.e("TUI-INIT", "Subfolders checked/created");
+            } else {
+                Log.e("TUI-INIT", "Folder still does not exist after mkdirs()");
+            }
+        } catch (Exception e) {
+            Log.e("TUI-INIT", "Crash in Tuils.init", e);
+            toFile(e);
+        }
+    }
+
+    public static void copyDirectory(File source, File target) throws IOException {
+        if (source.isDirectory()) {
+            if (!target.exists() && !target.mkdirs()) {
+                throw new IOException("Cannot create dir " + target.getAbsolutePath());
+            }
+
+            String[] children = source.list();
+            if (children != null) {
+                for (String child : children) {
+                    copyDirectory(new File(source, child), new File(target, child));
+                }
+            }
+        } else {
+            File parent = target.getParentFile();
+            if (parent != null && !parent.exists() && !parent.mkdirs()) {
+                throw new IOException("Cannot create dir " + parent.getAbsolutePath());
+            }
+
+            InputStream in = new FileInputStream(source);
+            OutputStream out = new FileOutputStream(target);
+
+            byte[] buf = new byte[1024];
+            int len;
+            while ((len = in.read(buf)) > 0) {
+                out.write(buf, 0, len);
+            }
+            in.close();
+            out.close();
         }
     }
 

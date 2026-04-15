@@ -26,11 +26,16 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
 import ohi.andre.consolelauncher.R;
+import ohi.andre.consolelauncher.managers.AppsManager;
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsElement;
+import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsEntry;
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsList;
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave;
+import ohi.andre.consolelauncher.managers.xml.options.Apps;
 import ohi.andre.consolelauncher.managers.xml.options.Behavior;
 import ohi.andre.consolelauncher.managers.xml.options.Cmd;
+import ohi.andre.consolelauncher.managers.xml.options.Notifications;
+import ohi.andre.consolelauncher.managers.xml.options.Rss;
 import ohi.andre.consolelauncher.managers.xml.options.Suggestions;
 import ohi.andre.consolelauncher.managers.xml.options.Theme;
 import ohi.andre.consolelauncher.managers.xml.options.Toolbar;
@@ -89,6 +94,24 @@ public class XMLPrefsManager {
             public String[] delete() {
                 return new String[] {"app_suggestions_minrate", "contact_suggestions_minrate", "song_suggestions_minrate", "file_suggestions_minrate"};
             }
+        },
+        NOTIFICATIONS(Notifications.values()) {
+            @Override
+            public String[] delete() {
+                return new String[] {};
+            }
+        },
+        APPS(Apps.values()) {
+            @Override
+            public String[] delete() {
+                return new String[] {};
+            }
+        },
+        RSS(Rss.values()) {
+            @Override
+            public String[] delete() {
+                return new String[] {};
+            }
         };
 
 //        notifications
@@ -108,10 +131,16 @@ public class XMLPrefsManager {
 
         @Override
         public void write(XMLPrefsSave save, String value) {
-            set(new File(Tuils.getFolder(), path), save.label(), new String[] {VALUE_ATTRIBUTE}, new String[] {value});
+            File f = new File(Tuils.getFolder(), path);
+            set(f, save.label(), new String[] {VALUE_ATTRIBUTE}, new String[] {value});
+            values.add(save.label(), value);
         }
 
+        @Override
         public XMLPrefsList getValues() {
+            if (this == APPS && AppsManager.instance != null) {
+                return AppsManager.instance.getValues();
+            }
             return values;
         }
 
@@ -127,7 +156,10 @@ public class XMLPrefsManager {
         commonsLoaded = false;
 
         for(XMLPrefsRoot element : XMLPrefsRoot.values()) {
-            element.values.list.clear();
+            if (element.values != null && element.values.list != null) {
+                element.values.list.clear();
+            }
+            element.values = null;
         }
     }
 
@@ -145,6 +177,8 @@ public class XMLPrefsManager {
         }
 
         for(XMLPrefsRoot element : XMLPrefsRoot.values()) {
+            if (element == XMLPrefsRoot.APPS) continue;
+
             File file = new File(folder, element.path);
             if(!file.exists()) {
                 resetFile(file, element.name());
@@ -261,7 +295,13 @@ public class XMLPrefsManager {
         if(s == null) throw new UnsupportedOperationException();
 
         if(c == int.class) return Integer.parseInt(s);
-        if(c == Color.class) return Color.parseColor(s);
+        if(c == Color.class) {
+            try {
+                return Color.parseColor(s);
+            } catch (Exception e) {
+                return Color.WHITE;
+            }
+        }
         if(c == boolean.class) return Boolean.parseBoolean(s);
         if(c == String.class) return s;
         if(c == float.class) return Float.parseFloat(s);
@@ -319,7 +359,9 @@ public class XMLPrefsManager {
 
     public static <T> T get(Class<T> c, XMLPrefsRoot root, String s) {
         try {
-            return (T) transform(root.getValues().get(s).value, c);
+            XMLPrefsEntry entry = root.getValues().get(s);
+            if (entry == null) return null;
+            return (T) transform(entry.value, c);
         } catch (Exception e) {
             return null;
         }
@@ -327,21 +369,14 @@ public class XMLPrefsManager {
 
     public static <T> T get(Class<T> c, XMLPrefsSave prefsSave) {
         try {
-//            if(prefsSave.is(Notifications.show_notifications.label())) {
-//                Tuils.log("----------------");
-//                Tuils.log("label", prefsSave.label());
-//                Tuils.log("parent", prefsSave.parent().toString());
-//                Tuils.log("values tostring", prefsSave.parent().getValues().toString());
-//            }
-            return (T) transform(prefsSave.parent().getValues().get(prefsSave).value, c);
+            XMLPrefsEntry entry = prefsSave.parent().getValues().get(prefsSave);
+            if (entry == null) throw new NullPointerException("Entry not found for " + prefsSave.label());
+            return (T) transform(entry.value, c);
         } catch (Exception e) {
-            Tuils.log(e);
-//            this will happen if the option is not found
             try {
                 return (T) transform(prefsSave.defaultValue(), c);
             } catch (Exception e1) {
-                Tuils.log(e1);
-//                attempts to get a default value for the given type, as we say in italian, "the last beach"
+                Tuils.log("XMLPrefsManager.get error for " + (prefsSave != null ? prefsSave.label() : "null") + ": " + e.getMessage());
                 return Tuils.getDefaultValue(c);
             }
         }

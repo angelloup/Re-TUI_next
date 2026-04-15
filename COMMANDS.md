@@ -1,6 +1,6 @@
-# T-UI Launcher Development & Deployment Guide
+# Re:T-UI Launcher Development & Deployment Guide
 
-This document summarizes the essential commands for building, installing, and managing the T-UI Linux CLI Launcher fork.
+This document summarizes the essential commands for building, installing, and managing the Re:T-UI Linux CLI Launcher fork.
 
 ## 🛠 Building the APK
 
@@ -38,7 +38,7 @@ adb install -r app/build/outputs/apk/fdroid/debug/app-fdroid-debug.apk
 The launcher now features a built-in BusyBox manager to enable standard Linux commands.
 
 ### Installation
-In the T-UI terminal, type:
+In the Re:T-UI terminal, type:
 ```bash
 bbman -install
 ```
@@ -63,7 +63,7 @@ bbman -remove
 ## 🔍 Useful ADB Debugging Commands
 
 ```bash
-# View real-time logs (filtered for T-UI)
+# View real-time logs (filtered for Re:T-UI)
 adb logcat | grep ohi.andre
 
 # Uninstall the launcher via ADB

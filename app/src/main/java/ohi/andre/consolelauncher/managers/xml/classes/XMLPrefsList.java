@@ -14,11 +14,17 @@ public class XMLPrefsList {
     public List<XMLPrefsEntry> list = new ArrayList<>();
 
     public void add(XMLPrefsEntry entry) {
+        for(int count = 0; count < list.size(); count++) {
+            if(list.get(count).equals(entry.key)) {
+                list.set(count, entry);
+                return;
+            }
+        }
         list.add(entry);
     }
 
     public void add(String key, String value) {
-        list.add(new XMLPrefsEntry(key, value));
+        add(new XMLPrefsEntry(key, value));
     }
 
     public XMLPrefsEntry get(Object o) {

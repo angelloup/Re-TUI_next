@@ -2,284 +2,195 @@ package ohi.andre.consolelauncher.commands.tuixt;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.content.SharedPreferences;
-import android.net.Uri;
-import android.os.Build;
+import android.graphics.Color;
 import android.os.Bundle;
-import androidx.annotation.Nullable;
-import android.text.InputType;
-import android.text.method.ScrollingMovementMethod;
-import android.util.Log;
-import android.view.KeyEvent;
-import android.view.LayoutInflater;
-import android.view.MotionEvent;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.View;
-import android.view.Window;
-import android.view.WindowManager;
-import android.view.inputmethod.EditorInfo;
+import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.EditText;
-import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.io.BufferedReader;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
 import java.io.File;
-import java.io.FileReader;
+import java.util.ArrayList;
+import java.util.List;
 
-import ohi.andre.consolelauncher.R;
-import ohi.andre.consolelauncher.commands.Command;
-import ohi.andre.consolelauncher.commands.CommandGroup;
-import ohi.andre.consolelauncher.commands.CommandTuils;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
-import ohi.andre.consolelauncher.managers.xml.options.Theme;
-import ohi.andre.consolelauncher.managers.xml.options.Ui;
-import ohi.andre.consolelauncher.tuils.StoppableThread;
-import ohi.andre.consolelauncher.tuils.Tuils;
-
-/**
- * Created by francescoandreuzzi on 19/01/2017.
- */
+import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave;
+import ohi.andre.consolelauncher.tuils.interfaces.Reloadable;
 
 public class TuixtActivity extends Activity {
 
-    private final String FIRSTACCESS_KEY = "firstAccess";
-
+    public static final String PATH = "path";
+    public static final String ERROR_KEY = "error";
     public static final int BACK_PRESSED = 2;
+    public static final int SAVE_PRESSED = 3;
 
-    private long lastEnter;
-
-    public static String PATH = "path";
-
-    public static String ERROR_KEY = "error";
-
-    private EditText inputView;
-    private EditText fileView;
-    private TextView outputView;
-
-    private TuixtPack pack;
+    private File file;
+    private RecyclerView recyclerView;
+    private TuixtAdapter adapter;
+    private XMLPrefsManager.XMLPrefsRoot xmlRoot;
+    private List<XMLPrefsSave> originalItems;
+    private EditText plainTextEditor;
 
     @Override
-    protected void onCreate(@Nullable Bundle savedInstanceState) {
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        final LinearLayout rootView = new LinearLayout(this);
-
-        final Intent intent = getIntent();
-
+        Intent intent = getIntent();
         String path = intent.getStringExtra(PATH);
-        if(path == null) {
-            Uri uri = intent.getData();
-            File file = new File(uri.getPath());
-            path = file.getAbsolutePath();
-        }
-
-        final File file = new File(path);
-
-        CommandGroup group = new CommandGroup(this, "ohi.andre.consolelauncher.commands.tuixt.raw");
-
-        try {
-            XMLPrefsManager.loadCommons(this);
-        } catch (Exception e) {
+        if (path == null) {
             finish();
+            return;
         }
+        file = new File(path);
 
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && !XMLPrefsManager.getBoolean(Ui.ignore_bar_color)) {
-            Window window = getWindow();
+        // Root Layout
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(Color.BLACK);
+        root.setPadding(16, 16, 16, 16);
+        root.setFitsSystemWindows(true);
 
-            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-            window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
-            window.setStatusBarColor(XMLPrefsManager.getColor(Theme.statusbar_color));
-            window.setNavigationBarColor(XMLPrefsManager.getColor(Theme.navigationbar_color));
-        }
+        // Header
+        TextView header = new TextView(this);
+        header.setText("> TUI-Themer: " + file.getName());
+        header.setTextColor(Color.GREEN);
+        header.setTypeface(android.graphics.Typeface.MONOSPACE);
+        header.setTextSize(16);
+        root.addView(header);
 
-        if (!XMLPrefsManager.getBoolean(Ui.system_wallpaper)) {
-            rootView.setBackgroundColor(XMLPrefsManager.getColor(Theme.bg_color));
-        } else {
-            setTheme(R.style.Custom_SystemWP);
-            rootView.setBackgroundColor(XMLPrefsManager.getColor(Theme.overlay_color));
-        }
+        // Divider
+        View divider = new View(this);
+        divider.setBackgroundColor(Color.parseColor("#222222"));
+        divider.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 2));
+        root.addView(divider);
 
-        final boolean inputBottom = XMLPrefsManager.getBoolean(Ui.input_bottom);
-        int layoutId = inputBottom ? R.layout.tuixt_view_input_down : R.layout.tuixt_view_input_up;
+        // RecyclerView
+        recyclerView = new RecyclerView(this);
+        recyclerView.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        root.addView(recyclerView);
 
-        LayoutInflater inflater = getLayoutInflater();
-        View inputOutputView = inflater.inflate(layoutId, null);
-        rootView.addView(inputOutputView);
+        // Bottom Bar (Search + Buttons)
+        LinearLayout bottomBar = new LinearLayout(this);
+        bottomBar.setOrientation(LinearLayout.VERTICAL);
+        bottomBar.setBackgroundColor(Color.parseColor("#111111"));
+        bottomBar.setPadding(10, 10, 10, 10);
 
-        fileView = (EditText) inputOutputView.findViewById(R.id.file_view);
-        inputView = (EditText) inputOutputView.findViewById(R.id.input_view);
-        outputView = (TextView) inputOutputView.findViewById(R.id.output_view);
+        // Search Box
+        EditText searchBox = new EditText(this);
+        searchBox.setHint("Search settings...");
+        searchBox.setHintTextColor(Color.GRAY);
+        searchBox.setTextColor(Color.WHITE);
+        searchBox.setBackgroundColor(Color.parseColor("#222222"));
+        searchBox.setPadding(20, 15, 20, 15);
+        searchBox.setTypeface(android.graphics.Typeface.MONOSPACE);
+        searchBox.setTextSize(14);
+        bottomBar.addView(searchBox);
 
-        TextView prefixView = (TextView) inputOutputView.findViewById(R.id.prefix_view);
+        // Action Buttons
+        LinearLayout btnLayout = new LinearLayout(this);
+        btnLayout.setOrientation(LinearLayout.HORIZONTAL);
+        btnLayout.setPadding(0, 10, 0, 0);
 
-        ImageButton submitView = (ImageButton) inputOutputView.findViewById(R.id.submit_tv);
-        boolean showSubmit = XMLPrefsManager.getBoolean(Ui.show_enter_button);
-        if (!showSubmit) {
-            submitView.setVisibility(View.GONE);
-            submitView = null;
-        }
+        Button btnCancel = new Button(this);
+        btnCancel.setText("CANCEL");
+        btnCancel.setBackgroundColor(Color.TRANSPARENT);
+        btnCancel.setTextColor(Color.RED);
+        btnCancel.setTypeface(android.graphics.Typeface.MONOSPACE);
+        btnCancel.setOnClickListener(v -> finish());
+        btnLayout.addView(btnCancel);
 
-        String prefix = XMLPrefsManager.get(Ui.input_prefix);
+        View spacer = new View(this);
+        spacer.setLayoutParams(new LinearLayout.LayoutParams(0, 1, 1));
+        btnLayout.addView(spacer);
 
-        int ioSize = XMLPrefsManager.getInt(Ui.input_output_size);
-        int outputColor = XMLPrefsManager.getColor(Theme.output_color);
-        int inputColor = XMLPrefsManager.getColor(Theme.input_color);
-
-        prefixView.setTypeface(Tuils.getTypeface(this));
-        prefixView.setTextColor(inputColor);
-        prefixView.setTextSize(ioSize);
-        prefixView.setText(prefix.endsWith(Tuils.SPACE) ? prefix : prefix + Tuils.SPACE);
-
-        if (submitView != null) {
-            submitView.setColorFilter(XMLPrefsManager.getColor(Theme.enter_color));
-            submitView.setOnClickListener(v -> onNewInput());
-        }
-
-        fileView.setTypeface(Tuils.getTypeface(this));
-        fileView.setTextSize(ioSize);
-        fileView.setTextColor(outputColor);
-        fileView.setOnTouchListener((v, event) -> {
-            if(event.getAction() == MotionEvent.ACTION_DOWN) {
-                outputView.setVisibility(View.GONE);
-                outputView.setText(Tuils.EMPTYSTRING);
-            }
-
-            return false;
-        });
-
-        outputView.setTypeface(Tuils.getTypeface(this));
-        outputView.setTextSize(ioSize);
-        outputView.setTextColor(outputColor);
-        outputView.setMovementMethod(new ScrollingMovementMethod());
-        outputView.setVisibility(View.GONE);
-
-        inputView.setTypeface(Tuils.getTypeface(this));
-        inputView.setTextSize(ioSize);
-        inputView.setTextColor(inputColor);
-        inputView.setHint(Tuils.getHint(path));
-
-        inputView.setInputType(InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
-        inputView.setOnEditorActionListener((v, actionId, event) -> {
-//                physical enter
-            if(actionId == KeyEvent.ACTION_DOWN) {
-                if(lastEnter == 0) {
-                    lastEnter = System.currentTimeMillis();
-                } else {
-                    long difference = System.currentTimeMillis() - lastEnter;
-                    lastEnter = System.currentTimeMillis();
-                    if(difference < 350) {
-                        return true;
-                    }
-                }
-            }
-
-            if (actionId == EditorInfo.IME_ACTION_GO || actionId == EditorInfo.IME_ACTION_DONE || actionId == KeyEvent.ACTION_DOWN) {
-                onNewInput();
-            }
-            return true;
-        });
-
-        setContentView(rootView);
-
-//
-//
-//        end setup part, now start
-
-        pack = new TuixtPack(group, file, this, fileView);
-
-        fileView.setText(getString(R.string.tuixt_reading) + Tuils.SPACE + path);
-        new StoppableThread() {
-
-            @Override
-            public void run() {
-                super.run();
-
+        Button btnSave = new Button(this);
+        btnSave.setText("SAVE");
+        btnSave.setBackgroundColor(Color.TRANSPARENT);
+        btnSave.setTextColor(Color.GREEN);
+        btnSave.setTypeface(android.graphics.Typeface.MONOSPACE);
+        btnSave.setOnClickListener(v -> {
+            Toast.makeText(this, "Applying changes...", Toast.LENGTH_SHORT).show();
+            if (adapter != null) {
+                adapter.saveAll();
+            } else if (plainTextEditor != null) {
                 try {
-                    BufferedReader reader = new BufferedReader(new FileReader(file));
-
-                    final StringBuilder builder = new StringBuilder();
-                    String line, lastLine = null;
-                    while( (line = reader.readLine()) != null) {
-                        if(lastLine != null) {
-                            builder.append(Tuils.NEWLINE);
-                        }
-                        builder.append(line);
-                        lastLine = line;
-                    }
-
-                    runOnUiThread(() -> {
-                        try {
-                            fileView.setText(builder.toString());
-                        } catch (OutOfMemoryError e) {
-                            fileView.setText(Tuils.EMPTYSTRING);
-                            Toast.makeText(TuixtActivity.this, R.string.tuixt_error, Toast.LENGTH_LONG).show();
-                        }
-                    });
+                    ohi.andre.consolelauncher.tuils.Tuils.write(file, "", plainTextEditor.getText().toString());
                 } catch (Exception e) {
-                    Log.e("andre", "", e);
-                    intent.putExtra(ERROR_KEY, e.toString());
-                    setResult(1, intent);
-                    finish();
-                } catch (Error er) {
-                    runOnUiThread(() -> {
-                        System.gc();
-
-                        fileView.setText(Tuils.EMPTYSTRING);
-                        Toast.makeText(TuixtActivity.this, R.string.tuixt_error, Toast.LENGTH_LONG).show();
-                    });
+                    Toast.makeText(this, "Error saving: " + e.getMessage(), Toast.LENGTH_LONG).show();
                 }
             }
-        }.start();
+            setResult(SAVE_PRESSED);
+            finish();
+        });
+        btnLayout.addView(btnSave);
 
-        SharedPreferences preferences = getPreferences(0);
-        boolean firstAccess = preferences.getBoolean(FIRSTACCESS_KEY, true);
-        if (firstAccess) {
-            SharedPreferences.Editor editor = preferences.edit();
-            editor.putBoolean(FIRSTACCESS_KEY, false);
-            editor.commit();
+        bottomBar.addView(btnLayout);
+        root.addView(bottomBar);
 
-            inputView.setText("help");
-            inputView.setSelection(inputView.getText().length());
+        // Load data
+        String fileName = file.getName().toLowerCase();
+        for (XMLPrefsManager.XMLPrefsRoot rootEnum : XMLPrefsManager.XMLPrefsRoot.values()) {
+            if (fileName.equals(rootEnum.path())) {
+                xmlRoot = rootEnum;
+                break;
+            }
         }
-    }
 
-    @Override
-    public void onBackPressed() {
-        setResult(BACK_PRESSED);
-        finish();
-    }
+        if (xmlRoot != null) {
+            originalItems = new ArrayList<>(xmlRoot.enums);
+            adapter = new TuixtAdapter(originalItems, file);
+            recyclerView.setAdapter(adapter);
 
-    @Override
-    protected void onStop() {
-        super.onStop();
-        this.finish();
-    }
+            searchBox.addTextChangedListener(new TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+                @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+                    filter(s.toString());
+                }
+                @Override public void afterTextChanged(Editable s) {}
+            });
+        } else {
+            recyclerView.setVisibility(View.GONE);
+            searchBox.setVisibility(View.GONE);
 
-    private void onNewInput() {
-        try {
-            String input = inputView.getText().toString();
-            inputView.setText(Tuils.EMPTYSTRING);
+            plainTextEditor = new EditText(this);
+            plainTextEditor.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+            plainTextEditor.setGravity(android.view.Gravity.TOP);
+            plainTextEditor.setTextColor(Color.WHITE);
+            plainTextEditor.setTypeface(android.graphics.Typeface.MONOSPACE);
+            plainTextEditor.setBackgroundColor(Color.BLACK);
+            plainTextEditor.setTextSize(14);
 
-            input = input.trim();
-            if(input.length() == 0) {
-                return;
+            try {
+                java.io.FileInputStream fis = new java.io.FileInputStream(file);
+                plainTextEditor.setText(ohi.andre.consolelauncher.tuils.Tuils.convertStreamToString(fis));
+                fis.close();
+            } catch (Exception e) {
+                plainTextEditor.setText("");
             }
 
-            outputView.setVisibility(View.VISIBLE);
-
-            Command command = CommandTuils.parse(input, pack);
-            if(command == null) {
-                outputView.setText(R.string.output_commandnotfound);
-                return;
-            }
-
-            String output = command.exec(pack);
-            if(output != null) {
-                outputView.setText(output);
-            }
-        } catch (Exception e) {
-            outputView.setText(e.toString());
+            root.addView(plainTextEditor, 2);
         }
+
+        setContentView(root);
+    }
+
+    private void filter(String query) {
+        List<XMLPrefsSave> filtered = new ArrayList<>();
+        for (XMLPrefsSave item : originalItems) {
+            if (item.label().toLowerCase().contains(query.toLowerCase()) || 
+                item.info().toLowerCase().contains(query.toLowerCase())) {
+                filtered.add(item);
+            }
+        }
+        adapter.updateList(filtered);
     }
 }

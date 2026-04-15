@@ -25,3 +25,5 @@
 -dontwarn org.slf4j.**
 
 -dontwarn org.jdom2.**
+-dontwarn org.jsoup.**
+-dontwarn com.google.re2j.**

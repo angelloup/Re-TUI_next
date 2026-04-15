@@ -1147,13 +1147,17 @@ public class SuggestionsManager {
 
     private void suggestConfigFile(List<Suggestion> suggestions, String afterLastSpace, String beforeLastSpace ) {
         if(xmlPrefsFiles == null) {
-            xmlPrefsFiles = new ArrayList<>();
-            for(XMLPrefsManager.XMLPrefsRoot element : XMLPrefsManager.XMLPrefsRoot.values())
-                xmlPrefsFiles.add(element.path);
-            xmlPrefsFiles.add(AppsManager.PATH);
-            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH) xmlPrefsFiles.add(ReplyManager.PATH);
-            xmlPrefsFiles.add(NotificationManager.PATH);
-            xmlPrefsFiles.add(RssManager.PATH);
+            xmlPrefsFiles = new ArrayList<>(Arrays.asList(
+                    "theme.xml",
+                    "ui.xml",
+                    "behavior.xml",
+                    "cmd.xml",
+                    "suggestions.xml",
+                    "toolbar.xml",
+                    "notifications.xml",
+                    "apps.xml",
+                    "rss.xml"
+            ));
         }
 
         if(afterLastSpace == null || afterLastSpace.length() == 0) {
@@ -1161,7 +1165,7 @@ public class SuggestionsManager {
                 Suggestion sg = new Suggestion(beforeLastSpace , s, false, Suggestion.TYPE_CONFIGFILE, afterLastSpace);
                 suggestions.add(sg);
             }
-        } else if(afterLastSpace.length() <= FIRST_INTERVAL) {
+        } else {
             afterLastSpace = afterLastSpace.trim().toLowerCase();
             for (String s : xmlPrefsFiles) {
                 if(Thread.currentThread().isInterrupted()) return;

@@ -23,7 +23,7 @@ public enum Behavior implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "If true, t-ui will lock the screen on double tap";
+            return "If true, Re:T-UI will lock the screen on double tap";
         }
 
         @Override
@@ -87,7 +87,7 @@ public enum Behavior implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "If true, t-ui will get tracks from the system mediastore";
+            return "If true, Re:T-UI will get tracks from the system mediastore";
         }
 
         @Override
@@ -103,7 +103,7 @@ public enum Behavior implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "If true, there will always be a notification in your status bar, telling you that t-ui is running";
+            return "If true, there will always be a notification in your status bar, telling you that Re:T-UI is running";
         }
 
         @Override
@@ -119,7 +119,7 @@ public enum Behavior implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "If true, your keyboard will be shown everytime you go back to t-ui";
+            return "If true, your keyboard will be shown everytime you go back to Re:T-UI";
         }
 
         @Override
@@ -151,7 +151,7 @@ public enum Behavior implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "If true, t-ui will tell you some useful hints sometime";
+            return "If true, Re:T-UI will tell you some useful hints sometime";
         }
 
         @Override
@@ -183,7 +183,7 @@ public enum Behavior implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "If false, t-ui won't show the apps that you launch";
+            return "If false, Re:T-UI won't show the apps that you launch";
         }
 
         @Override
@@ -247,7 +247,39 @@ public enum Behavior implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "Define the time format (see also Time Format)";
+            return "Deprecated. Use status_time_format and output_time_format instead.";
+        }
+
+        @Override
+        public String type() {
+            return XMLPrefsSave.TEXT;
+        }
+    },
+    status_time_format {
+        @Override
+        public String defaultValue() {
+            return "d MMM yyyy HH:mm:ss";
+        }
+
+        @Override
+        public String info() {
+            return "Define the time format for the status lines at the top";
+        }
+
+        @Override
+        public String type() {
+            return XMLPrefsSave.TEXT;
+        }
+    },
+    output_time_format {
+        @Override
+        public String defaultValue() {
+            return "HH:mm:ss";
+        }
+
+        @Override
+        public String info() {
+            return "Define the time format for the output lines";
         }
 
         @Override
@@ -351,6 +383,54 @@ public enum Behavior implements XMLPrefsSave {
             return XMLPrefsSave.TEXT;
         }
     },
+    battery_progress_bar {
+        @Override
+        public String defaultValue() {
+            return "false";
+        }
+
+        @Override
+        public String info() {
+            return "If true, the battery will be shown as a progress bar";
+        }
+
+        @Override
+        public String type() {
+            return XMLPrefsSave.BOOLEAN;
+        }
+    },
+    battery_progress_bar_symbol {
+        @Override
+        public String defaultValue() {
+            return "#";
+        }
+
+        @Override
+        public String info() {
+            return "The character used to build the battery progress bar";
+        }
+
+        @Override
+        public String type() {
+            return XMLPrefsSave.TEXT;
+        }
+    },
+    battery_progress_bar_length {
+        @Override
+        public String defaultValue() {
+            return "20";
+        }
+
+        @Override
+        public String info() {
+            return "The length of the battery progress bar";
+        }
+
+        @Override
+        public String type() {
+            return XMLPrefsSave.INTEGER;
+        }
+    },
     storage_format {
         @Override
         public String defaultValue() {
@@ -439,7 +519,7 @@ public enum Behavior implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "If false, you won't be able to launch apps from t-ui, unless you use \"apps -frc\"";
+            return "If false, you won't be able to launch apps from Re:T-UI, unless you use \"apps -frc\"";
         }
 
         @Override
@@ -503,7 +583,7 @@ public enum Behavior implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "If true, if you pass a lower number of parameters to an alias, t-ui will use the first one to replace the others";
+            return "If true, if you pass a lower number of parameters to an alias, Re:T-UI will use the first one to replace the others";
         }
 
         @Override
@@ -621,7 +701,7 @@ public enum Behavior implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "If true, you will be able to use t-ui as a music player. Otherwise, the music command will try to communicate with the music player that your using";
+            return "If true, you will be able to use Re:T-UI as a music player. Otherwise, the music command will try to communicate with the music player that your using";
         }
 
         @Override
@@ -637,7 +717,7 @@ public enum Behavior implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "A value which is used to tell how deep t-ui can go in a nested optional value";
+            return "A value which is used to tell how deep Re:T-UI can go in a nested optional value";
         }
 
         @Override
@@ -664,12 +744,12 @@ public enum Behavior implements XMLPrefsSave {
     tui_notification_title {
         @Override
         public String defaultValue() {
-            return "T-UI";
+            return "Re:T-UI";
         }
 
         @Override
         public String info() {
-            return "The title of the T-UI notification";
+            return "The title of the Re:T-UI notification";
         }
 
         @Override
@@ -680,12 +760,12 @@ public enum Behavior implements XMLPrefsSave {
     tui_notification_subtitle {
         @Override
         public String defaultValue() {
-            return "T-UI is running";
+            return "Re:T-UI is running";
         }
 
         @Override
         public String info() {
-            return "The subtitle of the T-UI notification";
+            return "The subtitle of the Re:T-UI notification";
         }
 
         @Override
@@ -701,7 +781,7 @@ public enum Behavior implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "The command ran when the T-UI notification is clicked";
+            return "The command ran when the Re:T-UI notification is clicked";
         }
 
         @Override
@@ -717,7 +797,7 @@ public enum Behavior implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "If false, the click on the T-UI notification won't bring you to your phone home";
+            return "If false, the click on the Re:T-UI notification won't bring you to your phone home";
         }
 
         @Override
@@ -733,7 +813,7 @@ public enum Behavior implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "The number of used commands that will appear inside the T-UI notification (<0 will disable the feature)";
+            return "The number of used commands that will appear inside the Re:T-UI notification (<0 will disable the feature)";
         }
 
         @Override
@@ -765,7 +845,7 @@ public enum Behavior implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "The priority of the T-UI notification (min: -2, max: 2)";
+            return "The priority of the Re:T-UI notification (min: -2, max: 2)";
         }
 
         @Override
@@ -845,7 +925,7 @@ public enum Behavior implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "If true, t-ui will automatically append a quote before a file inserted clicking on a suggestion";
+            return "If true, Re:T-UI will automatically append a quote before a file inserted clicking on a suggestion";
         }
 
         @Override
@@ -957,7 +1037,7 @@ public enum Behavior implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "The time color inside the t-ui notification";
+            return "The time color inside the Re:T-UI notification";
         }
 
         @Override
@@ -973,7 +1053,7 @@ public enum Behavior implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "The input color inside the t-ui notification";
+            return "The input color inside the Re:T-UI notification";
         }
 
         @Override
@@ -1053,7 +1133,7 @@ public enum Behavior implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "If true, t-ui will clear the screen when you lock the phone";
+            return "If true, Re:T-UI will clear the screen when you lock the phone";
         }
 
         @Override
@@ -1157,6 +1237,22 @@ public enum Behavior implements XMLPrefsSave {
             return XMLPrefsSave.BOOLEAN;
         }
     },
+    swipe_down_notifications {
+        @Override
+        public String defaultValue() {
+            return "false";
+        }
+
+        @Override
+        public String info() {
+            return "If true, swiping down will expand the notification shade";
+        }
+
+        @Override
+        public String type() {
+            return XMLPrefsSave.BOOLEAN;
+        }
+    },
     weather_update_time {
         @Override
         public String defaultValue() {
@@ -1213,7 +1309,7 @@ public enum Behavior implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "If false, t-ui won't show information about the weather in the output field";
+            return "If false, Re:T-UI won't show information about the weather in the output field";
         }
 
         @Override

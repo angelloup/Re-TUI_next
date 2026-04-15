@@ -37,6 +37,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+    <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
 
     <!-- features -->
     <uses-feature
@@ -138,13 +139,24 @@
             android:exported="false"
             android:foregroundServiceType="specialUse">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_TYPE"
-                android:value="Maintains the launcher console state and provides persistent access to T-UI commands via notification."/>
+                android:value="Maintains the launcher console state and provides persistent access to Re:T-UI commands via notification."/>
         </service>
         <service
             android:name=".managers.music.MusicService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
+
+        <activity
+            android:name=".commands.tuixt.ThemerActivity"
+            android:excludeFromRecents="true"
+            android:label="Re:T-UI Settings Hub"
+            android:theme="@style/Custom.Solid"
+            android:exported="true">
+            <meta-data
+                android:name="androidx.core.app.PARENT_ACTIVITY"
+                android:value=".LauncherActivity" />
+        </activity>
 
         <activity
             android:name=".commands.tuixt.TuixtActivity"

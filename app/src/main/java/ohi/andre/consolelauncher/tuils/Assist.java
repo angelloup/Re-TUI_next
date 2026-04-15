@@ -58,6 +58,9 @@ public class Assist {
     private int computeUsableHeight() {
         Rect r = new Rect();
         mChildOfContent.getWindowVisibleDisplayFrame(r);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            return r.bottom;
+        }
         return (r.bottom - r.top);
     }
 

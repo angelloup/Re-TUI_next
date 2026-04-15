@@ -26,22 +26,30 @@ import ohi.andre.consolelauncher.tuils.Tuils;
 
 public class TimeManager {
 
-    Map.Entry<Integer, SimpleDateFormat>[] dateFormatList;
+    Map.Entry<Integer, SimpleDateFormat>[] outputDateFormatList;
+    Map.Entry<Integer, SimpleDateFormat>[] statusDateFormatList;
 
     public static Pattern extractor = Pattern.compile("%t([0-9]*)", Pattern.CASE_INSENSITIVE);
 
     public static TimeManager instance;
 
     public TimeManager(Context context) {
-        String format = XMLPrefsManager.get(Behavior.time_format);
+        instance = this;
         String separator = XMLPrefsManager.get(Behavior.time_format_separator);
 
+        outputDateFormatList = createList(context, XMLPrefsManager.get(Behavior.output_time_format), separator);
+        statusDateFormatList = createList(context, XMLPrefsManager.get(Behavior.status_time_format), separator);
+
+        instance = this;
+    }
+
+    private Map.Entry<Integer, SimpleDateFormat>[] createList(Context context, String format, String separator) {
         String[] formats = format.split(separator);
-        dateFormatList = new Map.Entry[formats.length];
+        Map.Entry<Integer, SimpleDateFormat>[] list = new Map.Entry[formats.length];
 
         Pattern colorPattern = Pattern.compile("#(?:\\d|[a-fA-F]){6}");
 
-        for(int c = 0; c < dateFormatList.length; c++) {
+        for(int c = 0; c < list.length; c++) {
             try {
                 formats[c] = Tuils.patternNewline.matcher(formats[c]).replaceAll(Tuils.NEWLINE);
 
@@ -52,49 +60,49 @@ public class TimeManager {
                     formats[c] = m.replaceAll(Tuils.EMPTYSTRING);
                 }
 
-                dateFormatList[c] = new SimpleMutableEntry<>(color, new SimpleDateFormat(formats[c]));
+                list[c] = new SimpleMutableEntry<>(color, new SimpleDateFormat(formats[c]));
             } catch (Exception e) {
                 Tuils.sendOutput(Color.RED, context,"Invalid time format: " + formats[c]);
-                dateFormatList[c] = dateFormatList[0];
+                if (c > 0) list[c] = list[0];
+                else list[c] = new SimpleMutableEntry<>(Color.RED, new SimpleDateFormat("HH:mm:ss"));
             }
         }
-
-        instance = this;
+        return list;
     }
 
-    private Map.Entry<Integer, SimpleDateFormat> get(int index) {
-        if(dateFormatList == null) return null;
-        if(index < 0 || index >= dateFormatList.length) index = 0;
-        if(index == 0 && dateFormatList.length == 0) return null;
+    private Map.Entry<Integer, SimpleDateFormat> get(int index, boolean isStatus) {
+        Map.Entry<Integer, SimpleDateFormat>[] list = isStatus ? statusDateFormatList : outputDateFormatList;
+        if(list == null || list.length == 0) return null;
+        if(index < 0 || index >= list.length) index = 0;
 
-        return dateFormatList[index];
+        return list[index];
     }
 
     public CharSequence replace(CharSequence cs) {
-        return replace(cs, -1, TerminalManager.NO_COLOR);
+        return replace(null, Integer.MAX_VALUE, cs, -1, TerminalManager.NO_COLOR, false);
     }
 
     public CharSequence replace(CharSequence cs, int color) {
-        return replace(cs, -1, color);
+        return replace(null, Integer.MAX_VALUE, cs, -1, color, false);
     }
 
     public CharSequence replace(CharSequence cs, long tm, int color) {
-        return replace(null, TerminalManager.NO_COLOR, cs, tm, color);
+        return replace(null, Integer.MAX_VALUE, cs, tm, color, false);
     }
 
     public CharSequence replace(CharSequence cs, long tm) {
-        return replace(null, TerminalManager.NO_COLOR, cs, tm, TerminalManager.NO_COLOR);
+        return replace(null, Integer.MAX_VALUE, cs, tm, TerminalManager.NO_COLOR, false);
     }
 
     public CharSequence replace(Context context, int size, CharSequence cs) {
-        return replace(context, size, cs, -1, TerminalManager.NO_COLOR);
+        return replace(context, size, cs, -1, TerminalManager.NO_COLOR, false);
     }
 
     public CharSequence replace(Context context, int size, CharSequence cs, int color) {
-        return replace(context, size, cs, -1, color);
+        return replace(context, size, cs, -1, color, false);
     }
 
-    public CharSequence replace(Context context, int size, CharSequence cs, long tm, int color) {
+    public CharSequence replace(Context context, int size, CharSequence cs, long tm, int color, boolean isStatus) {
         if(tm == -1) {
             tm = System.currentTimeMillis();
         }
@@ -111,45 +119,44 @@ public class TimeManager {
             String number = matcher.group(1);
             if(number == null || number.length() == 0) number = "0";
 
-            Map.Entry<Integer, SimpleDateFormat> entry = get(Integer.parseInt(number));
+            Map.Entry<Integer, SimpleDateFormat> entry = get(Integer.parseInt(number), isStatus);
             if(entry == null) continue;
 
             CharSequence s = span(context, entry, color, date, size);
             cs = TextUtils.replace(cs, new String[] {matcher.group(0)}, new CharSequence[] {s});
         }
 
-        Map.Entry<Integer, SimpleDateFormat> entry = get(0);
+        Map.Entry<Integer, SimpleDateFormat> entry = get(0, isStatus);
         cs = TextUtils.replace(cs, new String[] {"%t"}, new CharSequence[] {span(context, entry, color, date, size)});
 
         return cs;
     }
 
     public CharSequence getCharSequence(String s) {
-        return getCharSequence(s, -1, TerminalManager.NO_COLOR);
+        return getCharSequence(null, Integer.MAX_VALUE, s, -1, TerminalManager.NO_COLOR, true);
     }
 
     public CharSequence getCharSequence(String s, int color) {
-        return getCharSequence(s, -1, color);
+        return getCharSequence(null, Integer.MAX_VALUE, s, -1, color, true);
     }
 
     public CharSequence getCharSequence(String s, long tm, int color) {
-        return getCharSequence(null, TerminalManager.NO_COLOR, s, tm, color);
+        return getCharSequence(null, Integer.MAX_VALUE, s, tm, color, true);
     }
 
     public CharSequence getCharSequence(String s, long tm) {
-        return getCharSequence(null, TerminalManager.NO_COLOR, s, tm, TerminalManager.NO_COLOR);
+        return getCharSequence(null, Integer.MAX_VALUE, s, tm, TerminalManager.NO_COLOR, true);
     }
 
     public CharSequence getCharSequence(Context context, int size, String s) {
-        return getCharSequence(context, size, s, -1, TerminalManager.NO_COLOR);
+        return getCharSequence(context, size, s, -1, TerminalManager.NO_COLOR, true);
     }
 
     public CharSequence getCharSequence(Context context, int size, String s, int color) {
-        return getCharSequence(context, size, s, -1, color);
+        return getCharSequence(context, size, s, -1, color, true);
     }
 
-//    this can be "%t[\d]
-    public CharSequence getCharSequence(Context context, int size, String s, long tm, int color) {
+    public CharSequence getCharSequence(Context context, int size, String s, long tm, int color, boolean isStatus) {
         if(tm == -1) {
             tm = System.currentTimeMillis();
         }
@@ -161,7 +168,7 @@ public class TimeManager {
             String number = matcher.group(1);
             if(number == null || number.length() == 0) number = "0";
 
-            Map.Entry<Integer, SimpleDateFormat> entry = get(Integer.parseInt(number));
+            Map.Entry<Integer, SimpleDateFormat> entry = get(Integer.parseInt(number), isStatus);
             if(entry == null) {
                 return null;
             }
@@ -187,7 +194,8 @@ public class TimeManager {
     }
 
     public void dispose() {
-        dateFormatList = null;
+        outputDateFormatList = null;
+        statusDateFormatList = null;
 
         instance = null;
     }

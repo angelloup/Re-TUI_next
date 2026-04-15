@@ -14,6 +14,7 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.Typeface;
 import android.location.Location;
 import android.net.ConnectivityManager;
 import android.net.wifi.WifiInfo;
@@ -28,6 +29,7 @@ import android.text.SpannableString;
 import android.text.TextUtils;
 import android.text.method.LinkMovementMethod;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.GestureDetector;
 import android.view.GestureDetector.OnDoubleTapListener;
 import android.view.Gravity;
@@ -47,6 +49,7 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -108,7 +111,8 @@ public class UIManager implements OnTouchListener {
         network,
         notes,
         weather,
-        unlock
+        unlock,
+        ascii
     }
 
     private final int RAM_DELAY = 3000;
@@ -121,6 +125,7 @@ public class UIManager implements OnTouchListener {
 
     private DevicePolicyManager policy;
     private ComponentName component;
+    private boolean swipeDownNotifications;
     private GestureDetectorCompat gestureDetector;
 
     SharedPreferences preferences;
@@ -140,6 +145,9 @@ public class UIManager implements OnTouchListener {
     private float[] labelIndexes = new float[labelViews.length];
     private int[] labelSizes = new int[labelViews.length];
     private CharSequence[] labelTexts = new CharSequence[labelViews.length];
+
+    private String asciiContent = null;
+    private int asciiColor;
 
     private TextView getLabelView(Label l) {
         return labelViews[(int) labelIndexes[l.ordinal()]];
@@ -181,6 +189,9 @@ public class UIManager implements OnTouchListener {
 
         @Override
         public void update(float p) {
+            if(p == -1) p = last;
+            last = p;
+
             if(batteryFormat == null) {
                 batteryFormat = XMLPrefsManager.get(Behavior.battery_format);
 
@@ -196,9 +207,6 @@ public class UIManager implements OnTouchListener {
                 optionalCharging = Pattern.compile(optional, Pattern.CASE_INSENSITIVE);
             }
 
-            if(p == -1) p = last;
-            last = p;
-
             if(!loaded) {
                 loaded = true;
 
@@ -209,6 +217,35 @@ public class UIManager implements OnTouchListener {
             }
 
             int percentage = (int) p;
+
+            if (XMLPrefsManager.getBoolean(Behavior.battery_progress_bar)) {
+                int length = XMLPrefsManager.getInt(Behavior.battery_progress_bar_length);
+                String symbol = XMLPrefsManager.get(Behavior.battery_progress_bar_symbol);
+                int fullColor = XMLPrefsManager.getColor(Theme.battery_progress_bar_full_color);
+                int emptyColor = XMLPrefsManager.getColor(Theme.battery_progress_bar_empty_color);
+
+                int fullCount = Math.round((p / 100f) * length);
+                int emptyCount = length - fullCount;
+
+                StringBuilder fullPart = new StringBuilder();
+                for (int i = 0; i < fullCount; i++) fullPart.append(symbol);
+
+                StringBuilder emptyPart = new StringBuilder();
+                for (int i = 0; i < emptyCount; i++) emptyPart.append(symbol);
+
+                android.text.SpannableStringBuilder ssb = new android.text.SpannableStringBuilder();
+                ssb.append(fullPart);
+                ssb.setSpan(new android.text.style.ForegroundColorSpan(fullColor), 0, ssb.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+
+                int startEmpty = ssb.length();
+                ssb.append(emptyPart);
+                ssb.setSpan(new android.text.style.ForegroundColorSpan(emptyColor), startEmpty, ssb.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+
+                ssb.append(" ").append(String.valueOf(percentage)).append("%");
+
+                UIManager.this.updateText(Label.battery, ssb);
+                return;
+            }
 
             int color;
 
@@ -360,7 +397,7 @@ public class UIManager implements OnTouchListener {
                 active = true;
             }
 
-            updateText(Label.time, TimeManager.instance.getCharSequence(mContext, labelSizes[Label.time.ordinal()], "%t0"));
+            updateText(Label.time, TimeManager.instance.getCharSequence(mContext, labelSizes[Label.time.ordinal()], "%t0", -1, TerminalManager.NO_COLOR, true));
             handler.postDelayed(this, TIME_DELAY);
         }
     };
@@ -917,7 +954,9 @@ public class UIManager implements OnTouchListener {
 
         lockOnDbTap = XMLPrefsManager.getBoolean(Behavior.double_tap_lock);
         doubleTapCmd = XMLPrefsManager.get(Behavior.double_tap_cmd);
-        if(!lockOnDbTap && doubleTapCmd == null) {
+        swipeDownNotifications = XMLPrefsManager.getBoolean(Behavior.swipe_down_notifications);
+
+        if(!lockOnDbTap && doubleTapCmd == null && !swipeDownNotifications) {
             policy = null;
             component = null;
             gestureDetector = null;
@@ -946,6 +985,16 @@ public class UIManager implements OnTouchListener {
 
                 @Override
                 public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+                    if (swipeDownNotifications && velocityY > 100 && Math.abs(velocityY) > Math.abs(velocityX)) {
+                        try {
+                            Object sbservice = mContext.getSystemService("statusbar");
+                            Class<?> statusbarManager = Class.forName("android.app.StatusBarManager");
+                            java.lang.reflect.Method expand = statusbarManager.getMethod("expandNotificationsPanel");
+                            expand.invoke(sbservice);
+                            return true;
+                        } catch (Exception e3) {
+                        }
+                    }
                     return false;
                 }
             });
@@ -1001,6 +1050,7 @@ public class UIManager implements OnTouchListener {
         labelSizes[Label.device.ordinal()] = XMLPrefsManager.getInt(Ui.device_size);
         labelSizes[Label.weather.ordinal()] = XMLPrefsManager.getInt(Ui.weather_size);
         labelSizes[Label.unlock.ordinal()] = XMLPrefsManager.getInt(Ui.unlock_size);
+        labelSizes[Label.ascii.ordinal()] = XMLPrefsManager.getInt(Ui.ascii_size);
 
         labelViews = new TextView[] {
                 (TextView) rootView.findViewById(R.id.tv0),
@@ -1012,6 +1062,7 @@ public class UIManager implements OnTouchListener {
                 (TextView) rootView.findViewById(R.id.tv6),
                 (TextView) rootView.findViewById(R.id.tv7),
                 (TextView) rootView.findViewById(R.id.tv8),
+                (TextView) rootView.findViewById(R.id.tv9),
         };
 
         boolean[] show = new boolean[Label.values().length];
@@ -1024,6 +1075,7 @@ public class UIManager implements OnTouchListener {
         show[Label.storage.ordinal()] = XMLPrefsManager.getBoolean(Ui.show_storage_info);
         show[Label.weather.ordinal()] = XMLPrefsManager.getBoolean(Ui.show_weather);
         show[Label.unlock.ordinal()] = XMLPrefsManager.getBoolean(Ui.show_unlock_counter);
+        show[Label.ascii.ordinal()] = XMLPrefsManager.getBoolean(Ui.show_ascii);
 
         float[] indexes = new float[Label.values().length];
         indexes[Label.notes.ordinal()] = show[Label.notes.ordinal()] ? XMLPrefsManager.getFloat(Ui.notes_index) : Integer.MAX_VALUE;
@@ -1035,10 +1087,11 @@ public class UIManager implements OnTouchListener {
         indexes[Label.storage.ordinal()] = show[Label.storage.ordinal()] ? XMLPrefsManager.getFloat(Ui.storage_index) : Integer.MAX_VALUE;
         indexes[Label.weather.ordinal()] = show[Label.weather.ordinal()] ? XMLPrefsManager.getFloat(Ui.weather_index) : Integer.MAX_VALUE;
         indexes[Label.unlock.ordinal()] = show[Label.unlock.ordinal()] ? XMLPrefsManager.getFloat(Ui.unlock_index) : Integer.MAX_VALUE;
+        indexes[Label.ascii.ordinal()] = show[Label.ascii.ordinal()] ? XMLPrefsManager.getFloat(Ui.ascii_index) : Integer.MAX_VALUE;
 
-        int[] statusLineAlignments = getListOfIntValues(XMLPrefsManager.get(Ui.status_lines_alignment), 9, -1);
+        int[] statusLineAlignments = getListOfIntValues(XMLPrefsManager.get(Ui.status_lines_alignment), 10, -1);
 
-        String[] statusLinesBgRectColors = getListOfStringValues(XMLPrefsManager.get(Theme.status_lines_bgrectcolor), 9, "#ff000000");
+        String[] statusLinesBgRectColors = getListOfStringValues(XMLPrefsManager.get(Theme.status_lines_bgrectcolor), 10, "#ff000000");
         String[] otherBgRectColors = {
                 XMLPrefsManager.get(Theme.input_bgrectcolor),
                 XMLPrefsManager.get(Theme.output_bgrectcolor),
@@ -1049,7 +1102,7 @@ public class UIManager implements OnTouchListener {
         System.arraycopy(statusLinesBgRectColors, 0, bgRectColors, 0, statusLinesBgRectColors.length);
         System.arraycopy(otherBgRectColors, 0, bgRectColors, statusLinesBgRectColors.length, otherBgRectColors.length);
 
-        String[] statusLineBgColors = getListOfStringValues(XMLPrefsManager.get(Theme.status_lines_bg), 9, "#00000000");
+        String[] statusLineBgColors = getListOfStringValues(XMLPrefsManager.get(Theme.status_lines_bg), 10, "#00000000");
         String[] otherBgColors = {
                 XMLPrefsManager.get(Theme.input_bg),
                 XMLPrefsManager.get(Theme.output_bg),
@@ -1060,14 +1113,14 @@ public class UIManager implements OnTouchListener {
         System.arraycopy(statusLineBgColors, 0, bgColors, 0, statusLineBgColors.length);
         System.arraycopy(otherBgColors, 0, bgColors, statusLineBgColors.length, otherBgColors.length);
 
-        String[] statusLineOutlineColors = getListOfStringValues(XMLPrefsManager.get(Theme.status_lines_shadow_color), 9, "#00000000");
+        String[] statusLineOutlineColors = getListOfStringValues(XMLPrefsManager.get(Theme.status_lines_shadow_color), 10, "#00000000");
         String[] otherOutlineColors = {
                 XMLPrefsManager.get(Theme.input_shadow_color),
                 XMLPrefsManager.get(Theme.output_shadow_color),
         };
         String[] outlineColors = new String[statusLineOutlineColors.length + otherOutlineColors.length];
         System.arraycopy(statusLineOutlineColors, 0, outlineColors, 0, statusLineOutlineColors.length);
-        System.arraycopy(otherOutlineColors, 0, outlineColors, 9, otherOutlineColors.length);
+        System.arraycopy(otherOutlineColors, 0, outlineColors, 10, otherOutlineColors.length);
 
         int shadowXOffset, shadowYOffset;
         float shadowRadius;
@@ -1076,10 +1129,10 @@ public class UIManager implements OnTouchListener {
         shadowYOffset = Integer.parseInt(shadowParams[1]);
         shadowRadius = Float.parseFloat(shadowParams[2]);
 
-        final int INPUT_BGCOLOR_INDEX = 9;
-        final int OUTPUT_BGCOLOR_INDEX = 10;
-        final int SUGGESTIONS_BGCOLOR_INDEX = 11;
-        final int TOOLBAR_BGCOLOR_INDEX = 12;
+        final int INPUT_BGCOLOR_INDEX = 10;
+        final int OUTPUT_BGCOLOR_INDEX = 11;
+        final int SUGGESTIONS_BGCOLOR_INDEX = 12;
+        final int TOOLBAR_BGCOLOR_INDEX = 13;
 
         int strokeWidth, cornerRadius;
         String[] rectParams = getListOfStringValues(XMLPrefsManager.get(Ui.bgrect_params), 2, "0");
@@ -1101,6 +1154,47 @@ public class UIManager implements OnTouchListener {
         margins[5] = getListOfIntValues(XMLPrefsManager.get(Ui.suggestions_area_margin), 4, 0);
 
         AllowEqualsSequence sequence = new AllowEqualsSequence(indexes, Label.values());
+
+        if (show[Label.ascii.ordinal()]) {
+            asciiColor = XMLPrefsManager.getColor(Theme.ascii_color);
+            File asciiFile = new File(Tuils.getFolder(), "ascii.txt");
+            if (!asciiFile.exists()) {
+                try {
+                    asciiFile.createNewFile();
+                    String sample = " ____  _____  _____  _   _ ___ \n" +
+                                   "|  _ \\| ____||_   _|| | | |_ _|\n" +
+                                   "| |_) |  _|    | |  | | | || | \n" +
+                                   "|  _ <| |___   | |  | |_| || | \n" +
+                                   "|_| \\_\\_____|  |_|   \\___/|___|\n";
+                    FileOutputStream fos = new FileOutputStream(asciiFile);
+                    fos.write(sample.getBytes());
+                    fos.close();
+                } catch (Exception e) {
+                    Log.e("TUI-UI", "Error creating ascii.txt", e);
+                }
+            }
+
+            try {
+                if (asciiFile.exists()) {
+                    FileInputStream fis = new FileInputStream(asciiFile);
+                    byte[] data = new byte[(int) asciiFile.length()];
+                    fis.read(data);
+                    fis.close();
+                    asciiContent = new String(data, "UTF-8");
+                } else {
+                    asciiContent = "ascii.txt not found after creation attempt";
+                }
+            } catch (Exception e) {
+                asciiContent = "Error loading ascii.txt: " + e.getMessage();
+                Log.e("TUI-UI", "Error loading ascii.txt", e);
+            }
+
+            updateText(Label.ascii, Tuils.span(mContext, asciiContent, asciiColor, labelSizes[Label.ascii.ordinal()]));
+            TextView asciiView = getLabelView(Label.ascii);
+            if (asciiView != null) {
+                asciiView.setTypeface(Typeface.MONOSPACE);
+            }
+        }
 
         LinearLayout lViewsParent = (LinearLayout) labelViews[0].getParent();
 
@@ -1236,6 +1330,34 @@ public class UIManager implements OnTouchListener {
             if(where.contains(",") || Tuils.isNumber(where)) handler.post(weatherRunnable);
 
             showWeatherUpdate = XMLPrefsManager.getBoolean(Behavior.show_weather_updates);
+        }
+
+        if (show[Label.ascii.ordinal()]) {
+            File asciiFile = new File(Tuils.getFolder(), "ascii.txt");
+            if (!asciiFile.exists()) {
+                try {
+                    Tuils.write(asciiFile, "  _____         _______     _    _ _____ \n" +
+                            " |  __ \\       |__   __|   | |  | |_   _|\n" +
+                            " | |__) | ___     | |______| |  | | | |  \n" +
+                            " |  _  / / _ \\    | |______| |  | | | |  \n" +
+                            " | | \\ \\|  __/    | |      | |__| |_| |_ \n" +
+                            " |_|  \\_\\\\___|    |_|       \\____/|_____|\n");
+                } catch (Exception e) {
+                    Log.e("TUI-UI", "Error creating ascii.txt", e);
+                }
+            }
+
+            try {
+                asciiContent = Tuils.inputStreamToString(new FileInputStream(asciiFile));
+                asciiColor = XMLPrefsManager.getColor(Theme.ascii_color);
+                
+                TextView asciiView = labelViews[Label.ascii.ordinal()];
+                asciiView.setTypeface(Typeface.MONOSPACE);
+                
+                updateText(Label.ascii, Tuils.span(mContext, asciiContent, asciiColor, labelSizes[Label.ascii.ordinal()]));
+            } catch (Exception e) {
+                Log.e("TUI-UI", "Error loading ascii.txt", e);
+            }
         }
 
         if(show[Label.unlock.ordinal()]) {
@@ -1422,12 +1544,20 @@ public class UIManager implements OnTouchListener {
             d.setCornerRadius(cornerRadius);
 
             if(!(strokeColor.startsWith("#00") && strokeColor.length() == 9)) {
-                d.setStroke(strokeWidth, Color.parseColor(strokeColor));
+                try {
+                    d.setStroke(strokeWidth, Color.parseColor(strokeColor));
+                } catch (Exception e) {
+                    d.setStroke(strokeWidth, Color.TRANSPARENT);
+                }
             }
 
             applyMargins(v, spaces);
 
-            d.setColor(Color.parseColor(bgColor));
+            try {
+                d.setColor(Color.parseColor(bgColor));
+            } catch (Exception e) {
+                d.setColor(Color.TRANSPARENT);
+            }
             v.setBackgroundDrawable(d);
         } catch (Exception e) {
             Tuils.toFile(e);
@@ -1448,11 +1578,13 @@ public class UIManager implements OnTouchListener {
 
     private static void applyShadow(TextView v, String color, int x, int y, float radius) {
         if(!(color.startsWith("#00") && color.length() == 9)) {
-            v.setShadowLayer(radius, x, y, Color.parseColor(color));
-            v.setTag(OutlineTextView.SHADOW_TAG);
-
-//            if(radius > v.getPaddingTop()) v.setPadding(v.getPaddingLeft(), (int) Math.floor(radius), v.getPaddingRight(), (int) Math.floor(radius));
-//            if(radius > v.getPaddingLeft()) v.setPadding((int) Math.floor(radius), v.getPaddingTop(), (int) Math.floor(radius), v.getPaddingBottom());
+            try {
+                v.setShadowLayer(radius, x, y, Color.parseColor(color));
+                v.setTag(OutlineTextView.SHADOW_TAG);
+            } catch (Exception e) {
+                // Fallback to transparent if color is invalid
+                v.setShadowLayer(0, 0, 0, Color.TRANSPARENT);
+            }
         }
     }
 
@@ -1474,8 +1606,7 @@ public class UIManager implements OnTouchListener {
 
     public void openKeyboard() {
         mTerminalAdapter.requestInputFocus();
-        imm.showSoftInput(mTerminalAdapter.getInputView(), InputMethodManager.SHOW_IMPLICIT);
-//        mTerminalAdapter.scrollToEnd();
+        imm.showSoftInput(mTerminalAdapter.getInputView(), InputMethodManager.SHOW_FORCED);
     }
 
     public void closeKeyboard() {

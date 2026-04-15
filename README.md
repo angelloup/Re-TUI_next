@@ -1,6 +1,6 @@
-# T-UI Linux CLI Launcher
+# Re:T-UI Console Launcher
 
-Updated for compatibility with modern Android versions (API 34+) and enhanced with security hardening.
+Personal fork and continuation of the original T-UI launcher, updated for modern Android versions and ongoing device testing.
 
 ---
 
@@ -16,12 +16,14 @@ These updates ensure the launcher remains functional, secure, and performant on 
     *   **Available Presets:** `blue`, `red`, `green`, `pink`, `bw`, `cyberpunk`.
     *   **Smart Suggestions:** Applying a preset automatically colors the suggestion bar and shortcut buttons to match the aesthetic.
 *   **`bbman`**: The new BusyBox manager for installing and verifying Linux binaries.
+*   **ASCII Art System**: A new header system that displays custom ASCII art on the dashboard. Controlled via `show_ascii`, `ascii_index`, and `ascii_size` in `Ui.xml`.
 
 ### ✨ Enhanced Features
 *   **Built-in BusyBox Manager:** Gain access to 300+ Linux commands (ls, grep, awk, top, etc.) via the new `bbman -install` command.
 *   **Theme Preset Shortcut Buttons:** Enhanced the `theme -preset` command to show interactive shortcut buttons for presets.
 *   **Synchronized Theme UI:** Applying a preset now automatically colors the shortcut buttons (suggestions) to match the overall theme.
 *   **One-Tap Application:** Shortcut buttons for theme presets execute immediately upon clicking.
+*   **Expanded Status Bar:** Support for up to 10 status lines (tv0-tv9) for richer information display.
 
 ---
 
@@ -39,7 +41,7 @@ To enable a full Linux environment, you can install BusyBox directly from the la
 ---
 
 ## 🛠 Modern Build System
-*   **Target SDK:** Updated to **API 34 (Android 14)**.
+*   **Target SDK:** Updated to **API 36**.
 *   **Min SDK:** API 21 (Android 5.0).
 *   **AndroidX Migration:** Fully migrated from legacy Support Libraries to **AndroidX**.
 *   **Gradle & AGP:** Updated to Gradle 8.2 and Android Gradle Plugin 8.2.0.
@@ -52,7 +54,7 @@ To enable a full Linux environment, you can install BusyBox directly from the la
 This project has been audited and hardened following the **OWASP Mobile Application Security Verification Standard (MASVS)**.
 
 ### 📦 MASVS-STORAGE: Data Storage and Privacy
-*   **Scoped Storage Implementation:** All application data has been moved from public external storage (`/sdcard/t-ui/`) to secure, app-private **Scoped Storage** (`Context.getExternalFilesDir()`). This prevents other applications from accessing your T-UI configuration and logs.
+*   **Storage Work In Progress:** Re:T-UI is being modernized for safer storage handling across recent Android versions, with active work around launcher config compatibility and recovery.
 *   **Backup Protection:** `android:allowBackup` is set to `false` to prevent sensitive data extraction via ADB backups (MASVS-STORAGE-1).
 *   **Secure File Sharing:** Uses `FileProvider` for secure, permission-based file sharing instead of vulnerable `file://` URIs.
 
@@ -71,11 +73,12 @@ This project has been audited and hardened following the **OWASP Mobile Applicat
 
 ---
 
-## 🔗 Useful links
+## 🔗 Useful Links
 
-**Official community**&nbsp;&nbsp;-->&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**[Reddit](https://www.reddit.com/r/tui_launcher/)**<br>
-**Official Group**&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-->&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**[Telegram](https://t.me/tuilauncher)**<br>
-**Wiki**&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-->&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**[GitHub.com](https://github.com/Andre1299/TUI-ConsoleLauncher/wiki)**<br>
+**Project repo**&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-->&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**[GitHub.com](https://github.com/DvilSpawn/Re-T-UI)**<br>
+**Project wiki**&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-->&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**[GitHub Wiki](https://github.com/DvilSpawn/Re-T-UI/wiki)**<br>
+**Community**&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-->&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**[Reddit](https://www.reddit.com/r/tui_launcher/)**<br>
+**Chat**&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-->&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**[Telegram](https://t.me/tuilauncher)**<br>
 
 ## 📚 Open Source Libraries
 * [**CompareString2**](https://github.com/fAndreuzzi/CompareString2)
