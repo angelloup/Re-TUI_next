@@ -535,7 +535,7 @@ public enum Behavior implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "Define app launch format ";
+            return "Define app launch format (%l = label, %p = package, %a = activity)";
         }
 
         @Override
@@ -669,7 +669,7 @@ public enum Behavior implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "The format of the \"app installed\" message ";
+            return "The format of the \"app installed\" message (%l = label, %p = package)";
         }
 
         @Override
@@ -685,7 +685,7 @@ public enum Behavior implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "The format of the \"app uninstalled\" message ";
+            return "The format of the \"app uninstalled\" message (%l = label, %p = package)";
         }
 
         @Override

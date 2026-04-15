@@ -1035,6 +1035,17 @@ public class UIManager implements OnTouchListener {
                     return true;
                 }
             });
+
+            rootView.setOnTouchListener((v, event) -> {
+                if (gestureDetector != null) {
+                    boolean handled = gestureDetector.onTouchEvent(event);
+                    if (!handled && event.getAction() == MotionEvent.ACTION_UP) {
+                        v.performClick();
+                    }
+                    return handled;
+                }
+                return false;
+            });
         }
 
         int[] displayMargins = getListOfIntValues(XMLPrefsManager.get(Ui.display_margin_mm), 4, 0);

@@ -92,6 +92,9 @@ public class AppsManager implements XMLPrefsElement {
     private String appInstalledFormat, appUninstalledFormat;
     int appInstalledColor, appUninstalledColor;
 
+    private String lastUninstalledPackage;
+    private long lastUninstallTime;
+
     @Override
     public String[] delete() {
         return null;
@@ -493,6 +496,12 @@ public class AppsManager implements XMLPrefsElement {
 
     private void appUninstalled(String packageName) {
         if(appsHolder == null || context == null) return;
+
+        if (packageName.equals(lastUninstalledPackage) && System.currentTimeMillis() - lastUninstallTime < 2000) {
+            return;
+        }
+        lastUninstalledPackage = packageName;
+        lastUninstallTime = System.currentTimeMillis();
 
         List<LaunchInfo> infos = AppUtils.findLaunchInfosWithPackage(packageName, appsHolder.getApps());
 

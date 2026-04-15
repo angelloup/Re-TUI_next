@@ -405,10 +405,8 @@ public class MainManager {
         }
 
         if(showAppHistory) {
-            if(appFormat == null) {
-                appFormat = XMLPrefsManager.get(Behavior.app_launch_format);
-                outputColor = XMLPrefsManager.getColor(Theme.output_color);
-            }
+            appFormat = XMLPrefsManager.get(Behavior.app_launch_format);
+            outputColor = XMLPrefsManager.getColor(Theme.output_color);
 
             String a = new String(appFormat);
             a = pa.matcher(a).replaceAll(Matcher.quoteReplacement(intent.getComponent().getClassName()));
