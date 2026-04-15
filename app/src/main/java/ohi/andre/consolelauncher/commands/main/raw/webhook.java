@@ -19,6 +19,7 @@ import ohi.andre.consolelauncher.commands.ExecutePack;
 import ohi.andre.consolelauncher.commands.main.MainPack;
 import ohi.andre.consolelauncher.commands.main.specific.ParamCommand;
 import ohi.andre.consolelauncher.managers.WebhookManager;
+import ohi.andre.consolelauncher.tuils.SimpleMutableEntry;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
 public class webhook extends ParamCommand {
@@ -26,20 +27,23 @@ public class webhook extends ParamCommand {
     private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
     private static final MediaType TEXT = MediaType.get("text/plain; charset=utf-8");
 
+    private static MainPack staticPack;
+
     private enum Param implements ohi.andre.consolelauncher.commands.main.Param {
         add {
             @Override
             public String exec(ExecutePack pack) {
-                ArrayList<String> args = pack.getList();
-                if (args.size() < 3) return "Usage: webhook -add [name] [url] [body_template]";
+                MainPack info = (MainPack) pack;
+                List<String> split = Tuils.splitArgs(info.lastCommand);
+                if (split.size() < 5) return "Usage: webhook -add [name] [url] [body_template]";
                 
-                String name = args.get(0);
-                String url = args.get(1);
+                String name = split.get(2);
+                String url = split.get(3);
                 
-                List<String> bodyParts = args.subList(2, args.size());
+                List<String> bodyParts = split.subList(4, split.size());
                 String body = Tuils.toPlanString(bodyParts, Tuils.SPACE);
                 
-                ((MainPack) pack).webhookManager.add(name, url, body);
+                info.webhookManager.add(name, url, body);
                 return "Webhook " + name + " added.";
             }
 
@@ -52,7 +56,7 @@ public class webhook extends ParamCommand {
             @Override
             public String exec(ExecutePack pack) {
                 ArrayList<String> args = pack.getList();
-                if (args.size() < 1) return "Usage: webhook -rm [name]";
+                if (args == null || args.isEmpty()) return "Usage: webhook -rm [name]";
                 String name = args.get(0);
                 ((MainPack) pack).webhookManager.remove(name);
                 return "Webhook " + name + " removed.";
@@ -67,7 +71,7 @@ public class webhook extends ParamCommand {
             @Override
             public String exec(ExecutePack pack) {
                 List<WebhookManager.Webhook> hooks = ((MainPack) pack).webhookManager.getWebhooks();
-                if (hooks.isEmpty()) return "No webhooks configured.";
+                if (hooks == null || hooks.isEmpty()) return "No webhooks configured.";
                 StringBuilder sb = new StringBuilder();
                 for (WebhookManager.Webhook w : hooks) {
                     sb.append(w.name).append(" -> ").append(w.url).append(Tuils.NEWLINE);
@@ -82,11 +86,13 @@ public class webhook extends ParamCommand {
         };
 
         static Param get(String p) {
+            if (p == null) return null;
             p = p.toLowerCase();
             Param[] ps = values();
-            for (Param p1 : ps)
-                if (p.endsWith(p1.label()))
+            for (Param p1 : ps) {
+                if (p.equals(p1.label()))
                     return p1;
+            }
             return null;
         }
 
@@ -115,64 +121,119 @@ public class webhook extends ParamCommand {
         }
     }
 
+    private class WebhookParam implements ohi.andre.consolelauncher.commands.main.Param {
+        private final WebhookManager.Webhook w;
+        public WebhookParam(WebhookManager.Webhook w) { this.w = w; }
+        @Override public int[] args() { return new int[]{CommandAbstraction.TEXTLIST}; }
+        @Override public String exec(ExecutePack pack) {
+            ArrayList<String> list = pack.getList();
+            String[] args = list != null ? list.toArray(new String[0]) : new String[0];
+            return triggerWebhook((MainPack) pack, w, args);
+        }
+        @Override public String label() { return w.name; }
+        @Override public String onNotArgEnough(ExecutePack pack, int n) { return null; }
+        @Override public String onArgNotFound(ExecutePack pack, int index) { return null; }
+    }
+
+    @Override
+    public SimpleMutableEntry<Boolean, ohi.andre.consolelauncher.commands.main.Param> getParam(MainPack pack, String param) {
+        staticPack = pack;
+        ohi.andre.consolelauncher.commands.main.Param p = Param.get(param);
+        if(p != null) return new SimpleMutableEntry<>(false, p);
+
+        String firstWord = param.split(" ")[0];
+        WebhookManager.Webhook w = pack.webhookManager.getWebhook(firstWord);
+        if (w != null) {
+            return new SimpleMutableEntry<>(false, new WebhookParam(w));
+        }
+
+        return super.getParam(pack, param);
+    }
+
     @Override
     protected ohi.andre.consolelauncher.commands.main.Param paramForString(MainPack pack, String param) {
+        staticPack = pack;
         return Param.get(param);
     }
 
     @Override
     public String[] params() {
-        return Param.labels();
+        String[] labels = Param.labels();
+        if (staticPack == null || staticPack.webhookManager == null) return labels;
+
+        List<WebhookManager.Webhook> hooks = staticPack.webhookManager.getWebhooks();
+        if (hooks == null) return labels;
+
+        String[] all = new String[labels.length + hooks.size()];
+        System.arraycopy(labels, 0, all, 0, labels.length);
+        for (int i = 0; i < hooks.size(); i++) {
+            all[labels.length + i] = hooks.get(i).name;
+        }
+        return all;
     }
 
     @Override
     protected String doThings(ExecutePack pack) {
-        MainPack info = (MainPack) pack;
+        final MainPack info = (MainPack) pack;
+        staticPack = info;
         String input = info.lastCommand;
         if (input == null) return null;
 
-        String[] split = input.split(Tuils.SPACE);
-        if (split.length < 2) return null;
+        List<String> split = Tuils.splitArgs(input);
+        
+        if (split.size() < 2) {
+            List<WebhookManager.Webhook> hooks = info.webhookManager.getWebhooks();
+            StringBuilder sb = new StringBuilder();
+            sb.append(info.context.getString(helpRes())).append(Tuils.NEWLINE);
+            if (hooks != null && !hooks.isEmpty()) {
+                sb.append(Tuils.NEWLINE).append("Configured Webhooks:").append(Tuils.NEWLINE);
+                for (WebhookManager.Webhook w : hooks) sb.append("  • ").append(w.name).append(Tuils.NEWLINE);
+            }
+            return sb.toString().trim();
+        }
 
-        String sub = split[1];
+        String sub = split.get(1);
         if (sub.startsWith("-")) return null;
 
-        // Trigger webhook
         WebhookManager.Webhook w = info.webhookManager.getWebhook(sub);
-        if (w == null) return "Webhook not found: " + sub;
-
-        String[] webhookArgs;
-        if (split.length > 2) {
-            webhookArgs = new String[split.length - 2];
-            System.arraycopy(split, 2, webhookArgs, 0, webhookArgs.length);
-        } else {
-            webhookArgs = new String[0];
+        String[] webhookArgs = new String[0];
+        
+        if (w == null && sub.contains(" ")) {
+            List<String> subSplit = Tuils.splitArgs(sub);
+            if (!subSplit.isEmpty()) {
+                w = info.webhookManager.getWebhook(subSplit.get(0));
+                if (w != null) {
+                    webhookArgs = subSplit.subList(1, subSplit.size()).toArray(new String[0]);
+                }
+            }
+        } else if (w != null) {
+            if (split.size() > 2) {
+                webhookArgs = split.subList(2, split.size()).toArray(new String[0]);
+            }
         }
 
-        String bodyContent = w.substitute(webhookArgs);
-        if (webhookArgs.length > 0) {
-            info.historyManager.add(w.name, Tuils.toPlanString(webhookArgs, Tuils.SPACE));
+        if (w != null) {
+            return triggerWebhook(info, w, webhookArgs);
         }
+
+        return "Webhook [" + sub + "] not found. Use 'webhook -ls' to see available hooks.";
+    }
+
+    private String triggerWebhook(final MainPack info, final WebhookManager.Webhook w, String[] webhookArgs) {
+        final String bodyContent = w.substitute(webhookArgs);
+        if (webhookArgs.length > 0) info.historyManager.add(w.name, Tuils.toPlanString(webhookArgs, Tuils.SPACE));
         
         MediaType mediaType = bodyContent.trim().startsWith("{") || bodyContent.trim().startsWith("[") ? JSON : TEXT;
         RequestBody body = RequestBody.create(bodyContent, mediaType);
-        
-        Request request = new Request.Builder()
-                .url(w.url)
-                .post(body)
-                .build();
-
+        Request request = new Request.Builder().url(w.url).post(body).build();
         final Handler handler = new Handler(Looper.getMainLooper());
         
         info.client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(Call call, IOException e) {
+            @Override public void onFailure(Call call, IOException e) {
                 final String error = e.toString();
                 handler.post(() -> Tuils.sendOutput(info.context, "Webhook [" + w.name + "] Error: " + error));
             }
-
-            @Override
-            public void onResponse(Call call, Response response) throws IOException {
+            @Override public void onResponse(Call call, Response response) throws IOException {
                 try (Response r = response) {
                     final String resBody = r.body() != null ? r.body().string() : "Empty Response";
                     final int code = r.code();
@@ -180,17 +241,9 @@ public class webhook extends ParamCommand {
                 }
             }
         });
-
         return "Triggering webhook: " + w.name;
     }
 
-    @Override
-    public int priority() {
-        return 3;
-    }
-
-    @Override
-    public int helpRes() {
-        return R.string.help_webhook;
-    }
+    @Override public int priority() { return 3; }
+    @Override public int helpRes() { return R.string.help_webhook; }
 }

@@ -402,7 +402,8 @@ public class MainManager {
 
     Pattern pa = Pattern.compile("%a", Pattern.CASE_INSENSITIVE);
     Pattern pp = Pattern.compile("%p", Pattern.CASE_INSENSITIVE);
-    Pattern pl = Pattern.compile("%l", Pattern.CASE_INSENSITIVE);
+    Pattern pl = Pattern.compile("%l");
+    Pattern pL = Pattern.compile("%L");
 
     public boolean performLaunch(MainPack mainPack, AppsManager.LaunchInfo i, String input) {
         Intent intent = appsManager.getIntent(i);
@@ -414,17 +415,25 @@ public class MainManager {
             appFormat = XMLPrefsManager.get(Behavior.app_launch_format);
             outputColor = XMLPrefsManager.getColor(Theme.output_color);
 
-            String a = new String(appFormat);
-            a = pa.matcher(a).replaceAll(Matcher.quoteReplacement(intent.getComponent().getClassName()));
-            a = pp.matcher(a).replaceAll(Matcher.quoteReplacement(intent.getComponent().getPackageName()));
-            a = pl.matcher(a).replaceAll(Matcher.quoteReplacement(i.publicLabel));
+            String a = appFormat;
+            String className = "";
+            String packageName = "";
+            if (intent.getComponent() != null) {
+                className = intent.getComponent().getClassName();
+                packageName = intent.getComponent().getPackageName();
+            }
+
+            a = pa.matcher(a).replaceAll(Matcher.quoteReplacement(className));
+            a = pp.matcher(a).replaceAll(Matcher.quoteReplacement(packageName));
+
+            a = pl.matcher(a).replaceAll(Matcher.quoteReplacement(i.publicLabel != null ? i.publicLabel.toLowerCase() : ""));
+            a = pL.matcher(a).replaceAll(Matcher.quoteReplacement(i.publicLabel != null ? i.publicLabel : ""));
             a = Tuils.patternNewline.matcher(a).replaceAll(Matcher.quoteReplacement(Tuils.NEWLINE));
 
             SpannableString text = new SpannableString(a);
             text.setSpan(new ForegroundColorSpan(outputColor), 0, text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            CharSequence s = TimeManager.instance.replace(text);
-
-            Tuils.sendOutput(mainPack, s, TerminalManager.CATEGORY_OUTPUT);
+            
+            Tuils.sendOutput(mainPack, text, TerminalManager.CATEGORY_NO_COLOR);
         }
 
         mainPack.context.startActivity(intent);
@@ -570,7 +579,8 @@ public class MainManager {
         public boolean trigger(final MainPack info, final String input) throws Exception {
             if (input == null || input.isEmpty()) return false;
 
-            final Command command = CommandTuils.parse(input, info);
+            String trimmed = input.trim();
+            final Command command = CommandTuils.parse(trimmed, info);
             if(command == null) return false;
 
             // If it is a ParamCommand (like webhook) or has arguments, we definitely want to handle it here.

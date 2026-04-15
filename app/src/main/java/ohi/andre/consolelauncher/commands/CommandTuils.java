@@ -42,9 +42,6 @@ public class CommandTuils {
         Command command = new Command();
 
         String name = CommandTuils.findName(input);
-        if (!Tuils.isAlpha(name))
-            return null;
-
         CommandAbstraction cmd = info.commandGroup.getCommandByName(name);
         if (cmd == null) {
             return null;
@@ -119,13 +116,27 @@ public class CommandTuils {
 
     //	find command name
     private static String findName(String input) {
-        int space = input.indexOf(Tuils.SPACE);
+        if (input == null || input.isEmpty()) return Tuils.EMPTYSTRING;
 
-        if (space == -1) {
-            return input;
-        } else {
-            return input.substring(0, space);
+        boolean inDoubleQuote = false;
+        boolean inSingleQuote = false;
+        boolean escaped = false;
+
+        for (int i = 0; i < input.length(); i++) {
+            char c = input.charAt(i);
+            if (escaped) {
+                escaped = false;
+            } else if (c == '\\') {
+                escaped = true;
+            } else if (c == '\"' && !inSingleQuote) {
+                inDoubleQuote = !inDoubleQuote;
+            } else if (c == '\'' && !inDoubleQuote) {
+                inSingleQuote = !inSingleQuote;
+            } else if (Character.isWhitespace(c) && !inDoubleQuote && !inSingleQuote) {
+                return input.substring(0, i);
+            }
         }
+        return input;
     }
 
     //	find args
@@ -253,19 +264,43 @@ public class CommandTuils {
             return null;
         }
 
-        String[] strings = input.split(Tuils.SPACE + "+");
-        List<String> arg = new ArrayList<>(Arrays.asList(strings));
-
+        List<String> arg = Tuils.splitArgs(input);
         return new ArgInfo(arg, null, true, arg.size());
     }
 
     private static ArgInfo noSpaceString(String input) {
-        if(input == null) return null;
+        if (input == null || input.isEmpty()) return new ArgInfo(null, input, false, 0);
 
-        int index = input.indexOf(Tuils.SPACE);
-        if(index == -1) index = input.length();
+        boolean inDoubleQuote = false;
+        boolean inSingleQuote = false;
+        boolean escaped = false;
+        StringBuilder arg = new StringBuilder();
 
-        return new ArgInfo(input.substring(0,index), input.length() > index ? input.substring(index + 1) : null, true, 1);
+        int i = 0;
+        for (; i < input.length(); i++) {
+            char c = input.charAt(i);
+            if (escaped) {
+                arg.append(c);
+                escaped = false;
+            } else if (c == '\\') {
+                escaped = true;
+            } else if (c == '\"' && !inSingleQuote) {
+                inDoubleQuote = !inDoubleQuote;
+            } else if (c == '\'' && !inDoubleQuote) {
+                inSingleQuote = !inSingleQuote;
+            } else if (Character.isWhitespace(c) && !inDoubleQuote && !inSingleQuote) {
+                break;
+            } else {
+                arg.append(c);
+            }
+        }
+
+        String residual = null;
+        if (i < input.length()) {
+            residual = input.substring(i + 1).trim();
+        }
+
+        return new ArgInfo(arg.toString(), residual, true, 1);
     }
 
     private static ArgInfo command(String string, CommandGroup active) {

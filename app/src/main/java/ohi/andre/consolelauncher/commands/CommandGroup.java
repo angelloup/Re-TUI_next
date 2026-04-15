@@ -52,7 +52,7 @@ public class CommandGroup {
 
     public CommandAbstraction getCommandByName(String name) {
         for(CommandAbstraction c : commands) {
-            if(c.getClass().getSimpleName().equals(name)) {
+            if(c.getClass().getSimpleName().equalsIgnoreCase(name)) {
                 return c;
             }
         }

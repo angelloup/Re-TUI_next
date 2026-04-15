@@ -27,6 +27,11 @@ public class post implements CommandAbstraction {
     @Override
     public String exec(ExecutePack pack) {
         MainPack info = (MainPack) pack;
+        
+        // CommandTuils.parse handles argument splitting, but PLAIN_TEXT for the first arg might leave the rest of the string
+        // We should ensure we are getting the right segments.
+        // Actually, if we want post [url] [body], we can use NO_SPACE_STRING for URL and PLAIN_TEXT for body.
+
         if (pack.args.length < 2) {
             return onNotArgEnough(pack, pack.args.length);
         }
@@ -71,7 +76,7 @@ public class post implements CommandAbstraction {
 
     @Override
     public int[] argType() {
-        return new int[]{CommandAbstraction.PLAIN_TEXT, CommandAbstraction.PLAIN_TEXT};
+        return new int[]{CommandAbstraction.NO_SPACE_STRING, CommandAbstraction.PLAIN_TEXT};
     }
 
     @Override
