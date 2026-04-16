@@ -177,8 +177,8 @@ public class UIManager implements OnTouchListener {
         public void run() {
             View musicWidget = mRootView.findViewById(R.id.music_widget);
             if (musicWidget != null && musicWidget.getVisibility() == View.VISIBLE) {
-                Intent intent = new Intent(ACTION_MUSIC_CHANGED);
                 if (mainPack != null && mainPack.player != null) {
+                    Intent intent = new Intent(ACTION_MUSIC_CHANGED);
                     int index = mainPack.player.getSongIndex();
                     if (index != -1) {
                         ohi.andre.consolelauncher.managers.music.Song song = mainPack.player.get(index);
@@ -190,8 +190,8 @@ public class UIManager implements OnTouchListener {
                     intent.putExtra(SONG_DURATION, mainPack.player.getDuration());
                     intent.putExtra(SONG_POSITION, mainPack.player.getCurrentPosition());
                     intent.putExtra(MUSIC_PLAYING, mainPack.player.isPlaying());
+                    LocalBroadcastManager.getInstance(mContext).sendBroadcast(intent);
                 }
-                LocalBroadcastManager.getInstance(mContext).sendBroadcast(intent);
             }
             handler.postDelayed(this, 1000);
         }

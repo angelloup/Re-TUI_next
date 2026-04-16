@@ -52,6 +52,7 @@ import ohi.andre.consolelauncher.tuils.Tuils;
 public class NotificationService extends NotificationListenerService {
 
     public static final String DESTROY = "destroy";
+    private static final long MEDIA_SESSION_EMPTY_GRACE_MS = 3000L;
 
     private final int UPDATE_TIME = 2000;
     private String LINES_LABEL = "Lines";
@@ -80,6 +81,18 @@ public class NotificationService extends NotificationListenerService {
 
     private MediaSessionManager mediaSessionManager;
     private List<MediaController> activeControllers = new ArrayList<>();
+    private String lastMediaTitle;
+    private String lastMediaArtist;
+    private int lastMediaDuration;
+    private int lastMediaPosition;
+    private boolean hasLastMediaState;
+    private final Runnable clearExternalMusicRunnable = new Runnable() {
+        @Override
+        public void run() {
+            clearRememberedMediaState();
+            sendMusicBroadcast(null, null, 0, 0, false);
+        }
+    };
 
     private MediaSessionManager.OnActiveSessionsChangedListener sessionsChangedListener = new MediaSessionManager.OnActiveSessionsChangedListener() {
         @Override
@@ -117,12 +130,15 @@ public class NotificationService extends NotificationListenerService {
 
     private void broadcastMediaMetadata() {
         if (activeControllers.isEmpty()) {
-            Intent intent = new Intent(MusicService.ACTION_MUSIC_CHANGED);
-            intent.putExtra(MusicService.MUSIC_PLAYING, false);
-            sendBroadcast(intent);
-            LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+            if (hasLastMediaState) {
+                scheduleExternalMusicClear();
+            } else {
+                sendMusicBroadcast(null, null, 0, 0, false);
+            }
             return;
         }
+
+        cancelExternalMusicClear();
 
         // Find the first playing controller, or fallback to the first one
         MediaController activeController = null;
@@ -137,25 +153,72 @@ public class NotificationService extends NotificationListenerService {
 
         MediaMetadata metadata = activeController.getMetadata();
         PlaybackState state = activeController.getPlaybackState();
+        boolean isPlaying = state != null && state.getState() == PlaybackState.STATE_PLAYING;
+        int position = state != null ? (int) state.getPosition() : lastMediaPosition;
 
         if (metadata != null) {
             String title = metadata.getString(MediaMetadata.METADATA_KEY_TITLE);
             String artist = metadata.getString(MediaMetadata.METADATA_KEY_ARTIST);
             if (artist == null) artist = metadata.getString(MediaMetadata.METADATA_KEY_ALBUM_ARTIST);
-            
-            long duration = metadata.getLong(MediaMetadata.METADATA_KEY_DURATION);
-            long position = state != null ? state.getPosition() : 0;
-            boolean isPlaying = state != null && state.getState() == PlaybackState.STATE_PLAYING;
 
-            Intent intent = new Intent(MusicService.ACTION_MUSIC_CHANGED);
-            intent.putExtra(MusicService.SONG_TITLE, title);
-            intent.putExtra(MusicService.SONG_SINGER, artist);
-            intent.putExtra(MusicService.SONG_DURATION, (int) duration);
-            intent.putExtra(MusicService.SONG_POSITION, (int) position);
-            intent.putExtra(MusicService.MUSIC_PLAYING, isPlaying);
-            sendBroadcast(intent);
-            LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+            int duration = (int) metadata.getLong(MediaMetadata.METADATA_KEY_DURATION);
+            rememberMediaState(title, artist, duration, position);
+            sendMusicBroadcast(title, artist, duration, position, isPlaying);
+            if (!isPlaying) {
+                scheduleExternalMusicClear();
+            }
+            return;
         }
+
+        if (hasLastMediaState) {
+            sendMusicBroadcast(lastMediaTitle, lastMediaArtist, lastMediaDuration, position, isPlaying);
+            lastMediaPosition = position;
+            if (!isPlaying) {
+                scheduleExternalMusicClear();
+            }
+        } else if (!isPlaying) {
+            sendMusicBroadcast(null, null, 0, 0, false);
+        }
+    }
+
+    private void rememberMediaState(String title, String artist, int duration, int position) {
+        lastMediaTitle = title;
+        lastMediaArtist = artist;
+        lastMediaDuration = duration;
+        lastMediaPosition = position;
+        hasLastMediaState = !TextUtils.isEmpty(title) || !TextUtils.isEmpty(artist) || duration > 0;
+    }
+
+    private void clearRememberedMediaState() {
+        lastMediaTitle = null;
+        lastMediaArtist = null;
+        lastMediaDuration = 0;
+        lastMediaPosition = 0;
+        hasLastMediaState = false;
+    }
+
+    private void scheduleExternalMusicClear() {
+        handler.removeCallbacks(clearExternalMusicRunnable);
+        handler.postDelayed(clearExternalMusicRunnable, MEDIA_SESSION_EMPTY_GRACE_MS);
+    }
+
+    private void cancelExternalMusicClear() {
+        handler.removeCallbacks(clearExternalMusicRunnable);
+    }
+
+    private void sendMusicBroadcast(String title, String artist, int duration, int position, boolean isPlaying) {
+        Intent intent = new Intent(MusicService.ACTION_MUSIC_CHANGED);
+        if (title != null) {
+            intent.putExtra(MusicService.SONG_TITLE, title);
+        }
+        if (artist != null) {
+            intent.putExtra(MusicService.SONG_SINGER, artist);
+        }
+        intent.putExtra(MusicService.SONG_DURATION, duration);
+        intent.putExtra(MusicService.SONG_POSITION, position);
+        intent.putExtra(MusicService.MUSIC_PLAYING, isPlaying);
+        sendBroadcast(intent);
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
 
     @Override
@@ -418,6 +481,7 @@ public class NotificationService extends NotificationListenerService {
     }
 
     private void dispose() {
+        cancelExternalMusicClear();
         if (mediaSessionManager != null && sessionsChangedListener != null) {
             mediaSessionManager.removeOnActiveSessionsChangedListener(sessionsChangedListener);
         }
@@ -425,6 +489,7 @@ public class NotificationService extends NotificationListenerService {
             controller.unregisterCallback(mediaCallback);
         }
         activeControllers.clear();
+        clearRememberedMediaState();
 
         if(replyManager != null) {
             replyManager.dispose(this);

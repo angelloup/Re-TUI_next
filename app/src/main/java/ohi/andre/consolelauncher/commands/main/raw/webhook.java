@@ -7,6 +7,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.json.JSONException;
+
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.MediaType;
@@ -43,8 +45,8 @@ public class webhook extends ParamCommand {
                 List<String> bodyParts = split.subList(4, split.size());
                 String body = Tuils.toPlanString(bodyParts, Tuils.SPACE);
                 
-                info.webhookManager.add(name, url, body);
-                return "Webhook " + name + " added.";
+                boolean saved = info.webhookManager.add(name, url, body);
+                return saved ? "Webhook " + name + " saved." : "Unable to save webhook " + name + ".";
             }
 
             @Override
@@ -58,8 +60,8 @@ public class webhook extends ParamCommand {
                 ArrayList<String> args = pack.getList();
                 if (args == null || args.isEmpty()) return "Usage: webhook -rm [name]";
                 String name = args.get(0);
-                ((MainPack) pack).webhookManager.remove(name);
-                return "Webhook " + name + " removed.";
+                boolean removed = ((MainPack) pack).webhookManager.remove(name);
+                return removed ? "Webhook " + name + " removed." : "Webhook " + name + " not found.";
             }
 
             @Override
@@ -142,7 +144,8 @@ public class webhook extends ParamCommand {
         if(p != null) return new SimpleMutableEntry<>(false, p);
 
         String firstWord = param.split(" ")[0];
-        WebhookManager.Webhook w = pack.webhookManager.getWebhook(firstWord);
+        String webhookName = firstWord.startsWith(Tuils.MINUS) ? firstWord.substring(1) : firstWord;
+        WebhookManager.Webhook w = pack.webhookManager.getWebhook(webhookName);
         if (w != null) {
             return new SimpleMutableEntry<>(false, new WebhookParam(w));
         }
@@ -220,10 +223,21 @@ public class webhook extends ParamCommand {
     }
 
     private String triggerWebhook(final MainPack info, final WebhookManager.Webhook w, String[] webhookArgs) {
-        final String bodyContent = w.substitute(webhookArgs);
-        if (webhookArgs.length > 0) info.historyManager.add(w.name, Tuils.toPlanString(webhookArgs, Tuils.SPACE));
-        
-        MediaType mediaType = bodyContent.trim().startsWith("{") || bodyContent.trim().startsWith("[") ? JSON : TEXT;
+        final boolean jsonBody = w.bodyTemplate != null
+                && (w.bodyTemplate.trim().startsWith("{") || w.bodyTemplate.trim().startsWith("["));
+
+        final String bodyContent;
+        try {
+            bodyContent = w.render(webhookArgs, jsonBody);
+        } catch (JSONException e) {
+            return "Webhook [" + w.name + "] template error: " + e.getMessage();
+        }
+
+        if (webhookArgs.length > 0) {
+            info.historyManager.add(w.name, formatArgsForHistory(webhookArgs));
+        }
+
+        MediaType mediaType = jsonBody ? JSON : TEXT;
         RequestBody body = RequestBody.create(bodyContent, mediaType);
         Request request = new Request.Builder().url(w.url).post(body).build();
         final Handler handler = new Handler(Looper.getMainLooper());
@@ -242,6 +256,35 @@ public class webhook extends ParamCommand {
             }
         });
         return "Triggering webhook: " + w.name;
+    }
+
+    private String formatArgsForHistory(String[] webhookArgs) {
+        List<String> formatted = new ArrayList<>(webhookArgs.length);
+        for (String arg : webhookArgs) {
+            formatted.add(quoteArg(arg));
+        }
+        return Tuils.toPlanString(formatted, Tuils.SPACE);
+    }
+
+    private String quoteArg(String arg) {
+        if (arg == null) {
+            return "\"\"";
+        }
+
+        boolean needsQuotes = arg.length() == 0;
+        for (int i = 0; i < arg.length() && !needsQuotes; i++) {
+            char c = arg.charAt(i);
+            if (Character.isWhitespace(c) || c == '"' || c == '\\') {
+                needsQuotes = true;
+            }
+        }
+
+        if (!needsQuotes) {
+            return arg;
+        }
+
+        String escaped = arg.replace("\\", "\\\\").replace("\"", "\\\"");
+        return "\"" + escaped + "\"";
     }
 
     @Override public int priority() { return 3; }

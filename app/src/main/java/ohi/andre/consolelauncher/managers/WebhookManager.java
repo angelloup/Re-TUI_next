@@ -1,15 +1,20 @@
 package ohi.andre.consolelauncher.managers;
 
 import android.content.Context;
+
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
@@ -70,16 +75,86 @@ public class WebhookManager {
         return webhooks;
     }
 
-    public void add(String name, String url, String body) {
-        XMLPrefsManager.add(file, WEBHOOK_TAG, 
-            new String[]{NAME_ATTRIBUTE, URL_ATTRIBUTE, BODY_ATTRIBUTE}, 
-            new String[]{name, url, body});
-        reload();
+    public boolean add(String name, String url, String body) {
+        if (name == null || name.trim().length() == 0 || url == null || url.trim().length() == 0) {
+            return false;
+        }
+
+        try {
+            Object[] o = XMLPrefsManager.buildDocument(file, ROOT_NAME);
+            if (o == null) {
+                return false;
+            }
+
+            Document d = (Document) o[0];
+            Element root = (Element) o[1];
+
+            removeMatchingNodes(root, name);
+
+            Element element = d.createElement(WEBHOOK_TAG);
+            element.setAttribute(NAME_ATTRIBUTE, name.trim());
+            element.setAttribute(URL_ATTRIBUTE, url.trim());
+            element.setAttribute(BODY_ATTRIBUTE, body == null ? Tuils.EMPTYSTRING : body);
+            root.appendChild(element);
+
+            XMLPrefsManager.writeTo(d, file);
+            reload();
+            return true;
+        } catch (Exception e) {
+            Tuils.log(e);
+            return false;
+        }
     }
 
-    public void remove(String name) {
-        XMLPrefsManager.removeNode(file, WEBHOOK_TAG, new String[]{NAME_ATTRIBUTE}, new String[]{name});
-        reload();
+    public boolean remove(String name) {
+        if (name == null || name.trim().length() == 0) {
+            return false;
+        }
+
+        try {
+            Object[] o = XMLPrefsManager.buildDocument(file, ROOT_NAME);
+            if (o == null) {
+                return false;
+            }
+
+            Document d = (Document) o[0];
+            Element root = (Element) o[1];
+            boolean removed = removeMatchingNodes(root, name);
+
+            if (removed) {
+                XMLPrefsManager.writeTo(d, file);
+                reload();
+            }
+
+            return removed;
+        } catch (Exception e) {
+            Tuils.log(e);
+            return false;
+        }
+    }
+
+    private boolean removeMatchingNodes(Element root, String name) {
+        NodeList nodes = root.getElementsByTagName(WEBHOOK_TAG);
+        List<Node> toRemove = new ArrayList<>();
+
+        for (int i = 0; i < nodes.getLength(); i++) {
+            Node node = nodes.item(i);
+            if (!(node instanceof Element)) {
+                continue;
+            }
+
+            Element element = (Element) node;
+            String existingName = element.getAttribute(NAME_ATTRIBUTE);
+            if (existingName != null && existingName.equalsIgnoreCase(name.trim())) {
+                toRemove.add(node);
+            }
+        }
+
+        for (Node node : toRemove) {
+            root.removeChild(node);
+        }
+
+        return !toRemove.isEmpty();
     }
 
     public static class Webhook {
@@ -94,11 +169,60 @@ public class WebhookManager {
         }
 
         public String substitute(String[] args) {
-            String result = bodyTemplate;
+            return substitutePlain(bodyTemplate, args);
+        }
+
+        public String render(String[] args, boolean jsonBody) throws JSONException {
+            if (!jsonBody) {
+                return substitute(args);
+            }
+
+            String template = bodyTemplate == null ? Tuils.EMPTYSTRING : bodyTemplate.trim();
+            if (template.startsWith("{")) {
+                JSONObject object = new JSONObject(template);
+                return replaceJsonObject(object, args).toString();
+            } else if (template.startsWith("[")) {
+                JSONArray array = new JSONArray(template);
+                return replaceJsonArray(array, args).toString();
+            }
+
+            return substitute(args);
+        }
+
+        private static String substitutePlain(String template, String[] args) {
+            String result = template == null ? Tuils.EMPTYSTRING : template;
             for (int i = 0; i < args.length; i++) {
                 result = result.replace("%" + (i + 1), args[i]);
             }
             return result;
+        }
+
+        private static JSONObject replaceJsonObject(JSONObject object, String[] args) throws JSONException {
+            Iterator<String> keys = object.keys();
+            while (keys.hasNext()) {
+                String key = keys.next();
+                object.put(key, replaceJsonValue(object.get(key), args));
+            }
+            return object;
+        }
+
+        private static JSONArray replaceJsonArray(JSONArray array, String[] args) throws JSONException {
+            for (int i = 0; i < array.length(); i++) {
+                array.put(i, replaceJsonValue(array.get(i), args));
+            }
+            return array;
+        }
+
+        private static Object replaceJsonValue(Object value, String[] args) throws JSONException {
+            if (value instanceof JSONObject) {
+                return replaceJsonObject((JSONObject) value, args);
+            } else if (value instanceof JSONArray) {
+                return replaceJsonArray((JSONArray) value, args);
+            } else if (value instanceof String) {
+                return substitutePlain((String) value, args);
+            }
+
+            return value;
         }
     }
 }
