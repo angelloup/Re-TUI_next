@@ -1004,6 +1004,54 @@ public enum Ui implements XMLPrefsSave {
         public String info() {
             return "[horizontal_margin],[vertical_margin],[horizontal_padding],[vertical_padding]";
         }
+    },
+    enable_dashed_border {
+        @Override
+        public String defaultValue() {
+            return "true";
+        }
+
+        @Override
+        public String type() {
+            return XMLPrefsSave.BOOLEAN;
+        }
+
+        @Override
+        public String info() {
+            return "If true, terminal windows (Music, Apps Drawer, Input/Output) will use an ASCII-style dashed border";
+        }
+    },
+    dashed_border_dash_length {
+        @Override
+        public String defaultValue() {
+            return "12";
+        }
+
+        @Override
+        public String type() {
+            return XMLPrefsSave.INTEGER;
+        }
+
+        @Override
+        public String info() {
+            return "Length of the dash in the dashed border (dp)";
+        }
+    },
+    dashed_border_gap_length {
+        @Override
+        public String defaultValue() {
+            return "4";
+        }
+
+        @Override
+        public String type() {
+            return XMLPrefsSave.INTEGER;
+        }
+
+        @Override
+        public String info() {
+            return "Length of the gap in the dashed border (dp)";
+        }
     };
 
     @Override

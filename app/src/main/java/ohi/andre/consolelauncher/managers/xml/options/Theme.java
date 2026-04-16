@@ -597,6 +597,17 @@ public enum Theme implements XMLPrefsSave {
         public String info() {
             return "The color of the music widget buttons border";
         }
+    },
+    window_terminal_bg {
+        @Override
+        public String defaultValue() {
+            return "#00000000";
+        }
+
+        @Override
+        public String info() {
+            return "The background color of the terminal windows (music, apps drawer, etc.)";
+        }
     }
     ;
 
