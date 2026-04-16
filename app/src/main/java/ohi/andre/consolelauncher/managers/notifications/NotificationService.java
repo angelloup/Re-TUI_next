@@ -9,6 +9,10 @@ import android.app.PendingIntent;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.media.MediaMetadata;
+import android.media.session.MediaController;
+import android.media.session.MediaSessionManager;
+import android.media.session.PlaybackState;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -19,6 +23,8 @@ import android.service.notification.StatusBarNotification;
 import androidx.core.app.NotificationCompat;
 import android.text.TextUtils;
 
+import android.content.ComponentName;
+import android.content.Context;
 import java.util.ArrayList;
 import java.util.ConcurrentModificationException;
 import java.util.HashMap;
@@ -32,6 +38,7 @@ import java.util.regex.Pattern;
 
 import ohi.andre.consolelauncher.managers.TerminalManager;
 import ohi.andre.consolelauncher.managers.TimeManager;
+import ohi.andre.consolelauncher.managers.music.MusicService;
 import ohi.andre.consolelauncher.managers.notifications.reply.ReplyManager;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
 import ohi.andre.consolelauncher.managers.xml.options.Behavior;
@@ -69,6 +76,79 @@ public class NotificationService extends NotificationListenerService {
     private final Pattern formatPattern = Pattern.compile("%(?:\\[(\\d+)\\])?(?:\\[([^]]+)\\])?(?:(?:\\{)([a-zA-Z\\.\\:\\s]+)(?:\\})|([a-zA-Z\\.\\:]+))");
 
     StoppableThread bgThread;
+
+    private MediaSessionManager mediaSessionManager;
+    private List<MediaController> activeControllers = new ArrayList<>();
+
+    private MediaSessionManager.OnActiveSessionsChangedListener sessionsChangedListener = new MediaSessionManager.OnActiveSessionsChangedListener() {
+        @Override
+        public void onActiveSessionsChanged(List<MediaController> controllers) {
+            updateActiveSessions(controllers);
+        }
+    };
+
+    private MediaController.Callback mediaCallback = new MediaController.Callback() {
+        @Override
+        public void onMetadataChanged(MediaMetadata metadata) {
+            broadcastMediaMetadata();
+        }
+
+        @Override
+        public void onPlaybackStateChanged(PlaybackState state) {
+            broadcastMediaMetadata();
+        }
+    };
+
+    private void updateActiveSessions(List<MediaController> controllers) {
+        for (MediaController controller : activeControllers) {
+            controller.unregisterCallback(mediaCallback);
+        }
+        activeControllers.clear();
+
+        if (controllers != null) {
+            activeControllers.addAll(controllers);
+            for (MediaController controller : activeControllers) {
+                controller.registerCallback(mediaCallback);
+            }
+        }
+        broadcastMediaMetadata();
+    }
+
+    private void broadcastMediaMetadata() {
+        if (activeControllers.isEmpty()) return;
+
+        // Find the first playing controller, or fallback to the first one
+        MediaController activeController = null;
+        for (MediaController controller : activeControllers) {
+            PlaybackState state = controller.getPlaybackState();
+            if (state != null && state.getState() == PlaybackState.STATE_PLAYING) {
+                activeController = controller;
+                break;
+            }
+        }
+        if (activeController == null) activeController = activeControllers.get(0);
+
+        MediaMetadata metadata = activeController.getMetadata();
+        PlaybackState state = activeController.getPlaybackState();
+
+        if (metadata != null) {
+            String title = metadata.getString(MediaMetadata.METADATA_KEY_TITLE);
+            String artist = metadata.getString(MediaMetadata.METADATA_KEY_ARTIST);
+            if (artist == null) artist = metadata.getString(MediaMetadata.METADATA_KEY_ALBUM_ARTIST);
+            
+            long duration = metadata.getLong(MediaMetadata.METADATA_KEY_DURATION);
+            long position = state != null ? state.getPosition() : 0;
+            boolean isPlaying = state != null && state.getState() == PlaybackState.STATE_PLAYING;
+
+            Intent intent = new Intent(MusicService.ACTION_MUSIC_CHANGED);
+            intent.putExtra(MusicService.SONG_TITLE, title);
+            intent.putExtra(MusicService.SONG_SINGER, artist);
+            intent.putExtra(MusicService.SONG_DURATION, (int) duration);
+            intent.putExtra(MusicService.SONG_POSITION, (int) position);
+            intent.putExtra(MusicService.MUSIC_PLAYING, isPlaying);
+            sendBroadcast(intent);
+        }
+    }
 
     @Override
     public void onCreate() {
@@ -303,6 +383,17 @@ public class NotificationService extends NotificationListenerService {
         queue = new ArrayBlockingQueue<>(5);
         bgThread.start();
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            mediaSessionManager = (MediaSessionManager) getSystemService(Context.MEDIA_SESSION_SERVICE);
+            ComponentName componentName = new ComponentName(this, NotificationService.class);
+            try {
+                mediaSessionManager.addOnActiveSessionsChangedListener(sessionsChangedListener, componentName);
+                updateActiveSessions(mediaSessionManager.getActiveSessions(componentName));
+            } catch (SecurityException e) {
+                Tuils.log("MediaSession access denied: " + e.getMessage());
+            }
+        }
+
         active = true;
     }
 
@@ -319,6 +410,14 @@ public class NotificationService extends NotificationListenerService {
     }
 
     private void dispose() {
+        if (mediaSessionManager != null && sessionsChangedListener != null) {
+            mediaSessionManager.removeOnActiveSessionsChangedListener(sessionsChangedListener);
+        }
+        for (MediaController controller : activeControllers) {
+            controller.unregisterCallback(mediaCallback);
+        }
+        activeControllers.clear();
+
         if(replyManager != null) {
             replyManager.dispose(this);
             replyManager = null;
