@@ -218,6 +218,13 @@ public class UIManager implements OnTouchListener {
         }
     };
 
+    private final Runnable fontRefreshRunnable = new Runnable() {
+        @Override
+        public void run() {
+            refreshLauncherTypeface();
+        }
+    };
+
     private class NotesRunnable implements Runnable {
 
         int updateTime = 2000;
@@ -1755,7 +1762,7 @@ public class UIManager implements OnTouchListener {
         if(drawTimes <= 0) drawTimes = 1;
         OutlineTextView.redrawTimes = drawTimes;
 
-        refreshLauncherTypeface();
+        scheduleTypefaceRefreshes();
     }
 
     private void styleMusicWidget(View musicWidget) {
@@ -2504,11 +2511,29 @@ public class UIManager implements OnTouchListener {
     public void pause() {
         closeKeyboard();
         handler.removeCallbacks(musicTimeRunnable);
+        if (handler != null) {
+            handler.removeCallbacks(fontRefreshRunnable);
+        }
     }
 
     public void resume() {
         handler.post(musicTimeRunnable);
+        scheduleTypefaceRefreshes();
+    }
+
+    public void scheduleTypefaceRefreshes() {
+        if (mRootView == null) {
+            return;
+        }
+
         mRootView.post(this::refreshLauncherTypeface);
+
+        if (handler != null) {
+            handler.removeCallbacks(fontRefreshRunnable);
+            handler.postDelayed(fontRefreshRunnable, 120);
+            handler.postDelayed(fontRefreshRunnable, 360);
+            handler.postDelayed(fontRefreshRunnable, 900);
+        }
     }
 
     private void refreshLauncherTypeface() {

@@ -359,6 +359,7 @@ public class LauncherActivity extends AppCompatActivity implements Reloadable {
         }
 
         ui = new UIManager(this, mainView, main.getMainPack(), canApplyTheme, main.executer());
+        ui.scheduleTypefaceRefreshes();
 
         main.setRedirectionListener(ui.buildRedirectionListener());
         ui.pack = main.getMainPack();
@@ -462,6 +463,7 @@ public class LauncherActivity extends AppCompatActivity implements Reloadable {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus && ui != null) {
             ui.focusTerminal();
+            ui.scheduleTypefaceRefreshes();
         }
     }
 
