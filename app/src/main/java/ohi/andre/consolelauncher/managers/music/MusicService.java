@@ -79,22 +79,30 @@ public class MusicService extends Service implements
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if(System.currentTimeMillis() - lastNotificationChange < 500 || songTitle == null || songTitle.length() == 0) return super.onStartCommand(intent, flags, startId);
-
-        lastNotificationChange = System.currentTimeMillis();
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(NOTIFY_ID, buildNotification(this.getApplicationContext(), songTitle), android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK);
-        } else {
-            startForeground(NOTIFY_ID, buildNotification(this.getApplicationContext(), songTitle));
+        if (intent != null && intent.hasExtra(EXTRA_CONTROL_CMD)) {
+            int cmd = intent.getIntExtra(EXTRA_CONTROL_CMD, -1);
+            switch (cmd) {
+                case CONTROL_NEXT_INT:
+                    playNext();
+                    break;
+                case CONTROL_PREV_INT:
+                    playPrev();
+                    break;
+                case CONTROL_PLAY_PAUSE_INT:
+                    if (isPlaying()) pausePlayer();
+                    else playPlayer();
+                    break;
+            }
         }
 
-        return super.onStartCommand(intent, flags, startId);
+        updateForegroundStatus();
+        return START_NOT_STICKY;
     }
 
     private void broadcastMusicState() {
         Intent intent = new Intent(ACTION_MUSIC_CHANGED);
         intent.putExtra(SONG_TITLE, songTitle);
-        intent.putExtra(MUSIC_PLAYING, isPng());
+        intent.putExtra(MUSIC_PLAYING, isPlaying());
         intent.putExtra(SONG_POSITION, getPosn());
         intent.putExtra(SONG_DURATION, getDur());
         intent.putExtra(MUSIC_SOURCE, SOURCE_INTERNAL);
@@ -105,21 +113,31 @@ public class MusicService extends Service implements
         }
 
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+        updateForegroundStatus();
+    }
+
+    private void updateForegroundStatus() {
+        if (songTitle == null || songTitle.isEmpty() || !isPlaying()) {
+            stopForeground(false);
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        if (now - lastNotificationChange < 1000) return;
+        lastNotificationChange = now;
+
+        Notification notification = buildNotification(this, songTitle);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(NOTIFY_ID, notification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK);
+        } else {
+            startForeground(NOTIFY_ID, notification);
+        }
     }
 
     @Override
     public void onPrepared(MediaPlayer mp) {
         if(songTitle == null || songTitle.length() == 0) return;
-
-        lastNotificationChange = System.currentTimeMillis();
-
         mp.start();
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(NOTIFY_ID, buildNotification(this.getApplicationContext(), songTitle), android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK);
-        } else {
-            startForeground(NOTIFY_ID, buildNotification(this.getApplicationContext(), songTitle));
-        }
-
         broadcastMusicState();
     }
 
@@ -208,10 +226,11 @@ public class MusicService extends Service implements
         return false;
     }
 
-    public static Notification buildNotification(Context context, String songTitle) {
+    private static Notification buildNotification(Context context, String songTitle) {
         String channelId = "music_channel";
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(channelId, "Music", NotificationManager.IMPORTANCE_LOW);
+            NotificationChannel channel = new NotificationChannel(channelId, "Music Playback", NotificationManager.IMPORTANCE_LOW);
+            channel.setSound(null, null);
             NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
             if (manager != null) {
                 manager.createNotificationChannel(channel);
@@ -221,7 +240,7 @@ public class MusicService extends Service implements
         Intent notIntent = new Intent(context, LauncherActivity.class);
         PendingIntent pendInt = PendingIntent.getActivity(context, 0, notIntent, Tuils.pendingIntentFlags(PendingIntent.FLAG_UPDATE_CURRENT));
 
-        Notification not;
+        Notification notification;
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, channelId);
         builder.setContentIntent(pendInt)
                 .setSmallIcon(R.mipmap.ic_launcher)
@@ -230,7 +249,7 @@ public class MusicService extends Service implements
                 .setContentTitle("Playing")
                 .setContentText(songTitle);
 
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             String label = "cmd";
             RemoteInput remoteInput = new RemoteInput.Builder(PrivateIOReceiver.TEXT)
                     .setLabel(label)
@@ -240,41 +259,51 @@ public class MusicService extends Service implements
             i.setAction(PublicIOReceiver.ACTION_CMD);
             i.putExtra(MainManager.MUSIC_SERVICE, true);
 
+            int flags = Tuils.pendingIntentFlags(PendingIntent.FLAG_UPDATE_CURRENT);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                flags = (flags & ~PendingIntent.FLAG_IMMUTABLE) | PendingIntent.FLAG_MUTABLE;
+            }
+
             NotificationCompat.Action action = new NotificationCompat.Action.Builder(R.mipmap.ic_launcher, label,
-                    PendingIntent.getBroadcast(context.getApplicationContext(), 10, i, remoteInputPendingIntentFlags(PendingIntent.FLAG_UPDATE_CURRENT)))
+                    PendingIntent.getBroadcast(context.getApplicationContext(), 10, i, flags))
                     .addRemoteInput(remoteInput)
                     .build();
 
             builder.addAction(action);
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) not = builder.build();
-        else not = builder.getNotification();
-
-        return not;
-    }
-
-    private static int remoteInputPendingIntentFlags(int flags) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            return flags | PendingIntent.FLAG_MUTABLE;
-        }
-        return flags;
+        notification = builder.build();
+        return notification;
     }
 
     public int getPosn(){
-        return player.getCurrentPosition();
+        try {
+            return player != null ? player.getCurrentPosition() : 0;
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     public int getDur(){
-        return player.getDuration();
+        try {
+            return player != null ? player.getDuration() : 0;
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
-    public boolean isPng(){
-        return player.isPlaying();
+    public boolean isPlaying(){
+        try {
+            return player != null && player.isPlaying();
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     public void pausePlayer(){
-        player.pause();
+        if (isPlaying()) {
+            player.pause();
+        }
         broadcastMusicState();
     }
 
@@ -293,7 +322,9 @@ public class MusicService extends Service implements
     }
 
     public void playPlayer() {
-        player.start();
+        if (player != null) {
+            player.start();
+        }
         broadcastMusicState();
     }
 

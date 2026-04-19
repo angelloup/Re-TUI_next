@@ -94,6 +94,12 @@ import ohi.andre.consolelauncher.tuils.NetworkUtils;
 import ohi.andre.consolelauncher.tuils.OutlineEditText;
 import ohi.andre.consolelauncher.tuils.OutlineTextView;
 import ohi.andre.consolelauncher.tuils.Tuils;
+import ohi.andre.consolelauncher.managers.status.BatteryManager;
+import ohi.andre.consolelauncher.managers.status.NetworkManager;
+import ohi.andre.consolelauncher.managers.status.RamManager;
+import ohi.andre.consolelauncher.managers.status.StatusUpdateListener;
+import ohi.andre.consolelauncher.managers.status.StorageManager;
+import ohi.andre.consolelauncher.managers.status.TimeManager;
 import ohi.andre.consolelauncher.tuils.interfaces.CommandExecuter;
 import ohi.andre.consolelauncher.tuils.interfaces.OnBatteryUpdate;
 import ohi.andre.consolelauncher.tuils.interfaces.OnRedirectionListener;
@@ -147,6 +153,12 @@ public class UIManager implements OnTouchListener {
     private final int TIME_DELAY = 1000;
     private final int STORAGE_DELAY = 60 * 1000;
 
+    private RamManager ramManager;
+    private BatteryManager batteryManager;
+    private StorageManager storageManager;
+    private NetworkManager networkManager;
+    private TimeManager tuiTimeManager;
+
     protected Context mContext;
     protected MainPack mainPack;
 
@@ -188,6 +200,8 @@ public class UIManager implements OnTouchListener {
 
     private String asciiContent = null;
     private int asciiColor;
+
+    private final StatusUpdateListener statusUpdateListener = this::updateText;
 
     private TextView getLabelView(Label l) {
         return labelViews[(int) labelIndexes[l.ordinal()]];
@@ -330,522 +344,6 @@ public class UIManager implements OnTouchListener {
             "[DONE] dramatic effect complete"
     };
     private final ArrayList<Runnable> hackSequenceRunnables = new ArrayList<>();
-
-    private class NotesRunnable implements Runnable {
-
-        int updateTime = 2000;
-
-        @Override
-        public void run() {
-            if(notesManager != null) {
-                if(notesManager.hasChanged) {
-                    UIManager.this.updateText(Label.notes, Tuils.span(mContext, labelSizes[Label.notes.ordinal()], notesManager.getNotes()));
-                }
-
-                handler.postDelayed(this, updateTime);
-            }
-        }
-    };
-
-    private BatteryUpdate batteryUpdate;
-    private class BatteryUpdate implements OnBatteryUpdate {
-
-//        %(charging:not charging)
-
-        //        final Pattern optionalCharging = Pattern.compile("%\\(([^\\/]*)\\/([^)]*)\\)", Pattern.CASE_INSENSITIVE);
-        Pattern optionalCharging;
-        final Pattern value = Pattern.compile("%v", Pattern.LITERAL | Pattern.CASE_INSENSITIVE);
-
-        boolean manyStatus, loaded;
-        int colorHigh, colorMedium, colorLow;
-
-        boolean charging;
-        float last = -1;
-
-        @Override
-        public void update(float p) {
-            if(p == -1) p = last;
-            last = p;
-
-            if(batteryFormat == null) {
-                batteryFormat = XMLPrefsManager.get(Behavior.battery_format);
-
-                Intent intent = mContext.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
-                if(intent == null) charging = false;
-                else {
-                    int plugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
-                    charging = plugged == BatteryManager.BATTERY_PLUGGED_AC || plugged == BatteryManager.BATTERY_PLUGGED_USB;
-                }
-
-                String sep = XMLPrefsManager.get(Behavior.optional_values_separator);
-                String quotedSep = Pattern.quote(sep);
-                String optional = "%\\(([^" + quotedSep + "]*)" + quotedSep + "([^)]*)\\)";
-                optionalCharging = Pattern.compile(optional, Pattern.CASE_INSENSITIVE);
-            }
-
-            if(!loaded) {
-                loaded = true;
-
-                manyStatus = XMLPrefsManager.getBoolean(Ui.enable_battery_status);
-                colorHigh = XMLPrefsManager.getColor(Theme.battery_color_high);
-                colorMedium = XMLPrefsManager.getColor(Theme.battery_color_medium);
-                colorLow = XMLPrefsManager.getColor(Theme.battery_color_low);
-            }
-
-            int percentage = (int) p;
-
-            if (XMLPrefsManager.getBoolean(Behavior.battery_progress_bar)) {
-                int length = XMLPrefsManager.getInt(Behavior.battery_progress_bar_length);
-                String symbol = XMLPrefsManager.get(Behavior.battery_progress_bar_symbol);
-                int fullColor = XMLPrefsManager.getColor(Theme.battery_progress_bar_full_color);
-                int emptyColor = XMLPrefsManager.getColor(Theme.battery_progress_bar_empty_color);
-
-                int fullCount = Math.round((p / 100f) * length);
-                int emptyCount = length - fullCount;
-
-                StringBuilder fullPart = new StringBuilder();
-                for (int i = 0; i < fullCount; i++) fullPart.append(symbol);
-
-                StringBuilder emptyPart = new StringBuilder();
-                for (int i = 0; i < emptyCount; i++) emptyPart.append(symbol);
-
-                android.text.SpannableStringBuilder ssb = new android.text.SpannableStringBuilder();
-                ssb.append("[");
-                if (fullPart.length() > 0) {
-                    int start = ssb.length();
-                    ssb.append(fullPart);
-                    ssb.setSpan(new android.text.style.ForegroundColorSpan(fullColor), start, ssb.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                }
-
-                if (emptyPart.length() > 0) {
-                    int start = ssb.length();
-                    ssb.append(emptyPart);
-                    ssb.setSpan(new android.text.style.ForegroundColorSpan(emptyColor), start, ssb.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                }
-                ssb.append("] ").append(String.valueOf(percentage)).append("%");
-
-                UIManager.this.updateText(Label.battery, ssb);
-                return;
-            }
-
-            int color;
-
-            if(manyStatus) {
-                if(percentage > mediumPercentage) color = colorHigh;
-                else if(percentage > lowPercentage) color = colorMedium;
-                else color = colorLow;
-            } else {
-                color = colorHigh;
-            }
-
-            String cp = batteryFormat;
-
-            Matcher m = optionalCharging.matcher(cp);
-            while (m.find()) {
-                cp = cp.replace(m.group(0), m.groupCount() == 2 ? m.group(charging ? 1 : 2) : Tuils.EMPTYSTRING);
-            }
-
-            cp = value.matcher(cp).replaceAll(String.valueOf(percentage));
-            cp = Tuils.patternNewline.matcher(cp).replaceAll(Tuils.NEWLINE);
-
-            UIManager.this.updateText(Label.battery, Tuils.span(mContext, cp, color, labelSizes[Label.battery.ordinal()]));
-        }
-
-        @Override
-        public void onCharging() {
-            charging = true;
-            update(-1);
-        }
-
-        @Override
-        public void onNotCharging() {
-            charging = false;
-            update(-1);
-        }
-    };
-
-    private StorageRunnable storageRunnable;
-    private class StorageRunnable implements Runnable {
-
-        private final String INT_AV = "%iav";
-        private final String INT_TOT = "%itot";
-        private final String EXT_AV = "%eav";
-        private final String EXT_TOT = "%etot";
-
-        private List<Pattern> storagePatterns;
-        private String storageFormat;
-
-        int color;
-
-        @Override
-        public void run() {
-            if(storageFormat == null) {
-                storageFormat = XMLPrefsManager.get(Behavior.storage_format);
-                color = XMLPrefsManager.getColor(Theme.storage_color);
-            }
-
-            if(storagePatterns == null) {
-                storagePatterns = new ArrayList<>();
-
-                storagePatterns.add(Pattern.compile(INT_AV + "tb", Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-                storagePatterns.add(Pattern.compile(INT_AV + "gb", Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-                storagePatterns.add(Pattern.compile(INT_AV + "mb", Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-                storagePatterns.add(Pattern.compile(INT_AV + "kb", Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-                storagePatterns.add(Pattern.compile(INT_AV + "b", Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-                storagePatterns.add(Pattern.compile(INT_AV + "%", Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-
-                storagePatterns.add(Pattern.compile(INT_TOT + "tb", Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-                storagePatterns.add(Pattern.compile(INT_TOT + "gb", Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-                storagePatterns.add(Pattern.compile(INT_TOT + "mb", Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-                storagePatterns.add(Pattern.compile(INT_TOT + "kb", Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-                storagePatterns.add(Pattern.compile(INT_TOT + "b", Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-
-                storagePatterns.add(Pattern.compile(EXT_AV + "tb", Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-                storagePatterns.add(Pattern.compile(EXT_AV + "gb", Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-                storagePatterns.add(Pattern.compile(EXT_AV + "mb", Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-                storagePatterns.add(Pattern.compile(EXT_AV + "kb", Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-                storagePatterns.add(Pattern.compile(EXT_AV + "b", Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-                storagePatterns.add(Pattern.compile(EXT_AV + "%", Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-
-                storagePatterns.add(Pattern.compile(EXT_TOT + "tb", Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-                storagePatterns.add(Pattern.compile(EXT_TOT + "gb", Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-                storagePatterns.add(Pattern.compile(EXT_TOT + "mb", Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-                storagePatterns.add(Pattern.compile(EXT_TOT + "kb", Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-                storagePatterns.add(Pattern.compile(EXT_TOT + "b", Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-
-                storagePatterns.add(Tuils.patternNewline);
-
-                storagePatterns.add(Pattern.compile(INT_AV, Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-                storagePatterns.add(Pattern.compile(INT_TOT, Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-                storagePatterns.add(Pattern.compile(EXT_AV, Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-                storagePatterns.add(Pattern.compile(EXT_TOT, Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-            }
-
-            double iav = Tuils.getAvailableInternalMemorySize(Tuils.BYTE);
-            double itot = Tuils.getTotalInternalMemorySize(Tuils.BYTE);
-            double eav = Tuils.getAvailableExternalMemorySize(Tuils.BYTE);
-            double etot = Tuils.getTotalExternalMemorySize(Tuils.BYTE);
-
-            String copy = storageFormat;
-
-            copy = storagePatterns.get(0).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) iav, Tuils.TERA))));
-            copy = storagePatterns.get(1).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) iav, Tuils.GIGA))));
-            copy = storagePatterns.get(2).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) iav, Tuils.MEGA))));
-            copy = storagePatterns.get(3).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) iav, Tuils.KILO))));
-            copy = storagePatterns.get(4).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) iav, Tuils.BYTE))));
-            copy = storagePatterns.get(5).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.percentage(iav, itot))));
-
-            copy = storagePatterns.get(6).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) itot, Tuils.TERA))));
-            copy = storagePatterns.get(7).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) itot, Tuils.GIGA))));
-            copy = storagePatterns.get(8).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) itot, Tuils.MEGA))));
-            copy = storagePatterns.get(9).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) itot, Tuils.KILO))));
-            copy = storagePatterns.get(10).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) itot, Tuils.BYTE))));
-
-            copy = storagePatterns.get(11).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) eav, Tuils.TERA))));
-            copy = storagePatterns.get(12).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) eav, Tuils.GIGA))));
-            copy = storagePatterns.get(13).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) eav, Tuils.MEGA))));
-            copy = storagePatterns.get(14).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) eav, Tuils.KILO))));
-            copy = storagePatterns.get(15).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) eav, Tuils.BYTE))));
-            copy = storagePatterns.get(16).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.percentage(eav, etot))));
-
-            copy = storagePatterns.get(17).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) etot, Tuils.TERA))));
-            copy = storagePatterns.get(18).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) etot, Tuils.GIGA))));
-            copy = storagePatterns.get(19).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) etot, Tuils.MEGA))));
-            copy = storagePatterns.get(20).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) etot, Tuils.KILO))));
-            copy = storagePatterns.get(21).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) etot, Tuils.BYTE))));
-
-            copy = storagePatterns.get(22).matcher(copy).replaceAll(Matcher.quoteReplacement(Tuils.NEWLINE));
-
-            copy = storagePatterns.get(23).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) iav, Tuils.GIGA))));
-            copy = storagePatterns.get(24).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) itot, Tuils.GIGA))));
-            copy = storagePatterns.get(25).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) eav, Tuils.GIGA))));
-            copy = storagePatterns.get(26).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) etot, Tuils.GIGA))));
-
-            updateText(Label.storage, Tuils.span(mContext, copy, color, labelSizes[Label.storage.ordinal()]));
-
-            handler.postDelayed(this, STORAGE_DELAY);
-        }
-    };
-
-    private TimeRunnable timeRunnable;
-    private class TimeRunnable implements Runnable {
-
-        boolean active;
-
-        @Override
-        public void run() {
-            if(!active) {
-                active = true;
-            }
-
-            updateText(Label.time, TimeManager.instance.getCharSequence(mContext, labelSizes[Label.time.ordinal()], "%t0", -1, TerminalManager.NO_COLOR, true));
-            handler.postDelayed(this, TIME_DELAY);
-        }
-    };
-
-    private ActivityManager.MemoryInfo memory;
-    private ActivityManager activityManager;
-
-    private RamRunnable ramRunnable;
-    private class RamRunnable implements Runnable {
-        private final String AV = "%av";
-        private final String TOT = "%tot";
-
-        List<Pattern> ramPatterns;
-        String ramFormat;
-
-        int color;
-
-        @Override
-        public void run() {
-            if(ramFormat == null) {
-                ramFormat = XMLPrefsManager.get(Behavior.ram_format);
-
-                color = XMLPrefsManager.getColor(Theme.ram_color);
-            }
-
-            if(ramPatterns == null) {
-                ramPatterns = new ArrayList<>();
-
-                ramPatterns.add(Pattern.compile(AV + "tb", Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-                ramPatterns.add(Pattern.compile(AV + "gb", Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-                ramPatterns.add(Pattern.compile(AV + "mb", Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-                ramPatterns.add(Pattern.compile(AV + "kb", Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-                ramPatterns.add(Pattern.compile(AV + "b", Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-                ramPatterns.add(Pattern.compile(AV + "%", Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-
-                ramPatterns.add(Pattern.compile(TOT + "tb", Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-                ramPatterns.add(Pattern.compile(TOT + "gb", Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-                ramPatterns.add(Pattern.compile(TOT + "mb", Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-                ramPatterns.add(Pattern.compile(TOT + "kb", Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-                ramPatterns.add(Pattern.compile(TOT + "b", Pattern.CASE_INSENSITIVE | Pattern.LITERAL));
-
-                ramPatterns.add(Tuils.patternNewline);
-            }
-
-            String copy = ramFormat;
-
-            double av = Tuils.freeRam(activityManager, memory);
-            double tot = Tuils.totalRam() * 1024L;
-
-            copy = ramPatterns.get(0).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) av, Tuils.TERA))));
-            copy = ramPatterns.get(1).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) av, Tuils.GIGA))));
-            copy = ramPatterns.get(2).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) av, Tuils.MEGA))));
-            copy = ramPatterns.get(3).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) av, Tuils.KILO))));
-            copy = ramPatterns.get(4).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) av, Tuils.BYTE))));
-            copy = ramPatterns.get(5).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.percentage(av, tot))));
-
-            copy = ramPatterns.get(6).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) tot, Tuils.TERA))));
-            copy = ramPatterns.get(7).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) tot, Tuils.GIGA))));
-            copy = ramPatterns.get(8).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) tot, Tuils.MEGA))));
-            copy = ramPatterns.get(9).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) tot, Tuils.KILO))));
-            copy = ramPatterns.get(10).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) tot, Tuils.BYTE))));
-
-            copy = ramPatterns.get(11).matcher(copy).replaceAll(Matcher.quoteReplacement(Tuils.NEWLINE));
-
-            updateText(Label.ram, Tuils.span(mContext, copy, color, labelSizes[Label.ram.ordinal()]));
-
-            handler.postDelayed(this, RAM_DELAY);
-        }
-    };
-
-    private NetworkRunnable networkRunnable;
-    private class NetworkRunnable implements Runnable {
-//        %() -> wifi
-//        %[] -> data
-//        %{} -> bluetooth
-
-        final String zero = "0";
-        final String one = "1";
-        final String on = "on";
-        final String off = "off";
-        final String ON = on.toUpperCase();
-        final String OFF = off.toUpperCase();
-        final String _true = "true";
-        final String _false = "false";
-        final String TRUE = _true.toUpperCase();
-        final String FALSE = _false.toUpperCase();
-
-        final Pattern w0 = Pattern.compile("%w0", Pattern.CASE_INSENSITIVE | Pattern.LITERAL);
-        final Pattern w1 = Pattern.compile("%w1", Pattern.CASE_INSENSITIVE | Pattern.LITERAL);
-        final Pattern w2 = Pattern.compile("%w2", Pattern.CASE_INSENSITIVE | Pattern.LITERAL);
-        final Pattern w3 = Pattern.compile("%w3", Pattern.CASE_INSENSITIVE | Pattern.LITERAL);
-        final Pattern w4 = Pattern.compile("%w4", Pattern.CASE_INSENSITIVE | Pattern.LITERAL);
-        final Pattern wn = Pattern.compile("%wn", Pattern.CASE_INSENSITIVE | Pattern.LITERAL);
-        final Pattern d0 = Pattern.compile("%d0", Pattern.CASE_INSENSITIVE | Pattern.LITERAL);
-        final Pattern d1 = Pattern.compile("%d1", Pattern.CASE_INSENSITIVE | Pattern.LITERAL);
-        final Pattern d2 = Pattern.compile("%d2", Pattern.CASE_INSENSITIVE | Pattern.LITERAL);
-        final Pattern d3 = Pattern.compile("%d3", Pattern.CASE_INSENSITIVE | Pattern.LITERAL);
-        final Pattern d4 = Pattern.compile("%d4", Pattern.CASE_INSENSITIVE | Pattern.LITERAL);
-        final Pattern b0 = Pattern.compile("%b0", Pattern.CASE_INSENSITIVE | Pattern.LITERAL);
-        final Pattern b1 = Pattern.compile("%b1", Pattern.CASE_INSENSITIVE | Pattern.LITERAL);
-        final Pattern b2 = Pattern.compile("%b2", Pattern.CASE_INSENSITIVE | Pattern.LITERAL);
-        final Pattern b3 = Pattern.compile("%b3", Pattern.CASE_INSENSITIVE | Pattern.LITERAL);
-        final Pattern b4 = Pattern.compile("%b4", Pattern.CASE_INSENSITIVE | Pattern.LITERAL);
-        final Pattern ip4 = Pattern.compile("%ip4", Pattern.CASE_INSENSITIVE | Pattern.LITERAL);
-        final Pattern ip6 = Pattern.compile("%ip6", Pattern.CASE_INSENSITIVE | Pattern.LITERAL);
-        final Pattern dt = Pattern.compile("%dt", Pattern.CASE_INSENSITIVE | Pattern.LITERAL);
-
-//        final Pattern optionalWifi = Pattern.compile("%\\(([^/]*)/([^)]*)\\)", Pattern.CASE_INSENSITIVE);
-//        final Pattern optionalData = Pattern.compile("%\\[([^/]*)/([^\\]]*)\\]", Pattern.CASE_INSENSITIVE);
-//        final Pattern optionalBluetooth = Pattern.compile("%\\{([^/]*)/([^}]*)\\}", Pattern.CASE_INSENSITIVE);
-
-        Pattern optionalWifi, optionalData, optionalBluetooth;
-
-        String format, optionalValueSeparator;
-        int color;
-
-        WifiManager wifiManager;
-        BluetoothAdapter mBluetoothAdapter;
-
-        ConnectivityManager connectivityManager;
-
-        Class cmClass;
-        Method method;
-
-        int maxDepth;
-        int updateTime;
-
-        @Override
-        public void run() {
-            if (format == null) {
-                format = XMLPrefsManager.get(Behavior.network_info_format);
-                color = XMLPrefsManager.getColor(Theme.network_info_color);
-                maxDepth = XMLPrefsManager.getInt(Behavior.max_optional_depth);
-
-                updateTime = XMLPrefsManager.getInt(Behavior.network_info_update_ms);
-                if (updateTime < 1000)
-                    updateTime = Integer.parseInt(Behavior.network_info_update_ms.defaultValue());
-
-                connectivityManager = (ConnectivityManager) mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
-                wifiManager = (WifiManager) mContext.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-                mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-
-                optionalValueSeparator = XMLPrefsManager.get(Behavior.optional_values_separator);
-                String quotedSep = Pattern.quote(optionalValueSeparator);
-
-                String wifiRegex = "%\\(([^" + quotedSep + "]*)" + quotedSep + "([^)]*)\\)";
-                String dataRegex = "%\\[([^" + quotedSep + "]*)" + quotedSep + "([^\\]]*)\\]";
-                String bluetoothRegex = "%\\{([^" + quotedSep + "]*)" + quotedSep + "([^}]*)\\}";
-
-                optionalWifi = Pattern.compile(wifiRegex, Pattern.CASE_INSENSITIVE);
-                optionalBluetooth = Pattern.compile(bluetoothRegex, Pattern.CASE_INSENSITIVE);
-                optionalData = Pattern.compile(dataRegex, Pattern.CASE_INSENSITIVE);
-
-                try {
-                    cmClass = Class.forName(connectivityManager.getClass().getName());
-                    method = cmClass.getDeclaredMethod("getMobileDataEnabled");
-                    method.setAccessible(true);
-                } catch (Exception e) {
-                    cmClass = null;
-                    method = null;
-                }
-            }
-
-//            wifi
-            boolean wifiOn = connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI).isConnected();
-            String wifiName = null;
-            if (wifiOn) {
-                WifiInfo connectionInfo = wifiManager.getConnectionInfo();
-                if (connectionInfo != null) {
-                    wifiName = connectionInfo.getSSID();
-                }
-            }
-
-//            mobile data
-            boolean mobileOn = false;
-            try {
-                mobileOn = method != null && connectivityManager != null && (Boolean) method.invoke(connectivityManager);
-            } catch (Exception e) {
-            }
-
-            String mobileType = null;
-            if (mobileOn) {
-                mobileType = Tuils.getNetworkType(mContext);
-            } else {
-                mobileType = "unknown";
-            }
-
-//            bluetooth
-            boolean bluetoothOn = mBluetoothAdapter != null && mBluetoothAdapter.isEnabled();
-
-            String copy = format;
-
-            if (maxDepth > 0) {
-                copy = apply(1, copy, new boolean[]{wifiOn, mobileOn, bluetoothOn}, optionalWifi, optionalData, optionalBluetooth);
-                copy = apply(1, copy, new boolean[]{mobileOn, wifiOn, bluetoothOn}, optionalData, optionalWifi, optionalBluetooth);
-                copy = apply(1, copy, new boolean[]{bluetoothOn, wifiOn, mobileOn}, optionalBluetooth, optionalWifi, optionalData);
-            }
-
-            copy = w0.matcher(copy).replaceAll(wifiOn ? one : zero);
-            copy = w1.matcher(copy).replaceAll(wifiOn ? on : off);
-            copy = w2.matcher(copy).replaceAll(wifiOn ? ON : OFF);
-            copy = w3.matcher(copy).replaceAll(wifiOn ? _true : _false);
-            copy = w4.matcher(copy).replaceAll(wifiOn ? TRUE : FALSE);
-            copy = wn.matcher(copy).replaceAll(wifiName != null ? wifiName.replaceAll("\"", Tuils.EMPTYSTRING) : "null");
-            copy = d0.matcher(copy).replaceAll(mobileOn ? one : zero);
-            copy = d1.matcher(copy).replaceAll(mobileOn ? on : off);
-            copy = d2.matcher(copy).replaceAll(mobileOn ? ON : OFF);
-            copy = d3.matcher(copy).replaceAll(mobileOn ? _true : _false);
-            copy = d4.matcher(copy).replaceAll(mobileOn ? TRUE : FALSE);
-            copy = b0.matcher(copy).replaceAll(bluetoothOn ? one : zero);
-            copy = b1.matcher(copy).replaceAll(bluetoothOn ? on : off);
-            copy = b2.matcher(copy).replaceAll(bluetoothOn ? ON : OFF);
-            copy = b3.matcher(copy).replaceAll(bluetoothOn ? _true : _false);
-            copy = b4.matcher(copy).replaceAll(bluetoothOn ? TRUE : FALSE);
-            copy = ip4.matcher(copy).replaceAll(NetworkUtils.getIPAddress(true));
-            copy = ip6.matcher(copy).replaceAll(NetworkUtils.getIPAddress(false));
-            copy = dt.matcher(copy).replaceAll(mobileType);
-            copy = Tuils.patternNewline.matcher(copy).replaceAll(Tuils.NEWLINE);
-
-            updateText(Label.network, Tuils.span(mContext, copy, color, labelSizes[Label.network.ordinal()]));
-            handler.postDelayed(this, updateTime);
-        }
-
-        private String apply(int depth, String s, boolean[] on, Pattern... ps) {
-
-            if(ps.length == 0) return s;
-
-            Matcher m = ps[0].matcher(s);
-            while (m.find()) {
-                if(m.groupCount() < 2) {
-                    s = s.replace(m.group(0), Tuils.EMPTYSTRING);
-                    continue;
-                }
-
-                String g1 = m.group(1);
-                String g2 = m.group(2);
-
-                if(depth < maxDepth) {
-                    for(int c = 0; c < ps.length - 1; c++) {
-
-                        boolean[] subOn = new boolean[on.length - 1];
-                        subOn[0] = on[c+1];
-
-                        Pattern[] subPs = new Pattern[ps.length - 1];
-                        subPs[0] = ps[c+1];
-
-                        for(int j = 1, k = 1; j < subOn.length; j++, k++) {
-                            if(k == c+1) {
-                                j--;
-                                continue;
-                            }
-
-                            subOn[j] = on[k];
-                            subPs[j] = ps[k];
-                        }
-
-                        g1 = apply(depth + 1, g1, subOn, subPs);
-                        g2 = apply(depth + 1, g2, subOn, subPs);
-                    }
-                }
-
-                s = s.replace(m.group(0), on[0] ? g1 : g2);
-            }
-
-            return s;
-        }
-    }
 
     private int weatherDelay;
 
@@ -1590,16 +1088,13 @@ public class UIManager implements OnTouchListener {
         }
 
         if (show[Label.ram.ordinal()]) {
-            ramRunnable = new RamRunnable();
-
-            memory = new ActivityManager.MemoryInfo();
-            activityManager = (ActivityManager) context.getSystemService(Activity.ACTIVITY_SERVICE);
-            handler.post(ramRunnable);
+            ramManager = new RamManager(mContext, RAM_DELAY, labelSizes[Label.ram.ordinal()], statusUpdateListener);
+            ramManager.start();
         }
 
         if(show[Label.storage.ordinal()]) {
-            storageRunnable = new StorageRunnable();
-            handler.post(storageRunnable);
+            storageManager = new StorageManager(mContext, STORAGE_DELAY, labelSizes[Label.storage.ordinal()], statusUpdateListener);
+            storageManager.start();
         }
 
         if (show[Label.device.ordinal()]) {
@@ -1622,24 +1117,21 @@ public class UIManager implements OnTouchListener {
         }
 
         if(show[Label.time.ordinal()]) {
-            timeRunnable = new TimeRunnable();
-            handler.post(timeRunnable);
+            tuiTimeManager = new TimeManager(mContext, TIME_DELAY, labelSizes[Label.time.ordinal()], statusUpdateListener);
+            tuiTimeManager.start();
         }
 
         if(show[Label.battery.ordinal()]) {
-            batteryUpdate = new BatteryUpdate();
-
             mediumPercentage = XMLPrefsManager.getInt(Behavior.battery_medium);
             lowPercentage = XMLPrefsManager.getInt(Behavior.battery_low);
 
-            Tuils.registerBatteryReceiver(context, batteryUpdate);
-        } else {
-            batteryUpdate = null;
+            batteryManager = new BatteryManager(mContext, labelSizes[Label.battery.ordinal()], mediumPercentage, lowPercentage, statusUpdateListener);
+            batteryManager.start();
         }
 
         if(show[Label.network.ordinal()]) {
-            networkRunnable = new NetworkRunnable();
-            handler.post(networkRunnable);
+            networkManager = new NetworkManager(mContext, 3000, labelSizes[Label.network.ordinal()], statusUpdateListener);
+            networkManager.start();
         }
 
         final TextView notesView = getLabelView(Label.notes);
@@ -1885,51 +1377,13 @@ public class UIManager implements OnTouchListener {
     }
 
     private void styleMusicWidget(View musicWidget) {
-        if (musicWidget == null) {
-            return;
-        }
-
-        int widgetColor = XMLPrefsManager.getColor(Theme.music_widget_color);
-        int widgetBgColor = XMLPrefsManager.getColor(Theme.window_terminal_bg);
-        boolean useDashed = XMLPrefsManager.getBoolean(Ui.enable_dashed_border);
-
-        View borderView = musicWidget.findViewById(R.id.music_widget_border);
-        if (borderView != null) {
-            GradientDrawable gd = new GradientDrawable();
-            gd.setShape(GradientDrawable.RECTANGLE);
-            if (useDashed) {
-                gd.setStroke((int) Tuils.dpToPx(mContext, 1.5f), widgetColor,
-                        Tuils.dpToPx(mContext, XMLPrefsManager.getInt(Ui.dashed_border_dash_length)),
-                        Tuils.dpToPx(mContext, XMLPrefsManager.getInt(Ui.dashed_border_gap_length)));
-            } else {
-                gd.setStroke((int) Tuils.dpToPx(mContext, 1.5f), widgetColor);
-            }
-            gd.setColor(widgetBgColor);
-            borderView.setBackgroundDrawable(gd);
-        }
-
-        TextView widgetLabel = musicWidget.findViewById(R.id.music_widget_label);
-        if (widgetLabel != null) {
-            widgetLabel.setTextColor(widgetColor);
-            widgetLabel.setTypeface(Tuils.getTypeface(mContext), Typeface.BOLD);
-            try {
-                GradientDrawable gd = (GradientDrawable) androidx.core.content.res.ResourcesCompat.getDrawable(
-                        mContext.getResources(), R.drawable.apps_drawer_header_border, null).mutate();
-                if (gd != null) {
-                    if (useDashed) {
-                        gd.setStroke((int) Tuils.dpToPx(mContext, 1.5f), widgetColor,
-                                Tuils.dpToPx(mContext, XMLPrefsManager.getInt(Ui.dashed_border_dash_length)),
-                                Tuils.dpToPx(mContext, XMLPrefsManager.getInt(Ui.dashed_border_gap_length)));
-                    } else {
-                        gd.setStroke((int) Tuils.dpToPx(mContext, 1.5f), widgetColor);
-                    }
-                    gd.setColor(widgetBgColor);
-                    widgetLabel.setBackgroundDrawable(gd);
-                }
-            } catch (Exception ignored) {}
-        }
+        if (musicWidget == null) return;
+        ohi.andre.consolelauncher.tuils.TuiWidgetDecorator.decorateWidget(musicWidget, R.id.music_widget_border, R.id.music_widget_label);
 
         // Style control buttons
+        int widgetColor = XMLPrefsManager.getColor(Theme.music_widget_color);
+        boolean useDashed = XMLPrefsManager.getBoolean(Ui.enable_dashed_border);
+
         int buttonColor = widgetColor;
         TextView prevBtn = musicWidget.findViewById(R.id.music_prev);
         TextView nextBtn = musicWidget.findViewById(R.id.music_next);
@@ -2089,51 +1543,7 @@ public class UIManager implements OnTouchListener {
     }
 
     private void styleNotificationWidget(View notificationWidget) {
-        if (notificationWidget == null) {
-            return;
-        }
-
-        // Use music_widget_color to ensure synchronization with music widget as requested
-        int widgetColor = XMLPrefsManager.getColor(Theme.music_widget_color);
-        int widgetBgColor = XMLPrefsManager.getColor(Theme.window_terminal_bg);
-        boolean useDashed = XMLPrefsManager.getBoolean(Ui.enable_dashed_border);
-
-        View borderView = notificationWidget.findViewById(R.id.notification_widget_border);
-        if (borderView != null) {
-            GradientDrawable gd = new GradientDrawable();
-            gd.setShape(GradientDrawable.RECTANGLE);
-            if (useDashed) {
-                gd.setStroke((int) Tuils.dpToPx(mContext, 1.5f), widgetColor,
-                        Tuils.dpToPx(mContext, XMLPrefsManager.getInt(Ui.dashed_border_dash_length)),
-                        Tuils.dpToPx(mContext, XMLPrefsManager.getInt(Ui.dashed_border_gap_length)));
-            } else {
-                gd.setStroke((int) Tuils.dpToPx(mContext, 1.5f), widgetColor);
-            }
-            gd.setColor(widgetBgColor);
-            borderView.setBackgroundDrawable(gd);
-        }
-
-        TextView widgetLabel = notificationWidget.findViewById(R.id.notification_widget_label);
-        if (widgetLabel != null) {
-            widgetLabel.setTextColor(widgetColor);
-            widgetLabel.setTypeface(Tuils.getTypeface(mContext), Typeface.BOLD);
-            try {
-                GradientDrawable gd = (GradientDrawable) androidx.core.content.res.ResourcesCompat.getDrawable(
-                        mContext.getResources(), R.drawable.apps_drawer_header_border, null).mutate();
-                if (gd != null) {
-                    if (useDashed) {
-                        gd.setStroke((int) Tuils.dpToPx(mContext, 1.5f), widgetColor,
-                                Tuils.dpToPx(mContext, XMLPrefsManager.getInt(Ui.dashed_border_dash_length)),
-                                Tuils.dpToPx(mContext, XMLPrefsManager.getInt(Ui.dashed_border_gap_length)));
-                    } else {
-                        gd.setStroke((int) Tuils.dpToPx(mContext, 1.5f), widgetColor);
-                    }
-                    gd.setColor(widgetBgColor);
-                    widgetLabel.setBackgroundDrawable(gd);
-                }
-            } catch (Exception ignored) {}
-        }
-
+        ohi.andre.consolelauncher.tuils.TuiWidgetDecorator.decorateWidget(notificationWidget, R.id.notification_widget_border, R.id.notification_widget_label);
         renderNotificationRows(notificationWidget);
     }
 
@@ -2163,9 +1573,6 @@ public class UIManager implements OnTouchListener {
 
         rows.removeAllViews();
         int widgetColor = XMLPrefsManager.getColor(Theme.music_widget_color);
-        int widgetBgColor = XMLPrefsManager.getColor(Theme.window_terminal_bg);
-        int rowBackground = ColorUtils.blendARGB(widgetBgColor, Color.BLACK, 0.22f);
-        int strokeColor = ColorUtils.setAlphaComponent(widgetColor, 140);
 
         for (NotificationService.Notification notification : currentOverlayNotifications) {
             TextView row = new TextView(mContext);
@@ -2181,12 +1588,7 @@ public class UIManager implements OnTouchListener {
             row.setTextColor(widgetColor);
             row.setText(buildNotificationLine(notification));
 
-            GradientDrawable bg = new GradientDrawable();
-            bg.setShape(GradientDrawable.RECTANGLE);
-            bg.setCornerRadius(Tuils.dpToPx(mContext, 4));
-            bg.setColor(rowBackground);
-            bg.setStroke((int) Tuils.dpToPx(mContext, 1.2f), strokeColor);
-            row.setBackgroundDrawable(bg);
+            row.setBackground(ohi.andre.consolelauncher.tuils.TuiWidgetDecorator.getRowBackground(mContext));
 
             if (notification.pendingIntent != null) {
                 row.setClickable(true);
@@ -2798,11 +2200,23 @@ public class UIManager implements OnTouchListener {
         if (handler != null) {
             handler.removeCallbacks(fontRefreshRunnable);
         }
+
+        if (ramManager != null) ramManager.stop();
+        if (batteryManager != null) batteryManager.stop();
+        if (storageManager != null) storageManager.stop();
+        if (networkManager != null) networkManager.stop();
+        if (tuiTimeManager != null) tuiTimeManager.stop();
     }
 
     public void resume() {
         handler.post(musicTimeRunnable);
         scheduleTypefaceRefreshes();
+
+        if (ramManager != null) ramManager.start();
+        if (batteryManager != null) batteryManager.start();
+        if (storageManager != null) storageManager.start();
+        if (networkManager != null) networkManager.start();
+        if (tuiTimeManager != null) tuiTimeManager.start();
     }
 
     public void scheduleTypefaceRefreshes() {

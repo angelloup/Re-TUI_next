@@ -318,14 +318,14 @@ public class MusicManager2 implements MediaController.MediaPlayerControl {
 
     @Override
     public int getCurrentPosition() {
-        if(musicSrv != null && musicBound && musicSrv.isPng())
+        if(musicSrv != null && musicBound && musicSrv.isPlaying())
             return musicSrv.getPosn();
         else return -1;
     }
 
     @Override
     public int getDuration() {
-        if(musicSrv != null && musicBound && musicSrv.isPng())
+        if(musicSrv != null && musicBound && musicSrv.isPlaying())
             return musicSrv.getDur();
         else return -1;
     }
@@ -338,7 +338,7 @@ public class MusicManager2 implements MediaController.MediaPlayerControl {
     @Override
     public boolean isPlaying() {
         if(musicSrv != null && musicBound)
-            return musicSrv.isPng();
+            return musicSrv.isPlaying();
         return false;
     }
 

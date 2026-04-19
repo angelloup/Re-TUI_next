@@ -4,6 +4,7 @@ import android.os.Handler;
 import android.os.Looper;
 
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,7 +30,8 @@ public class webhook extends ParamCommand {
     private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
     private static final MediaType TEXT = MediaType.get("text/plain; charset=utf-8");
 
-    private static MainPack staticPack;
+    // Using WeakReference to allow suggestions while avoiding memory leaks
+    private static WeakReference<MainPack> packRef;
 
     private enum Param implements ohi.andre.consolelauncher.commands.main.Param {
         add {
@@ -90,8 +92,7 @@ public class webhook extends ParamCommand {
         static Param get(String p) {
             if (p == null) return null;
             p = p.toLowerCase();
-            Param[] ps = values();
-            for (Param p1 : ps) {
+            for (Param p1 : values()) {
                 if (p.equals(p1.label()))
                     return p1;
             }
@@ -123,7 +124,7 @@ public class webhook extends ParamCommand {
         }
     }
 
-    private class WebhookParam implements ohi.andre.consolelauncher.commands.main.Param {
+    private static class WebhookParam implements ohi.andre.consolelauncher.commands.main.Param {
         private final WebhookManager.Webhook w;
         public WebhookParam(WebhookManager.Webhook w) { this.w = w; }
         @Override public int[] args() { return new int[]{CommandAbstraction.TEXTLIST}; }
@@ -139,7 +140,7 @@ public class webhook extends ParamCommand {
 
     @Override
     public SimpleMutableEntry<Boolean, ohi.andre.consolelauncher.commands.main.Param> getParam(MainPack pack, String param) {
-        staticPack = pack;
+        packRef = new WeakReference<>(pack);
         ohi.andre.consolelauncher.commands.main.Param p = Param.get(param);
         if(p != null) return new SimpleMutableEntry<>(false, p);
 
@@ -155,17 +156,18 @@ public class webhook extends ParamCommand {
 
     @Override
     protected ohi.andre.consolelauncher.commands.main.Param paramForString(MainPack pack, String param) {
-        staticPack = pack;
+        packRef = new WeakReference<>(pack);
         return Param.get(param);
     }
 
     @Override
     public String[] params() {
         String[] labels = Param.labels();
-        if (staticPack == null || staticPack.webhookManager == null) return labels;
+        MainPack pack = packRef != null ? packRef.get() : null;
+        if (pack == null || pack.webhookManager == null) return labels;
 
-        List<WebhookManager.Webhook> hooks = staticPack.webhookManager.getWebhooks();
-        if (hooks == null) return labels;
+        List<WebhookManager.Webhook> hooks = pack.webhookManager.getWebhooks();
+        if (hooks == null || hooks.isEmpty()) return labels;
 
         String[] all = new String[labels.length + hooks.size()];
         System.arraycopy(labels, 0, all, 0, labels.length);
@@ -178,7 +180,7 @@ public class webhook extends ParamCommand {
     @Override
     protected String doThings(ExecutePack pack) {
         final MainPack info = (MainPack) pack;
-        staticPack = info;
+        packRef = new WeakReference<>(info);
         String input = info.lastCommand;
         if (input == null) return null;
 
@@ -222,7 +224,7 @@ public class webhook extends ParamCommand {
         return "Webhook [" + sub + "] not found. Use 'webhook -ls' to see available hooks.";
     }
 
-    private String triggerWebhook(final MainPack info, final WebhookManager.Webhook w, String[] webhookArgs) {
+    private static String triggerWebhook(final MainPack info, final WebhookManager.Webhook w, String[] webhookArgs) {
         final boolean jsonBody = w.bodyTemplate != null
                 && (w.bodyTemplate.trim().startsWith("{") || w.bodyTemplate.trim().startsWith("["));
 
@@ -258,7 +260,7 @@ public class webhook extends ParamCommand {
         return "Triggering webhook: " + w.name;
     }
 
-    private String formatArgsForHistory(String[] webhookArgs) {
+    private static String formatArgsForHistory(String[] webhookArgs) {
         List<String> formatted = new ArrayList<>(webhookArgs.length);
         for (String arg : webhookArgs) {
             formatted.add(quoteArg(arg));
@@ -266,7 +268,7 @@ public class webhook extends ParamCommand {
         return Tuils.toPlanString(formatted, Tuils.SPACE);
     }
 
-    private String quoteArg(String arg) {
+    private static String quoteArg(String arg) {
         if (arg == null) {
             return "\"\"";
         }
