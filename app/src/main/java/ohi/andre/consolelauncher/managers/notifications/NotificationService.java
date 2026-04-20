@@ -75,7 +75,7 @@ public class NotificationService extends NotificationListenerService {
 
     String format;
     int color, maxOptionalDepth;
-    boolean enabled, click, longClick, active;
+    boolean enabled, click, longClick, active, terminalNotifications;
 
     Queue<StatusBarNotification> queue;
 
@@ -608,7 +608,9 @@ public class NotificationService extends NotificationListenerService {
 //                        Tuils.log("text", text);
 //                        Tuils.log("--------");
 
-                            Tuils.sendOutput(NotificationService.this.getApplicationContext(), s, TerminalManager.CATEGORY_NO_COLOR, click ? notification.contentIntent : null, longClick ? n : null);
+                            if (terminalNotifications) {
+                                Tuils.sendOutput(NotificationService.this.getApplicationContext(), s, TerminalManager.CATEGORY_NO_COLOR, click ? notification.contentIntent : null, longClick ? n : null);
+                            }
 
                             Intent notifyIntent = new Intent(ohi.andre.consolelauncher.UIManager.ACTION_NOTIFICATION_RECEIVED);
                             notifyIntent.putExtra(ohi.andre.consolelauncher.UIManager.NOTIFICATION_TEXT, s);
@@ -818,6 +820,7 @@ public class NotificationService extends NotificationListenerService {
 
     private void loadConfig() {
         enabled = XMLPrefsManager.getBoolean(Notifications.show_notifications) || XMLPrefsManager.get(Notifications.show_notifications).equalsIgnoreCase("enabled");
+        terminalNotifications = XMLPrefsManager.getBoolean(Notifications.terminal_notifications);
         format = XMLPrefsManager.get(Notifications.notification_format);
         color = XMLPrefsManager.getColor(Notifications.default_notification_color);
         click = XMLPrefsManager.getBoolean(Notifications.click_notification);

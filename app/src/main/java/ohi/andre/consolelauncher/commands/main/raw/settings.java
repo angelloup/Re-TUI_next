@@ -12,16 +12,34 @@ import ohi.andre.consolelauncher.tuils.Tuils;
 public class settings extends ParamCommand {
 
     private enum Param implements ohi.andre.consolelauncher.commands.main.Param {
-        theme {
+        appearance {
             @Override
             public String exec(ExecutePack pack) {
-                return openSettings(pack, ThemerActivity.SECTION_THEME);
+                return openSettings(pack, ThemerActivity.SECTION_APPEARANCE);
             }
         },
-        music {
+        behavior {
             @Override
             public String exec(ExecutePack pack) {
-                return openSettings(pack, ThemerActivity.SECTION_MUSIC);
+                return openSettings(pack, ThemerActivity.SECTION_BEHAVIOR);
+            }
+        },
+        personalization {
+            @Override
+            public String exec(ExecutePack pack) {
+                return openSettings(pack, ThemerActivity.SECTION_PERSONALIZATION);
+            }
+        },
+        integrations {
+            @Override
+            public String exec(ExecutePack pack) {
+                return openSettings(pack, ThemerActivity.SECTION_INTEGRATIONS);
+            }
+        },
+        system {
+            @Override
+            public String exec(ExecutePack pack) {
+                return openSettings(pack, ThemerActivity.SECTION_SYSTEM);
             }
         };
 

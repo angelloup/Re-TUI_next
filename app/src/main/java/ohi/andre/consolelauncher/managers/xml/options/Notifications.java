@@ -21,6 +21,22 @@ public enum Notifications implements XMLPrefsSave {
             return "If true, Re:T-UI will show every incoming notification";
         }
     },
+    terminal_notifications {
+        @Override
+        public String defaultValue() {
+            return "true";
+        }
+
+        @Override
+        public String info() {
+            return "If true, notifications will be printed in the terminal";
+        }
+
+        @Override
+        public String type() {
+            return XMLPrefsSave.BOOLEAN;
+        }
+    },
     app_notification_enabled_default {
         @Override
         public String defaultValue() {

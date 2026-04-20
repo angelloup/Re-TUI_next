@@ -32,11 +32,21 @@ public class devutils extends ParamCommand {
                     if(text.size() >= 2) txt = Tuils.toPlanString(text, Tuils.SPACE);
                 }
 
+                String channelId = "dev_utils_channel";
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    android.app.NotificationChannel channel = new android.app.NotificationChannel(channelId, "Dev Utils", android.app.NotificationManager.IMPORTANCE_DEFAULT);
+                    android.app.NotificationManager notificationManager = (android.app.NotificationManager) pack.context.getSystemService(android.content.Context.NOTIFICATION_SERVICE);
+                    if (notificationManager != null) {
+                        notificationManager.createNotificationChannel(channel);
+                    }
+                }
+
                 NotificationManagerCompat.from(pack.context).notify(200,
-                        new NotificationCompat.Builder(pack.context)
+                        new NotificationCompat.Builder(pack.context, channelId)
                             .setSmallIcon(R.mipmap.ic_launcher)
                             .setContentTitle(title)
                             .setContentText(txt)
+                            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                             .build());
 
                 return null;

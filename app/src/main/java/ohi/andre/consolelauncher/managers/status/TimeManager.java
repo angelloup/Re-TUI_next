@@ -3,7 +3,9 @@ package ohi.andre.consolelauncher.managers.status;
 import android.content.Context;
 
 import ohi.andre.consolelauncher.UIManager;
-import ohi.andre.consolelauncher.managers.xml.classes.Ui;
+import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
+import ohi.andre.consolelauncher.managers.xml.options.Behavior;
+import ohi.andre.consolelauncher.managers.xml.options.Ui;
 
 public class TimeManager extends StatusManager {
 
@@ -19,7 +21,7 @@ public class TimeManager extends StatusManager {
     @Override
     protected void update() {
         if (listener != null) {
-            listener.onUpdate(UIManager.Label.time, ohi.andre.consolelauncher.managers.TimeManager.getInstance(context).getCharSequence(context, Ui.time_index, null, size));
+            listener.onUpdate(UIManager.Label.time, ohi.andre.consolelauncher.managers.TimeManager.instance.getCharSequence(context, size, XMLPrefsManager.get(Behavior.status_time_format)));
         }
     }
 }

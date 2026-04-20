@@ -8,8 +8,8 @@ public abstract class StatusManager {
     protected final Context context;
     protected final Handler handler;
     private final Runnable updateRunnable;
-    private final long delay;
-    private boolean running = false;
+    protected long delay;
+    protected boolean running = false;
 
     public StatusManager(Context context, long delay) {
         this.context = context;

@@ -13,8 +13,8 @@ import java.util.regex.Pattern;
 
 import ohi.andre.consolelauncher.UIManager;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
-import ohi.andre.consolelauncher.managers.xml.classes.Behavior;
-import ohi.andre.consolelauncher.managers.xml.classes.Theme;
+import ohi.andre.consolelauncher.managers.xml.options.Behavior;
+import ohi.andre.consolelauncher.managers.xml.options.Theme;
 import ohi.andre.consolelauncher.tuils.NetworkUtils;
 import ohi.andre.consolelauncher.tuils.Tuils;
 

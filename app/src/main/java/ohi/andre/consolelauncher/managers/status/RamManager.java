@@ -2,7 +2,7 @@ package ohi.andre.consolelauncher.managers.status;
 
 import android.app.ActivityManager;
 import android.content.Context;
-import android.text.Matcher;
+import java.util.regex.Matcher;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,10 +10,12 @@ import java.util.regex.Pattern;
 
 import ohi.andre.consolelauncher.UIManager;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
-import ohi.andre.consolelauncher.managers.xml.classes.Behavior;
-import ohi.andre.consolelauncher.managers.xml.classes.Theme;
-import ohi.andre.consolelauncher.managers.xml.classes.Ui;
+import ohi.andre.consolelauncher.managers.xml.options.Behavior;
+import ohi.andre.consolelauncher.managers.xml.options.Theme;
+import ohi.andre.consolelauncher.managers.xml.options.Ui;
+import ohi.andre.consolelauncher.tuils.SystemUtils;
 import ohi.andre.consolelauncher.tuils.Tuils;
+import ohi.andre.consolelauncher.tuils.UIUtils;
 
 public class RamManager extends StatusManager {
 
@@ -64,26 +66,26 @@ public class RamManager extends StatusManager {
 
         String copy = ramFormat;
 
-        double av = Tuils.freeRam(activityManager, memory);
-        double tot = Tuils.totalRam() * 1024L;
+        double av = SystemUtils.freeRam(activityManager, memory);
+        double tot = SystemUtils.totalRam() * 1024L;
 
-        copy = ramPatterns.get(0).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) av, Tuils.TERA))));
-        copy = ramPatterns.get(1).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) av, Tuils.GIGA))));
-        copy = ramPatterns.get(2).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) av, Tuils.MEGA))));
-        copy = ramPatterns.get(3).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) av, Tuils.KILO))));
-        copy = ramPatterns.get(4).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) av, Tuils.BYTE))));
-        copy = ramPatterns.get(5).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.percentage(av, tot))));
+        copy = ramPatterns.get(0).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(SystemUtils.formatSize((long) av, SystemUtils.TERA))));
+        copy = ramPatterns.get(1).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(SystemUtils.formatSize((long) av, SystemUtils.GIGA))));
+        copy = ramPatterns.get(2).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(SystemUtils.formatSize((long) av, SystemUtils.MEGA))));
+        copy = ramPatterns.get(3).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(SystemUtils.formatSize((long) av, SystemUtils.KILO))));
+        copy = ramPatterns.get(4).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(SystemUtils.formatSize((long) av, SystemUtils.BYTE))));
+        copy = ramPatterns.get(5).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(SystemUtils.percentage(av, tot))));
 
-        copy = ramPatterns.get(6).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) tot, Tuils.TERA))));
-        copy = ramPatterns.get(7).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) tot, Tuils.GIGA))));
-        copy = ramPatterns.get(8).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) tot, Tuils.MEGA))));
-        copy = ramPatterns.get(9).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) tot, Tuils.KILO))));
-        copy = ramPatterns.get(10).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(Tuils.formatSize((long) tot, Tuils.BYTE))));
+        copy = ramPatterns.get(6).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(SystemUtils.formatSize((long) tot, SystemUtils.TERA))));
+        copy = ramPatterns.get(7).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(SystemUtils.formatSize((long) tot, SystemUtils.GIGA))));
+        copy = ramPatterns.get(8).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(SystemUtils.formatSize((long) tot, SystemUtils.MEGA))));
+        copy = ramPatterns.get(9).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(SystemUtils.formatSize((long) tot, SystemUtils.KILO))));
+        copy = ramPatterns.get(10).matcher(copy).replaceAll(Matcher.quoteReplacement(String.valueOf(SystemUtils.formatSize((long) tot, SystemUtils.BYTE))));
 
         copy = ramPatterns.get(11).matcher(copy).replaceAll(Matcher.quoteReplacement(Tuils.NEWLINE));
 
         if (listener != null) {
-            listener.onUpdate(UIManager.Label.ram, Tuils.span(context, copy, color, size));
+            listener.onUpdate(UIManager.Label.ram, UIUtils.span(context, copy, color, size));
         }
     }
 }

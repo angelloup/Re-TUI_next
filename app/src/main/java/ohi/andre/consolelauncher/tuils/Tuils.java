@@ -307,14 +307,7 @@ public class Tuils {
     }
 
     public static String readerToString(Reader initialReader) throws IOException {
-        char[] arr = new char[8 * 1024];
-        StringBuilder buffer = new StringBuilder();
-        int numCharsRead;
-        while ((numCharsRead = initialReader.read(arr, 0, arr.length)) != -1) {
-            buffer.append(arr, 0, numCharsRead);
-        }
-        initialReader.close();
-        return buffer.toString();
+        return IOUtils.readerToString(initialReader);
     }
 
     private static OnBatteryUpdate batteryUpdate;
@@ -400,52 +393,23 @@ public class Tuils {
     }
 
     public static String convertStreamToString(java.io.InputStream is) {
-        if (is == null) return Tuils.EMPTYSTRING;
-
-        java.util.Scanner s = new java.util.Scanner(is).useDelimiter("\\A");
-        return s.hasNext() ? s.next() : Tuils.EMPTYSTRING;
+        return IOUtils.convertStreamToString(is);
     }
 
     public static void copy(File from, File to) throws Exception {
-        download(new FileInputStream(from), to);
+        IOUtils.copy(from, to);
     }
 
     public static long download(InputStream in, File file) throws Exception {
-        OutputStream out = new FileOutputStream(file, false);
-
-        byte data[] = new byte[1024];
-
-        long bytes = 0;
-
-        int count;
-        while ((count = in.read(data)) != -1) {
-            out.write(data, 0, count);
-            bytes += count;
-        }
-
-        out.flush();
-        out.close();
-        in.close();
-
-        return bytes;
+        return IOUtils.download(in, file);
     }
 
     public static void write(File file, String separator, String... ss) throws Exception {
-        FileOutputStream headerStream = new FileOutputStream(file, false);
-
-        for(int c = 0; c < ss.length - 1; c++) {
-            headerStream.write(ss[c].getBytes());
-            headerStream.write(separator.getBytes());
-        }
-        headerStream.write(ss[ss.length - 1].getBytes());
-
-        headerStream.flush();
-        headerStream.close();
+        IOUtils.write(file, separator, ss);
     }
 
     public static float dpToPx(Context context, float valueInDp) {
-        DisplayMetrics metrics = context.getResources().getDisplayMetrics();
-        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, valueInDp, metrics);
+        return UIUtils.dpToPx(context, valueInDp);
     }
 
     public static boolean hasNotificationAccess(Context context) {
@@ -539,7 +503,7 @@ public class Tuils {
     }
 
     public static double percentage(double part, double total) {
-        return round(part * 100 / total, 2);
+        return MathUtils.percentage(part, total);
     }
 
     public static double formatSize(long bytes, int unit) {
@@ -593,53 +557,35 @@ public class Tuils {
 
 
     public static SpannableString span(CharSequence text, int color) {
-        return span(null, text, color, Integer.MAX_VALUE);
+        return UIUtils.span(text, color);
     }
 
     public static SpannableString span(Context context, int size, CharSequence text) {
-        return span(context, text, Integer.MAX_VALUE, size);
+        return UIUtils.span(context, size, text);
     }
 
     public static SpannableString span(Context context, CharSequence text, int color, int size) {
-        return span(context, Integer.MAX_VALUE, color, text, size);
+        return UIUtils.span(context, text, color, size);
     }
 
     public static SpannableString span(int bgColor, int foreColor, CharSequence text) {
-        return span(null, bgColor, foreColor, text, Integer.MAX_VALUE);
+        return UIUtils.span(bgColor, foreColor, text);
     }
 
     public static SpannableString span(Context context, int bgColor, int foreColor, CharSequence text, int size) {
-        if(text == null) {
-            text = Tuils.EMPTYSTRING;
-        }
-
-        SpannableString spannableString;
-        if(text instanceof SpannableString) spannableString = (SpannableString) text;
-        else spannableString = new SpannableString(text);
-
-        if(size != Integer.MAX_VALUE && context != null) spannableString.setSpan(new AbsoluteSizeSpan(convertSpToPixels(size, context)), 0, text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        if(foreColor != Integer.MAX_VALUE) spannableString.setSpan(new ForegroundColorSpan(foreColor), 0, text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        if(bgColor != Integer.MAX_VALUE) spannableString.setSpan(new BackgroundColorSpan(bgColor), 0, text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-
-        return spannableString;
+        return UIUtils.span(context, bgColor, foreColor, text, size);
     }
 
     public static int span(int bgColor, SpannableString text, String section, int fromIndex) {
-        int index = text.toString().indexOf(section, fromIndex);
-        if(index == -1) return index;
-
-        text.setSpan(new BackgroundColorSpan(bgColor), index, index + section.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-
-        return index + section.length();
+        return UIUtils.span(bgColor, text, section, fromIndex);
     }
 
     public static int convertSpToPixels(float sp, Context context) {
-        return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, sp, context.getResources().getDisplayMetrics());
+        return UIUtils.convertSpToPixels(sp, context);
     }
 
     public static String inputStreamToString(InputStream is) {
-        java.util.Scanner s = new java.util.Scanner(is).useDelimiter("\\A");
-        return s.hasNext() ? s.next() : Tuils.EMPTYSTRING;
+        return IOUtils.inputStreamToString(is);
     }
 
 //    static final int WEATHER_TIMEOUT = 6000;
@@ -753,24 +699,11 @@ public class Tuils {
     }
 
     public static void deleteContentOnly(File dir) {
-        File[] files = dir.listFiles();
-        if(files == null) return;
-
-        for(File f : dir.listFiles()) {
-            if(f.isDirectory()) delete(f);
-            f.delete();
-        }
+        IOUtils.deleteContentOnly(dir);
     }
 
     public static void delete(File dir) {
-        File[] files = dir.listFiles();
-        if(files == null) return;
-
-        for(File f : dir.listFiles()) {
-            if(f.isDirectory()) delete(f);
-            f.delete();
-        }
-        dir.delete();
+        IOUtils.delete(dir);
     }
 
     public static boolean insertOld(File oldFile) {
@@ -996,15 +929,7 @@ public class Tuils {
     }
 
     public static double round(double value, int places) {
-        if (places < 0) places = 0;
-
-        try {
-            BigDecimal bd = new BigDecimal(value);
-            bd = bd.setScale(places, RoundingMode.HALF_UP);
-            return bd.doubleValue();
-        } catch (Exception e) {
-            return value;
-        }
+        return MathUtils.round(value, places);
     }
 
     public static List<String> getClassesInPackage(String packageName, Context c) throws IOException {
@@ -1022,7 +947,7 @@ public class Tuils {
     }
 
     public static int scale(int[] from, int[] to, int n) {
-        return (to[1] - to[0])*(n - from[0])/(from[1] - from[0]) + to[0];
+        return MathUtils.scale(from, to, n);
     }
 
     public static String[] toString(Enum[] enums) {
@@ -1189,29 +1114,14 @@ public class Tuils {
     }
 
     public static void log(Object o) {
-//        Log.e("andre", Arrays.toString(Thread.currentThread().getStackTrace()));
-
-        if(o instanceof Throwable) {
-            Log.e("andre", "", (Throwable) o);
-        } else {
-            String text;
-            if(o instanceof Object[]) text = Arrays.toString((Object[]) o);
-            else text = o.toString();
-            Log.e("andre", text);
-        }
+        LogUtils.log(o);
     }
 
     public static void log(Object o, Object o2) {
-        if(o instanceof Object[] && o2 instanceof Object[]){
-            Log.e("andre", Arrays.toString((Object[]) o) + " -- " + Arrays.toString((Object[]) o2));
-        } else {
-            Log.e("andre", String.valueOf(o) + " -- " + String.valueOf(o2));
-        }
+        LogUtils.log(o, o2);
     }
 
     public static void log(Object o, PrintStream to) {
-//        Log.e("andre", Arrays.toString(Thread.currentThread().getStackTrace()));
-
         if(o instanceof Throwable) {
             ((Throwable) o).printStackTrace(to);
         } else {
@@ -1222,30 +1132,17 @@ public class Tuils {
             try {
                 to.write(text.getBytes());
             } catch (IOException e) {
-                Tuils.log(e);
+                LogUtils.log(e);
             }
         }
     }
 
     public static void log(Object o, Object o2, OutputStream to) {
-        try {
-            if(o instanceof Object[] && o2 instanceof Object[]){
-                to.write((Arrays.toString((Object[]) o) + " -- " + Arrays.toString((Object[]) o2)).getBytes());
-            } else {
-                to.write((String.valueOf(o) + " -- " + String.valueOf(o2)).getBytes());
-            }
-        } catch (Exception e) {
-            Tuils.log(e);
-        }
+        LogUtils.log(o, o2, to);
     }
 
     public static boolean hasInternetAccess() {
-        try {
-            HttpURLConnection urlc = (HttpURLConnection) (new URL("https://clients3.google.com/generate_204").openConnection());
-            return (urlc.getResponseCode() == 204 && urlc.getContentLength() == 0);
-        } catch (IOException e) {
-            return false;
-        }
+        return NetUtils.hasInternetAccess();
     }
 
     public static <T> T getDefaultValue(Class<T> clazz) {
@@ -1253,41 +1150,15 @@ public class Tuils {
     }
 
     public static void toFile(String s) {
-        if(s == null) return;
-        try {
-            File f = new File(getFolder(), "crash.txt");
-            PrintWriter pw = new PrintWriter(new FileOutputStream(f, true));
-            pw.println(new Date().toString());
-            pw.println(s);
-            pw.println();
-            pw.flush();
-            pw.close();
-        } catch (Exception e1) {}
+        LogUtils.toFile(s);
     }
 
     public static void toFile(Object o) {
-        if(o == null) return;
-        try {
-            File f = new File(getFolder(), "crash.txt");
-            PrintWriter pw = new PrintWriter(new FileOutputStream(f, true));
-            pw.println(new Date().toString());
-            if (o instanceof Throwable) {
-                ((Throwable) o).printStackTrace(pw);
-            } else {
-                pw.println(o.toString());
-            }
-            pw.println();
-            pw.flush();
-            pw.close();
-        } catch (Exception e) {}
+        LogUtils.toFile(o);
     }
 
     public static String toPlanString(List<String> strings, String separator) {
-        if(strings != null) {
-            String[] object = new String[strings.size()];
-            return Tuils.toPlanString(strings.toArray(object), separator);
-        }
-        return Tuils.EMPTYSTRING;
+        return TextUtils.toPlanString(strings, separator);
     }
 
     public static String filesToPlanString(List<File> files, String separator) {
@@ -1311,61 +1182,12 @@ public class Tuils {
     }
 
     public static String toPlanString(Object[] objs, String separator) {
-        if(objs == null) {
-            return Tuils.EMPTYSTRING;
-        }
-
-        StringBuilder output = new StringBuilder();
-        for(int count = 0; count < objs.length; count++) {
-            output.append(objs[count]);
-            if(count < objs.length - 1) {
-                output.append(separator);
-            }
-        }
-        return output.toString();
+        return TextUtils.toPlanString(objs, separator);
     }
 
     static Pattern unnecessarySpaces = Pattern.compile("\\s{2,}");
     public static String removeUnncesarySpaces(String string) {
-        if (string == null) return null;
-        StringBuilder sb = new StringBuilder();
-        boolean inDoubleQuote = false;
-        boolean inSingleQuote = false;
-        boolean escaped = false;
-        char[] chars = string.toCharArray();
-
-        for (int i = 0; i < chars.length; i++) {
-            char c = chars[i];
-            if (escaped) {
-                sb.append(c);
-                escaped = false;
-                continue;
-            }
-            if (c == '\\') {
-                escaped = true;
-                sb.append(c);
-                continue;
-            }
-            if (c == '\"' && !inSingleQuote) {
-                inDoubleQuote = !inDoubleQuote;
-                sb.append(c);
-                continue;
-            }
-            if (c == '\'' && !inDoubleQuote) {
-                inSingleQuote = !inSingleQuote;
-                sb.append(c);
-                continue;
-            }
-
-            if (Character.isWhitespace(c) && !inDoubleQuote && !inSingleQuote) {
-                if (sb.length() > 0 && !Character.isWhitespace(sb.charAt(sb.length() - 1))) {
-                    sb.append(Tuils.SPACE);
-                }
-            } else {
-                sb.append(c);
-            }
-        }
-        return sb.toString().trim();
+        return TextUtils.removeUnncesarySpaces(string);
     }
 
     public static List<String> splitArgs(String input) {
@@ -1520,77 +1342,7 @@ public class Tuils {
     }
 
     public static double eval(final String str) {
-        return new Object() {
-            int pos = -1, ch;
-
-            void nextChar() {
-                ch = (++pos < str.length()) ? str.charAt(pos) : -1;
-            }
-
-            boolean eat(int charToEat) {
-                while (ch == ' ') nextChar();
-                if (ch == charToEat) {
-                    nextChar();
-                    return true;
-                }
-                return false;
-            }
-
-            double parse() {
-                nextChar();
-                double x = parseExpression();
-                if (pos < str.length()) throw new RuntimeException("Unexpected: " + (char)ch);
-                return x;
-            }
-
-            double parseExpression() {
-                double x = parseTerm();
-                for (;;) {
-                    if      (eat('+')) x += parseTerm(); // addition
-                    else if (eat('-')) x -= parseTerm(); // subtraction
-                    else return x;
-                }
-            }
-
-            double parseTerm() {
-                double x = parseFactor();
-                for (;;) {
-                    if      (eat('*')) x *= parseFactor(); // multiplication
-                    else if (eat('/')) x /= parseFactor(); // division
-                    else return x;
-                }
-            }
-
-            double parseFactor() {
-                if (eat('+')) return parseFactor(); // unary plus
-                if (eat('-')) return -parseFactor(); // unary minus
-
-                double x;
-                int startPos = this.pos;
-                if (eat('(')) { // parentheses
-                    x = parseExpression();
-                    eat(')');
-                } else if ((ch >= '0' && ch <= '9') || ch == '.') { // numbers
-                    while ((ch >= '0' && ch <= '9') || ch == '.') nextChar();
-                    x = Double.parseDouble(str.substring(startPos, this.pos));
-                } else if (ch >= 'a' && ch <= 'z') { // functions
-                    while (ch >= 'a' && ch <= 'z') nextChar();
-                    String func = str.substring(startPos, this.pos);
-                    x = parseFactor();
-                    if (func.equals("sqrt")) x = Math.sqrt(x);
-                    else if (func.equals("sin")) x = Math.sin(Math.toRadians(x));
-                    else if (func.equals("cos")) x = Math.cos(Math.toRadians(x));
-                    else if (func.equals("tan")) x = Math.tan(Math.toRadians(x));
-                    else throw new RuntimeException("Unknown function: " + func);
-                } else {
-                    throw new RuntimeException("Unexpected: " + (char)ch);
-                }
-
-                if (eat('^')) x = Math.pow(x, parseFactor()); // exponentiation
-
-                return x;
-            }
-        }.parse();
+        return MathUtils.eval(str);
     }
 
     public static String getTextFromClipboard(Context context) {
@@ -1614,15 +1366,13 @@ public class Tuils {
     }
 
     private static final int FILEUPDATE_DELAY = 100;
-    private static File folder = null;
-    private static final String FORK_FOLDER_NAME = "Re-T-UI";
 
     public static void init(Context context) {
         Log.e("TUI-INIT", "Starting Tuils.init()");
         try {
             // Priority: Internal Storage Root (Shared)
             File sharedRoot = Environment.getExternalStorageDirectory();
-            File newFolder = new File(sharedRoot, FORK_FOLDER_NAME);
+            File newFolder = new File(sharedRoot, FileUtils.getForkFolderName());
             
             Log.e("TUI-INIT", "Target folder: " + newFolder.getAbsolutePath());
 
@@ -1636,7 +1386,7 @@ public class Tuils {
                     if (appExternalRoot == null) {
                         appExternalRoot = context.getFilesDir();
                     }
-                    newFolder = new File(appExternalRoot, FORK_FOLDER_NAME);
+                    newFolder = new File(appExternalRoot, FileUtils.getForkFolderName());
                     newFolder.mkdirs();
                     Log.e("TUI-INIT", "Fallback to private storage: " + newFolder.getAbsolutePath());
                 }
@@ -1647,19 +1397,19 @@ public class Tuils {
 
             if (newFolder.exists() && isDirectoryEffectivelyEmpty(newFolder)) {
                 if (legacyForkFolder.exists() && legacyForkFolder.isDirectory()) {
-                    Log.e("TUI-INIT", "Legacy Re:T-UI folder found, migrating...");
-                    copyDirectory(legacyForkFolder, newFolder);
+                    Log.e("TUI-INIT", "Legacy Re:T-UI folder found, migration skipped for now...");
+                    // copyDirectory(legacyForkFolder, newFolder);
                 } else if (legacyOriginalFolder.exists() && legacyOriginalFolder.isDirectory()) {
-                    Log.e("TUI-INIT", "Old T-UI folder found, migrating...");
-                    copyDirectory(legacyOriginalFolder, newFolder);
+                    Log.e("TUI-INIT", "Old T-UI folder found, migration skipped for now...");
+                    // copyDirectory(legacyOriginalFolder, newFolder);
                 }
             }
 
             if (newFolder.exists()) {
-                folder = newFolder;
+                FileUtils.setInternalFolder(newFolder);
                 String[] subfolders = {"fonts", "rss", "old"};
                 for (String sub : subfolders) {
-                    File f = new File(folder, sub);
+                    File f = new File(newFolder, sub);
                     if (!f.exists()) {
                         f.mkdirs();
                     }
@@ -1711,8 +1461,7 @@ public class Tuils {
     }
 
     public static File getFolder() {
-        if(folder != null) return folder;
-        return null;
+        return FileUtils.getInternalFolder();
     }
 
     public static int alphabeticCompare(String s1, String s2) {
@@ -1744,40 +1493,7 @@ public class Tuils {
     }
 
     public static String getNetworkType(Context context) {
-        if (androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_PHONE_STATE) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            return "unknown";
-        }
-        try {
-            TelephonyManager mTelephonyManager = (TelephonyManager)
-                    context.getSystemService(Context.TELEPHONY_SERVICE);
-            int networkType = mTelephonyManager.getNetworkType();
-            switch (networkType) {
-            case TelephonyManager.NETWORK_TYPE_GPRS:
-            case TelephonyManager.NETWORK_TYPE_EDGE:
-            case TelephonyManager.NETWORK_TYPE_CDMA:
-            case TelephonyManager.NETWORK_TYPE_1xRTT:
-            case TelephonyManager.NETWORK_TYPE_IDEN:
-                return "2g";
-            case TelephonyManager.NETWORK_TYPE_UMTS:
-            case TelephonyManager.NETWORK_TYPE_EVDO_0:
-            case TelephonyManager.NETWORK_TYPE_EVDO_A:
-            case TelephonyManager.NETWORK_TYPE_HSDPA:
-            case TelephonyManager.NETWORK_TYPE_HSUPA:
-            case TelephonyManager.NETWORK_TYPE_HSPA:
-            case TelephonyManager.NETWORK_TYPE_EVDO_B:
-            case TelephonyManager.NETWORK_TYPE_EHRPD:
-            case TelephonyManager.NETWORK_TYPE_HSPAP:
-                return "3g";
-            case TelephonyManager.NETWORK_TYPE_LTE:
-                return "4g";
-            case TelephonyManager.NETWORK_TYPE_NR:
-                return "5g";
-            default:
-                return "unknown";
-        }
-        } catch (SecurityException e) {
-            return "unknown";
-        }
+        return NetUtils.getNetworkType(context);
     }
 
     public static void setCursorDrawableColor(EditText editText, int color) {

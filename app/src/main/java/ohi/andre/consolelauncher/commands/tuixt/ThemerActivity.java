@@ -36,8 +36,11 @@ public class ThemerActivity extends AppCompatActivity {
 
     public static final String EXTRA_SECTION = "section";
     public static final String SECTION_HOME = "home";
-    public static final String SECTION_THEME = "theme";
-    public static final String SECTION_MUSIC = "music";
+    public static final String SECTION_APPEARANCE = "appearance";
+    public static final String SECTION_BEHAVIOR = "behavior";
+    public static final String SECTION_PERSONALIZATION = "personalization";
+    public static final String SECTION_INTEGRATIONS = "integrations";
+    public static final String SECTION_SYSTEM = "system";
 
     private RecyclerView recyclerView;
     private String section;
@@ -92,10 +95,16 @@ public class ThemerActivity extends AppCompatActivity {
                 String fileName = items.get(position);
                 ((TextView) holder.itemView).setText("- " + fileName);
                 holder.itemView.setOnClickListener(v -> {
-                    if (fileName.equals("Theme Settings")) {
-                        openSection(SECTION_THEME);
-                    } else if (fileName.equals("Music Settings")) {
-                        openSection(SECTION_MUSIC);
+                    if (fileName.equals("Appearance")) {
+                        openSection(SECTION_APPEARANCE);
+                    } else if (fileName.equals("Behavior")) {
+                        openSection(SECTION_BEHAVIOR);
+                    } else if (fileName.equals("Personalization")) {
+                        openSection(SECTION_PERSONALIZATION);
+                    } else if (fileName.equals("Integrations")) {
+                        openSection(SECTION_INTEGRATIONS);
+                    } else if (fileName.equals("System & Support")) {
+                        openSection(SECTION_SYSTEM);
                     } else if (fileName.equals("Open Wallpaper Picker")) {
                         launchWallpaperPicker();
                     } else if (fileName.equals("Open Live Wallpaper Picker")) {
@@ -220,48 +229,56 @@ public class ThemerActivity extends AppCompatActivity {
     }
 
     private String getHeaderText(String section) {
-        if (SECTION_THEME.equals(section)) {
-            return "Re:T-UI Theme Settings";
-        } else if (SECTION_MUSIC.equals(section)) {
-            return "Re:T-UI Music Settings";
+        if (SECTION_APPEARANCE.equals(section)) {
+            return "Re:T-UI Appearance Settings";
+        } else if (SECTION_BEHAVIOR.equals(section)) {
+            return "Re:T-UI Behavior Settings";
+        } else if (SECTION_PERSONALIZATION.equals(section)) {
+            return "Re:T-UI Personalization Settings";
+        } else if (SECTION_INTEGRATIONS.equals(section)) {
+            return "Re:T-UI Integrations";
+        } else if (SECTION_SYSTEM.equals(section)) {
+            return "Re:T-UI System & Support";
         }
         return "Re:T-UI Settings Hub";
     }
 
     private List<String> getItemsForSection(String section) {
-        if (SECTION_THEME.equals(section)) {
+        if (SECTION_APPEARANCE.equals(section)) {
             return Arrays.asList(
-                    "Open Wallpaper Picker",
-                    "Open Live Wallpaper Picker",
                     "theme.xml",
                     "ui.xml",
-                    "suggestions.xml",
                     "toolbar.xml",
+                    "suggestions.xml",
                     "Fonts",
-                    "View Crash Log"
+                    "Open Wallpaper Picker",
+                    "Open Live Wallpaper Picker"
             );
-        } else if (SECTION_MUSIC.equals(section)) {
+        } else if (SECTION_BEHAVIOR.equals(section)) {
+            return Arrays.asList(
+                    "behavior.xml",
+                    "apps.xml",
+                    "notifications.xml",
+                    "cmd.xml"
+            );
+        } else if (SECTION_PERSONALIZATION.equals(section)) {
+            return Arrays.asList(
+                    "alias.txt",
+                    "ascii.txt",
+                    "rss.xml"
+            );
+        } else if (SECTION_INTEGRATIONS.equals(section)) {
             return Arrays.asList("Preferred Music App: " + getPreferredMusicAppSummary());
+        } else if (SECTION_SYSTEM.equals(section)) {
+            return Arrays.asList("View Crash Log");
         }
 
         return Arrays.asList(
-                "Theme Settings",
-                "Music Settings",
-                "Open Wallpaper Picker",
-                "Open Live Wallpaper Picker",
-                "theme.xml",
-                "ui.xml",
-                "behavior.xml",
-                "cmd.xml",
-                "suggestions.xml",
-                "toolbar.xml",
-                "notifications.xml",
-                "apps.xml",
-                "rss.xml",
-                "alias.txt",
-                "ascii.txt",
-                "Fonts",
-                "View Crash Log"
+                "Appearance",
+                "Behavior",
+                "Personalization",
+                "Integrations",
+                "System & Support"
         );
     }
 

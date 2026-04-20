@@ -10,4 +10,5 @@ public interface OnRedirectionListener {
 
     void onRedirectionRequest(RedirectCommand cmd);
     void onRedirectionEnd(RedirectCommand cmd);
+    void onRedirection(String name, String value);
 }

@@ -13,10 +13,11 @@ import java.util.regex.Pattern;
 
 import ohi.andre.consolelauncher.UIManager;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
-import ohi.andre.consolelauncher.managers.xml.classes.Behavior;
-import ohi.andre.consolelauncher.managers.xml.classes.Theme;
-import ohi.andre.consolelauncher.managers.xml.classes.Ui;
+import ohi.andre.consolelauncher.managers.xml.options.Behavior;
+import ohi.andre.consolelauncher.managers.xml.options.Theme;
+import ohi.andre.consolelauncher.managers.xml.options.Ui;
 import ohi.andre.consolelauncher.tuils.Tuils;
+import ohi.andre.consolelauncher.tuils.UIUtils;
 import ohi.andre.consolelauncher.tuils.interfaces.OnBatteryUpdate;
 
 public class BatteryManager implements OnBatteryUpdate {
@@ -151,7 +152,7 @@ public class BatteryManager implements OnBatteryUpdate {
         cp = Tuils.patternNewline.matcher(cp).replaceAll(Tuils.NEWLINE);
 
         if (listener != null) {
-            listener.onUpdate(UIManager.Label.battery, Tuils.span(context, cp, color, size));
+            listener.onUpdate(UIManager.Label.battery, UIUtils.span(context, cp, color, size));
         }
     }
 
