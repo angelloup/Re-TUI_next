@@ -2,6 +2,10 @@
 
 Personal fork and continuation of the original T-UI launcher, updated for modern Android versions and ongoing device testing.
 
+# AI DISCLAIMER:
+
+> CODEX AND GOOGLE GEMINI Used for code health and troubleshooting
+
 ---
 
 ## 🚀 Recent Changes & Modernization
