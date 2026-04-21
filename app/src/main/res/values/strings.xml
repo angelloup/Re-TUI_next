@@ -421,6 +421,8 @@
         \n$ beep</string>
     <string name="help_notifications">-inc [appName] -> include an application
         \n-exc [appName] -> exclude an application
+        \n-on -> enable the notification terminal and reload the launcher
+        \n-off -> disable the notification terminal and reload the launcher
         \n-color [color] [appName] -> set the color to be used for the application
         \n-format [ID] [appName] -> apply the format with the given ID to the corresponding application
         \n-add_filter [ID] [filter] -> create a new filter with the given ID

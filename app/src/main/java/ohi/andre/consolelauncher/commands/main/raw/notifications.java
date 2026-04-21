@@ -12,7 +12,10 @@ import ohi.andre.consolelauncher.commands.main.specific.APICommand;
 import ohi.andre.consolelauncher.commands.main.specific.ParamCommand;
 import ohi.andre.consolelauncher.managers.notifications.NotificationManager;
 import ohi.andre.consolelauncher.managers.notifications.NotificationService;
+import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
+import ohi.andre.consolelauncher.managers.xml.options.Notifications;
 import ohi.andre.consolelauncher.tuils.Tuils;
+import ohi.andre.consolelauncher.tuils.interfaces.Reloadable;
 
 import static android.os.Build.VERSION_CODES.JELLY_BEAN_MR2;
 
@@ -228,6 +231,28 @@ public class notifications extends ParamCommand implements APICommand {
                 pack.context.startActivity(Tuils.webPage("https://github.com/DvilSpawn/Re-T-UI/wiki/Notifications"));
                 return null;
             }
+        },
+        on {
+            @Override
+            public int[] args() {
+                return new int[0];
+            }
+
+            @Override
+            public String exec(ExecutePack pack) {
+                return setNotificationTerminal(pack, true);
+            }
+        },
+        off {
+            @Override
+            public int[] args() {
+                return new int[0];
+            }
+
+            @Override
+            public String exec(ExecutePack pack) {
+                return setNotificationTerminal(pack, false);
+            }
         };
 
         static Param get(String p) {
@@ -274,6 +299,19 @@ public class notifications extends ParamCommand implements APICommand {
     @Override
     protected String doThings(ExecutePack pack) {
         return null;
+    }
+
+    private static String setNotificationTerminal(ExecutePack pack, boolean enabled) {
+        XMLPrefsManager.XMLPrefsRoot.NOTIFICATIONS.write(Notifications.show_notifications, String.valueOf(enabled));
+        NotificationService.requestReload(pack.context);
+
+        if (pack.context instanceof Reloadable) {
+            ((Reloadable) pack.context).addMessage("notifications", enabled ? "Notification terminal enabled" : "Notification terminal disabled");
+            ((Reloadable) pack.context).reload();
+            return Tuils.EMPTYSTRING;
+        }
+
+        return enabled ? "Notification terminal enabled." : "Notification terminal disabled.";
     }
 
     @Override
