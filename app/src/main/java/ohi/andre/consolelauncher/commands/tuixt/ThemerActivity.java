@@ -16,7 +16,6 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -142,16 +141,13 @@ public class ThemerActivity extends AppCompatActivity {
                             for (File f : fonts) options.add(f.getName());
                         }
 
-                        AlertDialog.Builder builder = new AlertDialog.Builder(ThemerActivity.this);
-                        builder.setTitle("Select a Font");
-                        builder.setItems(options.toArray(new String[0]), (dialog, which) -> {
+                        TuixtDialog.showOptions(ThemerActivity.this, "Select Font", options, which -> {
                             if (which == 0) {
                                 applySystemFont();
                             } else {
                                 applyFont(fonts[which - 1]);
                             }
                         });
-                        builder.show();
                     } else if (fileName.equals("Presets")) {
                         showPresetsDialog();
                     } else if (fileName.equals("View Crash Log")) {
@@ -247,44 +243,25 @@ public class ThemerActivity extends AppCompatActivity {
     }
 
     private void showPresetsDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(ThemerActivity.this);
-        builder.setTitle("Presets");
-        String[] options = {"Save Current as Preset", "Apply Preset"};
-        builder.setItems(options, (dialog, which) -> {
+        List<String> options = Arrays.asList("Save Current as Preset", "Apply Preset");
+        TuixtDialog.showOptions(ThemerActivity.this, "Presets", options, which -> {
             if (which == 0) {
-                // Save
-                EditText input = new EditText(ThemerActivity.this);
-                input.setHint("Preset Name");
-                input.setTextColor(Color.WHITE);
-                input.setHintTextColor(Color.GRAY);
-                new AlertDialog.Builder(ThemerActivity.this)
-                        .setTitle("Save Preset")
-                        .setView(input)
-                        .setPositiveButton("Save", (d, w) -> {
-                            String name = input.getText().toString().trim();
-                            if (name.length() > 0) {
-                                savePreset(name);
-                            }
-                        })
-                        .setNegativeButton("Cancel", null)
-                        .show();
+                TuixtDialog.showInput(ThemerActivity.this, "Save Preset", "Preset name", "Save", "Cancel", value -> {
+                    String name = value.trim();
+                    if (name.length() > 0) {
+                        savePreset(name);
+                    }
+                });
             } else {
-                // Apply
                 List<String> presetNames = PresetManager.listAllPresetNames();
                 if (presetNames.isEmpty()) {
                     Toast.makeText(ThemerActivity.this, "No presets found.", Toast.LENGTH_SHORT).show();
                     return;
                 }
 
-                new AlertDialog.Builder(ThemerActivity.this)
-                        .setTitle("Select Preset")
-                        .setItems(presetNames.toArray(new String[0]), (d, w) -> {
-                            applyPreset(presetNames.get(w));
-                        })
-                        .show();
+                TuixtDialog.showOptions(ThemerActivity.this, "Select Preset", presetNames, w -> applyPreset(presetNames.get(w)));
             }
         });
-        builder.show();
     }
 
     private void savePreset(String name) {
@@ -421,9 +398,7 @@ public class ThemerActivity extends AppCompatActivity {
             labels.add(choice.label + " (" + choice.packageName + ")");
         }
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Preferred Music App");
-        builder.setItems(labels.toArray(new String[0]), (dialog, which) -> {
+        TuixtDialog.showOptions(this, "Preferred Music App", labels, which -> {
             if (which == 0) {
                 LauncherSettings.set(this, Behavior.preferred_music_app, Tuils.EMPTYSTRING);
                 Toast.makeText(this, "Preferred music app reset to automatic detection.", Toast.LENGTH_SHORT).show();
@@ -434,7 +409,6 @@ public class ThemerActivity extends AppCompatActivity {
             }
             recreate();
         });
-        builder.show();
     }
 
     private List<AppChoice> getLaunchableAppChoices() {

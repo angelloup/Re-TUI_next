@@ -204,15 +204,16 @@ public class TuixtActivity extends Activity {
             return;
         }
 
-        new androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle("Discard changes?")
-                .setMessage("Unsaved settings changes will be lost.")
-                .setPositiveButton("Discard", (dialog, which) -> {
+        TuixtDialog.showConfirm(
+                this,
+                "Discard Changes?",
+                "Unsaved settings changes will be lost.",
+                "Discard",
+                "Keep Editing",
+                () -> {
                     setResult(BACK_PRESSED);
                     finish();
-                })
-                .setNegativeButton("Keep editing", null)
-                .show();
+                });
     }
 
     private boolean hasUnsavedChanges() {

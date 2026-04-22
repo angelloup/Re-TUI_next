@@ -1,6 +1,5 @@
 package ohi.andre.consolelauncher.commands.tuixt;
 
-import android.app.AlertDialog;
 import android.content.Context;
 import android.graphics.Color;
 import android.text.Editable;
@@ -185,15 +184,17 @@ public class TuixtAdapter extends RecyclerView.Adapter<TuixtAdapter.ViewHolder> 
         // Initial trigger
         listener.onProgressChanged(null, 0, false);
 
-        new AlertDialog.Builder(holder.itemView.getContext(), AlertDialog.THEME_HOLO_DARK)
-                .setView(dialogView)
-                .setPositiveButton("OK", (dialog, which) -> {
+        TuixtDialog.showContent(
+                holder.itemView.getContext(),
+                "Pick Color",
+                dialogView,
+                "OK",
+                "Cancel",
+                () -> {
                     String finalHex = hexText.getText().toString();
                     holder.input.setText(finalHex);
                     pendingChanges.put(item, finalHex);
-                })
-                .setNegativeButton("CANCEL", null)
-                .show();
+                });
     }
 
     @Override
