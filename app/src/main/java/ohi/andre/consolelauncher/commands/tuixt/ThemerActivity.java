@@ -7,9 +7,11 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -57,23 +59,31 @@ public class ThemerActivity extends AppCompatActivity {
             section = SECTION_HOME;
         }
 
+        FrameLayout screen = new FrameLayout(this);
+        screen.setBackgroundColor(TuixtTheme.overlayColor());
+        screen.setFitsSystemWindows(true);
+
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(Color.BLACK);
-        root.setPadding(16, 16, 16, 16);
-        root.setFitsSystemWindows(true);
+        root.setPadding(TuixtTheme.dp(this, 14), TuixtTheme.dp(this, 50), TuixtTheme.dp(this, 14), TuixtTheme.dp(this, 14));
+        TuixtTheme.stylePanel(this, root);
+
+        int panelLeft = TuixtTheme.dp(this, 28);
+        int panelTop = TuixtTheme.dp(this, 34);
+        FrameLayout.LayoutParams panelParams = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT);
+        panelParams.setMargins(panelLeft, panelTop, TuixtTheme.dp(this, 28), TuixtTheme.dp(this, 28));
+        screen.addView(root, panelParams);
 
         TextView header = new TextView(this);
-        header.setText("> " + getHeaderText(section));
-        header.setTextColor(Color.GREEN);
-        header.setTypeface(Typeface.MONOSPACE);
-        header.setTextSize(18);
-        root.addView(header);
-
-        View divider = new View(this);
-        divider.setBackgroundColor(Color.parseColor("#222222"));
-        divider.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 2));
-        root.addView(divider);
+        header.setText(getHeaderText(section));
+        TuixtTheme.styleHeader(this, header);
+        FrameLayout.LayoutParams headerParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        headerParams.gravity = Gravity.TOP | Gravity.START;
+        headerParams.leftMargin = panelLeft + TuixtTheme.dp(this, 38);
+        headerParams.topMargin = panelTop - TuixtTheme.dp(this, 11);
+        screen.addView(header, headerParams);
 
         recyclerView = new RecyclerView(this);
         recyclerView.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
@@ -86,17 +96,20 @@ public class ThemerActivity extends AppCompatActivity {
             public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
                 TextView tv = new TextView(parent.getContext());
                 tv.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-                tv.setPadding(20, 30, 20, 30);
-                tv.setTextColor(Color.WHITE);
-                tv.setTypeface(Typeface.MONOSPACE);
-                tv.setTextSize(16);
                 return new ViewHolder(tv);
             }
 
             @Override
             public void onBindViewHolder(ViewHolder holder, int position) {
                 String fileName = items.get(position);
-                ((TextView) holder.itemView).setText("- " + fileName);
+                TextView itemView = (TextView) holder.itemView;
+                itemView.setText(fileName.toUpperCase());
+                TuixtTheme.styleListItem(ThemerActivity.this, itemView, false);
+                RecyclerView.LayoutParams params = new RecyclerView.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT);
+                params.setMargins(0, 0, 0, TuixtTheme.dp(ThemerActivity.this, 8));
+                itemView.setLayoutParams(params);
                 holder.itemView.setOnClickListener(v -> {
                     if (fileName.equals("Appearance")) {
                         openSection(SECTION_APPEARANCE);
@@ -230,7 +243,7 @@ public class ThemerActivity extends AppCompatActivity {
         });
 
         root.addView(recyclerView);
-        setContentView(root);
+        setContentView(screen);
     }
 
     private void showPresetsDialog() {

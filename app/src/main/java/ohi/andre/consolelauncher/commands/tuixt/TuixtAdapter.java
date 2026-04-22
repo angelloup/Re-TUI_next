@@ -11,7 +11,6 @@ import android.widget.EditText;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
-import androidx.appcompat.widget.SwitchCompat;
 import androidx.recyclerview.widget.RecyclerView;
 import java.io.File;
 import java.util.ArrayList;
@@ -63,16 +62,23 @@ public class TuixtAdapter extends RecyclerView.Adapter<TuixtAdapter.ViewHolder> 
         String currentValue = pendingChanges.containsKey(item) ? pendingChanges.get(item) : XMLPrefsManager.get(item);
 
         holder.input.removeTextChangedListener(holder.textWatcher);
-        holder.toggle.setOnCheckedChangeListener(null);
+        holder.toggle.setOnClickListener(null);
         holder.colorPreview.setOnClickListener(null);
+        holder.itemView.setBackground(TuixtTheme.rect(holder.itemView.getContext(), TuixtTheme.surfaceColor(), TuixtTheme.borderColor(), 1.25f));
+        holder.title.setTextColor(TuixtTheme.accentColor());
+        holder.description.setTextColor(TuixtTheme.textColor());
+        TuixtTheme.styleInput(holder.itemView.getContext(), holder.input);
 
         if (XMLPrefsSave.BOOLEAN.equals(item.type())) {
             holder.toggle.setVisibility(View.VISIBLE);
             holder.colorPreview.setVisibility(View.GONE);
             holder.input.setVisibility(View.GONE);
-            holder.toggle.setChecked(Boolean.parseBoolean(currentValue));
-            holder.toggle.setOnCheckedChangeListener((buttonView, isChecked) -> {
-                pendingChanges.put(item, String.valueOf(isChecked));
+            boolean checked = Boolean.parseBoolean(currentValue);
+            TuixtTheme.styleToggle(holder.itemView.getContext(), holder.toggle, checked);
+            holder.toggle.setOnClickListener(v -> {
+                boolean next = !Boolean.parseBoolean(pendingChanges.containsKey(item) ? pendingChanges.get(item) : XMLPrefsManager.get(item));
+                pendingChanges.put(item, String.valueOf(next));
+                TuixtTheme.styleToggle(holder.itemView.getContext(), holder.toggle, next);
             });
         } else if (XMLPrefsSave.COLOR.equals(item.type())) {
             holder.toggle.setVisibility(View.GONE);
@@ -113,9 +119,9 @@ public class TuixtAdapter extends RecyclerView.Adapter<TuixtAdapter.ViewHolder> 
 
     private void updateColorPreview(View view, String hex) {
         try {
-            view.setBackgroundColor(Color.parseColor(hex));
+            TuixtTheme.styleColorPreview(view.getContext(), view, Color.parseColor(hex));
         } catch (Exception e) {
-            view.setBackgroundColor(Color.BLACK);
+            TuixtTheme.styleColorPreview(view.getContext(), view, Color.BLACK);
         }
     }
 
@@ -184,7 +190,7 @@ public class TuixtAdapter extends RecyclerView.Adapter<TuixtAdapter.ViewHolder> 
 
     static class ViewHolder extends RecyclerView.ViewHolder {
         TextView title, description;
-        SwitchCompat toggle;
+        TextView toggle;
         View colorPreview;
         EditText input;
         TextWatcher textWatcher;

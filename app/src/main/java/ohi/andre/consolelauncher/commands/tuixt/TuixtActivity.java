@@ -6,10 +6,12 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -52,26 +54,31 @@ public class TuixtActivity extends Activity {
         }
         file = new File(path);
 
-        // Root Layout
+        FrameLayout screen = new FrameLayout(this);
+        screen.setBackgroundColor(TuixtTheme.overlayColor());
+        screen.setFitsSystemWindows(true);
+
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(Color.BLACK);
-        root.setPadding(16, 16, 16, 16);
-        root.setFitsSystemWindows(true);
+        root.setPadding(TuixtTheme.dp(this, 14), TuixtTheme.dp(this, 50), TuixtTheme.dp(this, 14), TuixtTheme.dp(this, 14));
+        TuixtTheme.stylePanel(this, root);
 
-        // Header
+        int panelLeft = TuixtTheme.dp(this, 28);
+        int panelTop = TuixtTheme.dp(this, 34);
+        FrameLayout.LayoutParams panelParams = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT);
+        panelParams.setMargins(panelLeft, panelTop, TuixtTheme.dp(this, 28), TuixtTheme.dp(this, 28));
+        screen.addView(root, panelParams);
+
         TextView header = new TextView(this);
-        header.setText("> TUI-Themer: " + file.getName());
-        header.setTextColor(Color.GREEN);
-        header.setTypeface(android.graphics.Typeface.MONOSPACE);
-        header.setTextSize(16);
-        root.addView(header);
-
-        // Divider
-        View divider = new View(this);
-        divider.setBackgroundColor(Color.parseColor("#222222"));
-        divider.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 2));
-        root.addView(divider);
+        header.setText("Themer/ " + file.getName());
+        TuixtTheme.styleHeader(this, header);
+        FrameLayout.LayoutParams headerParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        headerParams.gravity = Gravity.TOP | Gravity.START;
+        headerParams.leftMargin = panelLeft + TuixtTheme.dp(this, 38);
+        headerParams.topMargin = panelTop - TuixtTheme.dp(this, 11);
+        screen.addView(header, headerParams);
 
         // RecyclerView
         recyclerView = new RecyclerView(this);
@@ -82,18 +89,13 @@ public class TuixtActivity extends Activity {
         // Bottom Bar (Search + Buttons)
         LinearLayout bottomBar = new LinearLayout(this);
         bottomBar.setOrientation(LinearLayout.VERTICAL);
-        bottomBar.setBackgroundColor(Color.parseColor("#111111"));
         bottomBar.setPadding(10, 10, 10, 10);
+        bottomBar.setBackground(TuixtTheme.rect(this, TuixtTheme.surfaceColor(), TuixtTheme.borderColor(), 1.25f));
 
         // Search Box
         EditText searchBox = new EditText(this);
         searchBox.setHint("Search settings...");
-        searchBox.setHintTextColor(Color.GRAY);
-        searchBox.setTextColor(Color.WHITE);
-        searchBox.setBackgroundColor(Color.parseColor("#222222"));
-        searchBox.setPadding(20, 15, 20, 15);
-        searchBox.setTypeface(android.graphics.Typeface.MONOSPACE);
-        searchBox.setTextSize(14);
+        TuixtTheme.styleInput(this, searchBox);
         bottomBar.addView(searchBox);
 
         // Action Buttons
@@ -103,9 +105,7 @@ public class TuixtActivity extends Activity {
 
         Button btnCancel = new Button(this);
         btnCancel.setText("CANCEL");
-        btnCancel.setBackgroundColor(Color.TRANSPARENT);
-        btnCancel.setTextColor(Color.RED);
-        btnCancel.setTypeface(android.graphics.Typeface.MONOSPACE);
+        TuixtTheme.styleButton(this, btnCancel, false);
         btnCancel.setOnClickListener(v -> finish());
         btnLayout.addView(btnCancel);
 
@@ -115,9 +115,7 @@ public class TuixtActivity extends Activity {
 
         Button btnSave = new Button(this);
         btnSave.setText("SAVE");
-        btnSave.setBackgroundColor(Color.TRANSPARENT);
-        btnSave.setTextColor(Color.GREEN);
-        btnSave.setTypeface(android.graphics.Typeface.MONOSPACE);
+        TuixtTheme.styleButton(this, btnSave, true);
         btnSave.setOnClickListener(v -> {
             Toast.makeText(this, "Applying changes...", Toast.LENGTH_SHORT).show();
             if (adapter != null) {
@@ -169,10 +167,7 @@ public class TuixtActivity extends Activity {
             plainTextEditor = new EditText(this);
             plainTextEditor.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
             plainTextEditor.setGravity(android.view.Gravity.TOP);
-            plainTextEditor.setTextColor(Color.WHITE);
-            plainTextEditor.setTypeface(android.graphics.Typeface.MONOSPACE);
-            plainTextEditor.setBackgroundColor(Color.BLACK);
-            plainTextEditor.setTextSize(14);
+            TuixtTheme.styleInput(this, plainTextEditor);
 
             try {
                 java.io.FileInputStream fis = new java.io.FileInputStream(file);
@@ -185,7 +180,7 @@ public class TuixtActivity extends Activity {
             root.addView(plainTextEditor, 2);
         }
 
-        setContentView(root);
+        setContentView(screen);
     }
 
     private void filter(String query) {

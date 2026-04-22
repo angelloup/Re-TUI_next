@@ -3,6 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
+    android:layout_marginBottom="8dp"
     android:padding="12dp"
     android:background="#000000">
 
@@ -39,10 +40,12 @@
             android:background="#FFFFFF"
             android:visibility="gone" />
 
-        <androidx.appcompat.widget.SwitchCompat
+        <TextView
             android:id="@+id/setting_switch"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:text="OFF"
+            android:fontFamily="monospace"
             android:visibility="gone" />
 
         <EditText
@@ -60,7 +63,7 @@
 
     <View
         android:layout_width="match_parent"
-        android:layout_height="1dp"
+        android:layout_height="0dp"
         android:layout_marginTop="12dp"
         android:background="#222222" />
 </LinearLayout>
