@@ -12,8 +12,7 @@ import android.util.TypedValue;
 
 import java.io.File;
 
-import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
-import ohi.andre.consolelauncher.managers.xml.options.Ui;
+import ohi.andre.consolelauncher.managers.settings.AppearanceSettings;
 
 public class UIUtils {
 
@@ -23,13 +22,13 @@ public class UIUtils {
     public static Typeface getTypeface(Context context) {
         if (globalTypeface != null) return globalTypeface;
 
-        boolean systemFont = XMLPrefsManager.get(boolean.class, Ui.system_font);
+        boolean systemFont = AppearanceSettings.useSystemFont();
         if (systemFont) {
             globalTypeface = Typeface.MONOSPACE;
             return globalTypeface;
         }
 
-        String fontName = XMLPrefsManager.get(Ui.font_file);
+        String fontName = AppearanceSettings.fontFile();
         if (fontName == null || fontName.length() == 0) {
             globalTypeface = Typeface.MONOSPACE;
             return globalTypeface;

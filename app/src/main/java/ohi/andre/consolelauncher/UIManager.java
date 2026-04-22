@@ -81,6 +81,9 @@ import ohi.andre.consolelauncher.managers.TerminalManager;
 import ohi.andre.consolelauncher.managers.TimeManager;
 import ohi.andre.consolelauncher.managers.TuiLocationManager;
 import ohi.andre.consolelauncher.managers.notifications.NotificationService;
+import ohi.andre.consolelauncher.managers.settings.AppearanceSettings;
+import ohi.andre.consolelauncher.managers.settings.MusicSettings;
+import ohi.andre.consolelauncher.managers.settings.NotificationSettings;
 import ohi.andre.consolelauncher.managers.suggestions.SuggestionTextWatcher;
 import ohi.andre.consolelauncher.managers.suggestions.SuggestionsManager;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
@@ -526,7 +529,7 @@ public class UIManager implements OnTouchListener {
                     String source = intent.getStringExtra(MusicService.MUSIC_SOURCE);
                     String pkg = intent.getStringExtra("package");
 
-                    String preferredPkg = XMLPrefsManager.get(Behavior.preferred_music_app);
+                    String preferredPkg = MusicSettings.preferredPackage();
                     boolean isPreferred = TextUtils.isEmpty(preferredPkg) || preferredPkg.equals(pkg);
 
                     // Source logic: external always wins if it is playing.
@@ -559,8 +562,8 @@ public class UIManager implements OnTouchListener {
                     }
                     updateContextContainerVisibility(rootView);
 
-                    int widgetColor = XMLPrefsManager.getColor(Theme.music_widget_color);
-                    int widgetBgColor = XMLPrefsManager.getColor(Theme.window_terminal_bg);
+                    int widgetColor = AppearanceSettings.musicWidgetColor();
+                    int widgetBgColor = AppearanceSettings.terminalWindowBackground();
 
                     MusicVisualizerView visualizerView = rootView.findViewById(R.id.music_visualizer);
                     if (visualizerView != null) {
@@ -584,10 +587,10 @@ public class UIManager implements OnTouchListener {
                     if (borderView != null) {
                         GradientDrawable gd = new GradientDrawable();
                         gd.setShape(GradientDrawable.RECTANGLE);
-                        if (XMLPrefsManager.getBoolean(Ui.enable_dashed_border)) {
+                        if (AppearanceSettings.dashedBorders()) {
                             gd.setStroke((int) UIUtils.dpToPx(mContext, 1.5f), widgetColor,
-                                    UIUtils.dpToPx(mContext, XMLPrefsManager.getInt(Ui.dashed_border_dash_length)),
-                                    UIUtils.dpToPx(mContext, XMLPrefsManager.getInt(Ui.dashed_border_gap_length)));
+                                    UIUtils.dpToPx(mContext, AppearanceSettings.dashLength()),
+                                    UIUtils.dpToPx(mContext, AppearanceSettings.dashGap()));
                         } else {
                             gd.setStroke((int) UIUtils.dpToPx(mContext, 1.5f), widgetColor);
                         }
@@ -602,10 +605,10 @@ public class UIManager implements OnTouchListener {
                             GradientDrawable gd = (GradientDrawable) androidx.core.content.res.ResourcesCompat.getDrawable(
                                     mContext.getResources(), R.drawable.apps_drawer_header_border, null).mutate();
                             if (gd != null) {
-                                if (XMLPrefsManager.getBoolean(Ui.enable_dashed_border)) {
+                                if (AppearanceSettings.dashedBorders()) {
                                     gd.setStroke((int) UIUtils.dpToPx(mContext, 1.5f), widgetColor,
-                                            UIUtils.dpToPx(mContext, XMLPrefsManager.getInt(Ui.dashed_border_dash_length)),
-                                            UIUtils.dpToPx(mContext, XMLPrefsManager.getInt(Ui.dashed_border_gap_length)));
+                                            UIUtils.dpToPx(mContext, AppearanceSettings.dashLength()),
+                                            UIUtils.dpToPx(mContext, AppearanceSettings.dashGap()));
                                 } else {
                                     gd.setStroke((int) UIUtils.dpToPx(mContext, 1.5f), widgetColor);
                                 }
@@ -622,7 +625,7 @@ public class UIManager implements OnTouchListener {
         };
 
         LocalBroadcastManager.getInstance(context.getApplicationContext()).registerReceiver(receiver, filter);
-        if (XMLPrefsManager.getBoolean(Notifications.show_notifications) || XMLPrefsManager.get(Notifications.show_notifications).equalsIgnoreCase("enabled")) {
+        if (NotificationSettings.showTerminal()) {
             final LocalBroadcastManager lbm = LocalBroadcastManager.getInstance(context.getApplicationContext());
             lbm.sendBroadcast(new Intent(ACTION_REQUEST_NOTIFICATION_FEED));
             rootView.postDelayed(() -> lbm.sendBroadcast(new Intent(ACTION_REQUEST_NOTIFICATION_FEED)), 350);
@@ -898,7 +901,7 @@ public class UIManager implements OnTouchListener {
         strokeWidth = Integer.parseInt(rectParams[0]);
         cornerRadius = Integer.parseInt(rectParams[1]);
 
-        boolean useDashed = XMLPrefsManager.getBoolean(Ui.enable_dashed_border);
+        boolean useDashed = AppearanceSettings.dashedBorders();
 
         final int OUTPUT_MARGINS_INDEX = 1;
         final int INPUTAREA_MARGINS_INDEX = 2;
@@ -1195,7 +1198,7 @@ public class UIManager implements OnTouchListener {
             applyBgRect(mContext, toolbarView, bgRectColors[TOOLBAR_BGCOLOR_INDEX], bgColors[TOOLBAR_BGCOLOR_INDEX], margins[TOOLBAR_MARGINS_INDEX], strokeWidth, cornerRadius, useDashed, XMLPrefsManager.getColor(Theme.toolbar_color));
         }
 
-        if (XMLPrefsManager.getBoolean(Behavior.show_music_widget)) {
+        if (MusicSettings.showWidget()) {
             LinearLayout contextContainer = rootView.findViewById(R.id.context_container);
             if (contextContainer != null) {
                 View musicWidget = inflater.inflate(R.layout.music_widget, contextContainer, false);
@@ -1204,7 +1207,7 @@ public class UIManager implements OnTouchListener {
             }
         }
 
-        if (XMLPrefsManager.getBoolean(Notifications.show_notifications) || XMLPrefsManager.get(Notifications.show_notifications).equalsIgnoreCase("enabled")) {
+        if (NotificationSettings.showTerminal()) {
             LinearLayout contextContainer = rootView.findViewById(R.id.context_container);
             if (contextContainer != null) {
                 View notificationWidget = inflater.inflate(R.layout.notification_widget, contextContainer, false);
@@ -1251,8 +1254,8 @@ public class UIManager implements OnTouchListener {
         ohi.andre.consolelauncher.tuils.TuiWidgetDecorator.decorateWidget(musicWidget, R.id.music_widget_border, R.id.music_widget_label);
 
         // Style control buttons
-        int widgetColor = XMLPrefsManager.getColor(Theme.music_widget_color);
-        boolean useDashed = XMLPrefsManager.getBoolean(Ui.enable_dashed_border);
+        int widgetColor = AppearanceSettings.musicWidgetColor();
+        boolean useDashed = AppearanceSettings.dashedBorders();
 
         int buttonColor = widgetColor;
         TextView prevBtn = musicWidget.findViewById(R.id.music_prev);
@@ -1270,8 +1273,8 @@ public class UIManager implements OnTouchListener {
                 gd.setShape(GradientDrawable.RECTANGLE);
                 if (useDashed) {
                     gd.setStroke((int) Tuils.dpToPx(mContext, 1.2f), buttonColor,
-                            Tuils.dpToPx(mContext, XMLPrefsManager.getInt(Ui.dashed_border_dash_length) / 2),
-                            Tuils.dpToPx(mContext, XMLPrefsManager.getInt(Ui.dashed_border_gap_length) / 2));
+                            Tuils.dpToPx(mContext, AppearanceSettings.dashLength() / 2),
+                            Tuils.dpToPx(mContext, AppearanceSettings.dashGap() / 2));
                 } else {
                     gd.setStroke((int) Tuils.dpToPx(mContext, 1.2f), buttonColor);
                 }
@@ -1327,17 +1330,17 @@ public class UIManager implements OnTouchListener {
             return;
         }
 
-        int accent = XMLPrefsManager.getColor(Theme.music_widget_color);
-        int surface = ColorUtils.setAlphaComponent(XMLPrefsManager.getColor(Theme.window_terminal_bg), 238);
+        int accent = AppearanceSettings.musicWidgetColor();
+        int surface = ColorUtils.setAlphaComponent(AppearanceSettings.terminalWindowBackground(), 238);
         int border = ColorUtils.setAlphaComponent(accent, 220);
 
         GradientDrawable bg = new GradientDrawable();
         bg.setShape(GradientDrawable.RECTANGLE);
         bg.setColor(ColorUtils.setAlphaComponent(surface, 232));
-        if (XMLPrefsManager.getBoolean(Ui.enable_dashed_border)) {
+        if (AppearanceSettings.dashedBorders()) {
             bg.setStroke((int) Tuils.dpToPx(mContext, 1.5f), border,
-                    Tuils.dpToPx(mContext, XMLPrefsManager.getInt(Ui.dashed_border_dash_length)),
-                    Tuils.dpToPx(mContext, XMLPrefsManager.getInt(Ui.dashed_border_gap_length)));
+                    Tuils.dpToPx(mContext, AppearanceSettings.dashLength()),
+                    Tuils.dpToPx(mContext, AppearanceSettings.dashGap()));
         } else {
             bg.setStroke((int) Tuils.dpToPx(mContext, 1.5f), border);
         }
@@ -1443,7 +1446,7 @@ public class UIManager implements OnTouchListener {
         }
 
         rows.removeAllViews();
-        int widgetColor = XMLPrefsManager.getColor(Theme.music_widget_color);
+        int widgetColor = AppearanceSettings.musicWidgetColor();
 
         int maxRows = notificationCompactForKeyboard ? Math.min(1, currentOverlayNotifications.size()) : currentOverlayNotifications.size();
         for (int i = 0; i < maxRows; i++) {
@@ -1564,7 +1567,7 @@ public class UIManager implements OnTouchListener {
 
         int drawerColor = XMLPrefsManager.getColor(Theme.apps_drawer_color);
         int borderColor = XMLPrefsManager.getColor(Theme.input_color);
-        int widgetBgColor = XMLPrefsManager.getColor(Theme.window_terminal_bg);
+        int widgetBgColor = AppearanceSettings.terminalWindowBackground();
 
         appsDrawerHeader.setTextColor(drawerColor);
         appsDrawerFooter.setTextColor(drawerColor);
@@ -1573,9 +1576,9 @@ public class UIManager implements OnTouchListener {
         appsDrawerHeader.setBackgroundColor(widgetBgColor);
         appsDrawerFooter.setBackgroundColor(widgetBgColor);
 
-        boolean useDashed = XMLPrefsManager.getBoolean(Ui.enable_dashed_border);
-        int dash = XMLPrefsManager.getInt(Ui.dashed_border_dash_length);
-        int gap = XMLPrefsManager.getInt(Ui.dashed_border_gap_length);
+        boolean useDashed = AppearanceSettings.dashedBorders();
+        int dash = AppearanceSettings.dashLength();
+        int gap = AppearanceSettings.dashGap();
 
         try {
             GradientDrawable gd = (GradientDrawable) androidx.core.content.res.ResourcesCompat.getDrawable(mContext.getResources(), R.drawable.apps_drawer_border, null).mutate();
@@ -1842,7 +1845,7 @@ public class UIManager implements OnTouchListener {
         selectedAppsDrawerAlpha = letter;
         int drawerColor = XMLPrefsManager.getColor(Theme.apps_drawer_color);
         int borderColor = XMLPrefsManager.getColor(Theme.input_color);
-        int widgetBgColor = XMLPrefsManager.getColor(Theme.window_terminal_bg);
+        int widgetBgColor = AppearanceSettings.terminalWindowBackground();
         for (Map.Entry<String, TextView> entry : appsDrawerAlphaViews.entrySet()) {
             styleAlphaTab(entry.getValue(), entry.getKey(), drawerColor, borderColor, widgetBgColor);
         }
@@ -1977,8 +1980,8 @@ public class UIManager implements OnTouchListener {
                     int sColor = isTransparent ? fallbackColor : Color.parseColor(strokeColor);
                     if (dashed) {
                         d.setStroke((int) Tuils.dpToPx(context, 1.5f), sColor, 
-                                Tuils.dpToPx(context, XMLPrefsManager.getInt(Ui.dashed_border_dash_length)), 
-                                Tuils.dpToPx(context, XMLPrefsManager.getInt(Ui.dashed_border_gap_length)));
+                                Tuils.dpToPx(context, AppearanceSettings.dashLength()), 
+                                Tuils.dpToPx(context, AppearanceSettings.dashGap()));
                     } else {
                         d.setStroke(strokeWidth, sColor);
                     }
@@ -1992,11 +1995,11 @@ public class UIManager implements OnTouchListener {
             try {
                 int color = Color.parseColor(bgColor);
                 if (color == Color.TRANSPARENT) {
-                    color = XMLPrefsManager.getColor(Theme.window_terminal_bg);
+                    color = AppearanceSettings.terminalWindowBackground();
                 }
                 d.setColor(color);
             } catch (Exception e) {
-                d.setColor(XMLPrefsManager.getColor(Theme.window_terminal_bg));
+                d.setColor(AppearanceSettings.terminalWindowBackground());
             }
             v.setBackgroundDrawable(d);
         } catch (Exception e) {

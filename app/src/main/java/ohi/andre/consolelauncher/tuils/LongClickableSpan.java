@@ -17,8 +17,7 @@ import ohi.andre.consolelauncher.MainManager;
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.managers.notifications.NotificationManager;
 import ohi.andre.consolelauncher.managers.notifications.NotificationService;
-import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
-import ohi.andre.consolelauncher.managers.xml.options.Notifications;
+import ohi.andre.consolelauncher.managers.settings.NotificationSettings;
 
 /**
  * Created by francescoandreuzzi on 22/10/2017.
@@ -85,9 +84,9 @@ public class LongClickableSpan extends ClickableSpan {
         if(!set) {
             set = true;
 
-            showExcludeApp = XMLPrefsManager.getBoolean(Notifications.notification_popup_exclude_app);
-            showExcludeNotification = XMLPrefsManager.getBoolean(Notifications.notification_popup_exclude_notification);
-            showReply = XMLPrefsManager.getBoolean(Notifications.notification_popup_reply);
+            showExcludeApp = NotificationSettings.showExcludeAppPopupAction();
+            showExcludeNotification = NotificationSettings.showExcludeNotificationPopupAction();
+            showReply = NotificationSettings.showReplyPopupAction();
 
             showMenu = (showExcludeApp && showExcludeNotification) || (showExcludeApp && showReply) || (showExcludeNotification && showReply);
         }
@@ -168,4 +167,3 @@ public class LongClickableSpan extends ClickableSpan {
         return true;
     }
 }
-

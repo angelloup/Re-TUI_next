@@ -20,6 +20,7 @@ import java.util.regex.Pattern;
 
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.managers.RegexManager;
+import ohi.andre.consolelauncher.managers.settings.NotificationSettings;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsElement;
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsList;
@@ -235,8 +236,8 @@ public class NotificationManager implements XMLPrefsElement {
             } catch (Exception e) {}
         }
 
-        default_app_state = XMLPrefsManager.getBoolean(Notifications.app_notification_enabled_default);
-        default_color = XMLPrefsManager.get(Notifications.default_notification_color);
+        default_app_state = NotificationSettings.appNotificationsEnabledByDefault();
+        default_color = NotificationSettings.defaultColorRaw();
     }
 
     public void dispose() {

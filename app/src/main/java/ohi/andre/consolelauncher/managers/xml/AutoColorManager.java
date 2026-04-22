@@ -12,10 +12,10 @@ import android.os.Build;
 import androidx.annotation.RequiresApi;
 import androidx.core.graphics.ColorUtils;
 
+import ohi.andre.consolelauncher.managers.settings.AppearanceSettings;
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave;
 import ohi.andre.consolelauncher.managers.xml.options.Suggestions;
 import ohi.andre.consolelauncher.managers.xml.options.Theme;
-import ohi.andre.consolelauncher.managers.xml.options.Ui;
 
 public final class AutoColorManager {
 
@@ -37,7 +37,7 @@ public final class AutoColorManager {
     }
 
     public static int getColor(XMLPrefsSave prefsSave, int fallbackColor) {
-        if (!XMLPrefsManager.getBoolean(Ui.auto_color_pick)) {
+        if (!AppearanceSettings.autoColorPick()) {
             return fallbackColor;
         }
         return getAutoColor(prefsSave, fallbackColor);

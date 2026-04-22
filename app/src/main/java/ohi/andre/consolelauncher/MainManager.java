@@ -37,6 +37,7 @@ import ohi.andre.consolelauncher.managers.HistoryManager;
 import ohi.andre.consolelauncher.managers.music.MusicManager2;
 import ohi.andre.consolelauncher.managers.music.MusicService;
 import ohi.andre.consolelauncher.managers.notifications.KeeperService;
+import ohi.andre.consolelauncher.managers.settings.MusicSettings;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
 import ohi.andre.consolelauncher.managers.xml.options.Behavior;
 import ohi.andre.consolelauncher.managers.xml.options.Theme;
@@ -200,7 +201,7 @@ public class MainManager {
 
         rssManager = new RssManager(mContext, client);
         themeManager = new ThemeManager(client, mContext, c);
-        musicManager2 = XMLPrefsManager.getBoolean(Behavior.enable_music) ? new MusicManager2(mContext) : null;
+        musicManager2 = MusicSettings.enabled() ? new MusicManager2(mContext) : null;
         htmlExtractManager = new HTMLExtractManager(mContext, client);
         webhookManager = new WebhookManager(mContext);
         historyManager = new HistoryManager();

@@ -47,6 +47,8 @@ import ohi.andre.consolelauncher.managers.TimeManager;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import ohi.andre.consolelauncher.managers.music.MusicService;
 import ohi.andre.consolelauncher.managers.notifications.reply.ReplyManager;
+import ohi.andre.consolelauncher.managers.settings.MusicSettings;
+import ohi.andre.consolelauncher.managers.settings.NotificationSettings;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
 import ohi.andre.consolelauncher.managers.xml.options.Behavior;
 import ohi.andre.consolelauncher.managers.xml.options.Notifications;
@@ -255,8 +257,7 @@ public class NotificationService extends NotificationListenerService {
             return;
         }
 
-        String preferredPkg = XMLPrefsManager.get(Behavior.preferred_music_app);
-        if (!TextUtils.isEmpty(preferredPkg) && !preferredPkg.equals(activeController.getPackageName())) {
+        if (!MusicSettings.acceptsPackage(activeController.getPackageName())) {
             Log.d("TUI-Music", "Active controller " + activeController.getPackageName() + " is not preferred. Hiding widget.");
             sendMusicBroadcast(null, null, 0, 0, false, MusicService.SOURCE_EXTERNAL, activeController.getPackageName());
             return;
@@ -294,7 +295,7 @@ public class NotificationService extends NotificationListenerService {
         }
 
         List<MediaController> rankedControllers = new ArrayList<>(activeControllers);
-        final String preferredPackage = XMLPrefsManager.get(Behavior.preferred_music_app);
+        final String preferredPackage = MusicSettings.preferredPackage();
 
         Collections.sort(rankedControllers, new Comparator<MediaController>() {
             @Override
@@ -839,12 +840,12 @@ public class NotificationService extends NotificationListenerService {
     }
 
     private void loadConfig() {
-        enabled = XMLPrefsManager.getBoolean(Notifications.show_notifications) || XMLPrefsManager.get(Notifications.show_notifications).equalsIgnoreCase("enabled");
-        terminalNotifications = XMLPrefsManager.getBoolean(Notifications.terminal_notifications);
-        format = XMLPrefsManager.get(Notifications.notification_format);
-        color = XMLPrefsManager.getColor(Notifications.default_notification_color);
-        click = XMLPrefsManager.getBoolean(Notifications.click_notification);
-        longClick = XMLPrefsManager.getBoolean(Notifications.long_click_notification);
+        enabled = NotificationSettings.showTerminal();
+        terminalNotifications = NotificationSettings.printToOutput();
+        format = NotificationSettings.format();
+        color = NotificationSettings.defaultColor();
+        click = NotificationSettings.clickOpensNotification();
+        longClick = NotificationSettings.longClickOpensNotificationActions();
         maxOptionalDepth = XMLPrefsManager.getInt(Behavior.max_optional_depth);
 
         if(notificationManager != null) {

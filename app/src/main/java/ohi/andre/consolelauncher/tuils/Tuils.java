@@ -104,6 +104,7 @@ import ohi.andre.consolelauncher.managers.TerminalManager;
 import ohi.andre.consolelauncher.managers.music.MusicManager2;
 import ohi.andre.consolelauncher.managers.music.Song;
 import ohi.andre.consolelauncher.managers.notifications.NotificationService;
+import ohi.andre.consolelauncher.managers.settings.AppearanceSettings;
 import ohi.andre.consolelauncher.managers.settings.LauncherSettings;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave;
@@ -167,8 +168,8 @@ public class Tuils {
             try {
                 XMLPrefsManager.loadCommons(context);
                 prefsLoaded = true;
-                systemFont = XMLPrefsManager.getBoolean(Ui.system_font);
-                configuredFont = XMLPrefsManager.get(Ui.font_file);
+                systemFont = AppearanceSettings.useSystemFont();
+                configuredFont = AppearanceSettings.fontFile();
             } catch (Exception e) {
                 Log.e("TUI-FONT", "Unable to load font prefs, trying filesystem fallback", e);
             }

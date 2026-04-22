@@ -25,8 +25,16 @@ public final class LauncherSettings {
         return XMLPrefsManager.get(value);
     }
 
-    public static boolean getBoolean(Ui value) {
+    public static boolean getBoolean(XMLPrefsSave value) {
         return XMLPrefsManager.getBoolean(value);
+    }
+
+    public static int getInt(XMLPrefsSave value) {
+        return XMLPrefsManager.getInt(value);
+    }
+
+    public static int getColor(XMLPrefsSave value) {
+        return XMLPrefsManager.getColor(value);
     }
 
     public static void set(XMLPrefsSave value, String rawValue) {

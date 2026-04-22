@@ -28,6 +28,7 @@ import java.util.List;
 
 import ohi.andre.consolelauncher.LauncherActivity;
 import ohi.andre.consolelauncher.managers.PresetManager;
+import ohi.andre.consolelauncher.managers.settings.MusicSettings;
 import ohi.andre.consolelauncher.managers.settings.LauncherSettings;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
 import ohi.andre.consolelauncher.managers.xml.options.Behavior;
@@ -382,7 +383,7 @@ public class ThemerActivity extends AppCompatActivity {
     }
 
     private String getPreferredMusicAppSummary() {
-        String packageName = XMLPrefsManager.get(Behavior.preferred_music_app);
+        String packageName = MusicSettings.preferredPackage();
         if (packageName == null || packageName.length() == 0) {
             return "Auto detect";
         }
