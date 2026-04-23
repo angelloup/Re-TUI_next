@@ -18,7 +18,6 @@ This wiki is organized like the original upstream docs, but rebuilt around the c
 - [Notifications](./Notifications.md)
 - [Music Visualizer](./Music-Visualizer.md)
 - [App Drawer](./App-Drawer.md)
-- [Fun Commands](./Fun-Commands.md)
 
 ## Philosophy
 
@@ -41,7 +40,6 @@ UI surfaces like the app drawer and settings hub exist to make the launcher easi
 - `wallpaper -live`
 - `wallpaper -auto`
 - `notifications`
-- `hack`
 
 ## Notes
 
