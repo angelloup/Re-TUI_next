@@ -63,6 +63,26 @@ To enable a full Linux environment, you can install BusyBox directly from the la
 
 ---
 
+## 📦 Release Channels and Support
+
+Re:T-UI now has a clear channel split:
+
+*   **Play Store:** Official stable release for normal users and the primary way to support development.
+*   **Firebase App Distribution:** Official beta/testing channel for preview builds and rapid validation. Join the testing group here: **[Firebase Testing Group](https://appdistribution.firebase.dev/i/c9e19a871392ea7a)**.
+*   **GitHub:** Source code, docs, issue tracking, and self-built/community workflows.
+
+Support expectations follow that split:
+
+*   **Play Store builds:** Fully supported.
+*   **Firebase builds:** Supported on a testing / best-effort basis.
+*   **Self-built or forked builds:** Community / best-effort only.
+
+The project stays public because Re:T-UI benefits from open development, but the Play Store build is the canonical polished release for everyday use.
+
+For more detail, see **[docs/wiki/Support-and-Release-Channels.md](./docs/wiki/Support-and-Release-Channels.md)**.
+
+---
+
 ## 🛡 Security Hardening (OWASP MASVS Compliance)
 
 This project has been audited and hardened following the **OWASP Mobile Application Security Verification Standard (MASVS)**.

@@ -19,6 +19,7 @@ This wiki is organized like the original upstream docs, but rebuilt around the c
 - [Migration Guide](./Migration-Guide.md)
 - [Preset Sharing](./Preset-Sharing.md)
 - [FAQ and Troubleshooting](./FAQ-and-Troubleshooting.md)
+- [Support and Release Channels](./Support-and-Release-Channels.md)
 
 ## Features
 
