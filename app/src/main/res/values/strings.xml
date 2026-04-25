@@ -423,6 +423,21 @@
     <string name="help_beep">Emit a \"beep\".
         \n\nUsage:
         \n$ beep</string>
+    <string name="help_timer">Start or manage a timer.
+        \n\nUsage:
+        \n$ timer [duration]
+        \n$ timer -add [duration]
+        \n$ timer -stop
+        \n$ timer -status
+        \n\nExamples:
+        \n$ timer 5m
+        \n$ timer -add 30s</string>
+    <string name="help_stopwatch">Start or manage a stopwatch.
+        \n\nUsage:
+        \n$ stopwatch
+        \n$ stopwatch -stop
+        \n$ stopwatch -reset
+        \n$ stopwatch -status</string>
     <string name="help_notifications">-inc [appName] -> include an application
         \n-exc [appName] -> exclude an application
         \n-on -> enable the notification terminal and reload the launcher

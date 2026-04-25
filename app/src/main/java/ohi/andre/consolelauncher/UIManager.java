@@ -47,6 +47,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import ohi.andre.consolelauncher.commands.main.MainPack;
 import ohi.andre.consolelauncher.managers.AppsManager;
+import ohi.andre.consolelauncher.managers.ClockManager;
 import ohi.andre.consolelauncher.managers.music.MusicService;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -136,6 +137,7 @@ public class UIManager implements OnTouchListener {
     public static final String ACTION_NOTIFICATION_FEED = NotificationService.ACTION_NOTIFICATION_FEED;
     public static final String EXTRA_NOTIFICATION_LIST = NotificationService.EXTRA_NOTIFICATION_LIST;
     public static final String ACTION_REQUEST_NOTIFICATION_FEED = NotificationService.ACTION_REQUEST_NOTIFICATION_FEED;
+    public static final String ACTION_CLOCK_STATE = ClockManager.ACTION_CLOCK_STATE;
 
     public static final String ACTION_NOTIFICATION_RECEIVED = BuildConfig.APPLICATION_ID + ".ui_notification_received";
     public static final String NOTIFICATION_TEXT = "notification_text";
@@ -186,6 +188,8 @@ public class UIManager implements OnTouchListener {
     private final LinkedHashMap<String, TextView> appsDrawerAlphaViews = new LinkedHashMap<>();
     private final ArrayList<NotificationService.Notification> currentOverlayNotifications = new ArrayList<>();
     private boolean notificationCompactForKeyboard = false;
+    private boolean timerTabVisible = false;
+    private boolean stopwatchTabVisible = false;
     private String selectedAppsDrawerGroup = null;
     private String selectedAppsDrawerAlpha = null;
 
@@ -428,6 +432,7 @@ public class UIManager implements OnTouchListener {
         filter.addAction(ACTION_WEATHER_MANUAL_UPDATE);
         filter.addAction(ACTION_MUSIC_CHANGED);
         filter.addAction(ACTION_NOTIFICATION_FEED);
+        filter.addAction(ACTION_CLOCK_STATE);
 
         receiver = new BroadcastReceiver() {
             @Override
@@ -620,6 +625,12 @@ public class UIManager implements OnTouchListener {
                 } else if (action.equals(ACTION_NOTIFICATION_FEED)) {
                     ArrayList<NotificationService.Notification> notifications = intent.getParcelableArrayListExtra(EXTRA_NOTIFICATION_LIST);
                     updateNotificationWidget(rootView, notifications);
+                } else if (action.equals(ACTION_CLOCK_STATE)) {
+                    updateClockOverlay(intent);
+                    String message = intent.getStringExtra(ClockManager.EXTRA_MESSAGE);
+                    if (!TextUtils.isEmpty(message)) {
+                        Tuils.sendOutput(context, message, TerminalManager.CATEGORY_OUTPUT);
+                    }
                 }
             }
         };
@@ -631,6 +642,7 @@ public class UIManager implements OnTouchListener {
             rootView.postDelayed(() -> lbm.sendBroadcast(new Intent(ACTION_REQUEST_NOTIFICATION_FEED)), 350);
             rootView.postDelayed(() -> lbm.sendBroadcast(new Intent(ACTION_REQUEST_NOTIFICATION_FEED)), 1100);
         }
+        ClockManager.getInstance(context.getApplicationContext()).broadcastState();
         ContextCompat.registerReceiver(context.getApplicationContext(), receiver, filter, ContextCompat.RECEIVER_EXPORTED);
 
         policy = (DevicePolicyManager) context.getSystemService(Context.DEVICE_POLICY_SERVICE);
@@ -1216,6 +1228,8 @@ public class UIManager implements OnTouchListener {
             }
         }
 
+        styleClockOverlay(rootView);
+
         mTerminalAdapter = new TerminalManager(terminalView, inputView, prefixView, submitView, backView, nextView, deleteView, pasteView, context, mainPack, executer);
 
         if (XMLPrefsManager.getBoolean(Suggestions.show_suggestions)) {
@@ -1350,6 +1364,79 @@ public class UIManager implements OnTouchListener {
         hackText.setTextColor(accent);
         hackText.setTypeface(Tuils.getTypeface(mContext));
         hackText.setTextSize(11f);
+    }
+
+    private void styleClockOverlay(View rootView) {
+        TextView timerTab = rootView.findViewById(R.id.timer_tab);
+        TextView stopwatchTab = rootView.findViewById(R.id.stopwatch_tab);
+
+        styleClockTab(timerTab, v -> {
+            String message = ClockManager.getInstance(mContext).stopTimer();
+            Tuils.sendOutput(mContext, message, TerminalManager.CATEGORY_OUTPUT);
+        });
+        styleClockTab(stopwatchTab, v -> {
+            String message = ClockManager.getInstance(mContext).stopStopwatch();
+            Tuils.sendOutput(mContext, message, TerminalManager.CATEGORY_OUTPUT);
+        });
+    }
+
+    private void styleClockTab(TextView tab, View.OnClickListener listener) {
+        if (tab == null) {
+            return;
+        }
+
+        int borderColor = XMLPrefsManager.getColor(Theme.input_color);
+        int bgColor = AppearanceSettings.terminalWindowBackground();
+        boolean useDashed = AppearanceSettings.dashedBorders();
+
+        GradientDrawable bg = new GradientDrawable();
+        bg.setShape(GradientDrawable.RECTANGLE);
+        bg.setCornerRadius(Tuils.dpToPx(mContext, 3));
+        if (useDashed) {
+            bg.setStroke((int) Tuils.dpToPx(mContext, 1.4f), borderColor,
+                    Tuils.dpToPx(mContext, AppearanceSettings.dashLength()),
+                    Tuils.dpToPx(mContext, AppearanceSettings.dashGap()));
+        } else {
+            bg.setStroke((int) Tuils.dpToPx(mContext, 1.4f), borderColor);
+        }
+        bg.setColor(bgColor);
+
+        tab.setBackground(bg);
+        tab.setTextColor(borderColor);
+        tab.setTypeface(Tuils.getTypeface(mContext), Typeface.BOLD);
+        tab.setOnClickListener(listener);
+    }
+
+    private void updateClockOverlay(Intent intent) {
+        TextView timerTab = mRootView.findViewById(R.id.timer_tab);
+        TextView stopwatchTab = mRootView.findViewById(R.id.stopwatch_tab);
+        if (timerTab == null || stopwatchTab == null) {
+            return;
+        }
+
+        styleClockOverlay(mRootView);
+
+        boolean timerRunning = intent.getBooleanExtra(ClockManager.EXTRA_TIMER_RUNNING, false);
+        long timerRemaining = intent.getLongExtra(ClockManager.EXTRA_TIMER_REMAINING, 0L);
+        boolean stopwatchRunning = intent.getBooleanExtra(ClockManager.EXTRA_STOPWATCH_RUNNING, false);
+        long stopwatchElapsed = intent.getLongExtra(ClockManager.EXTRA_STOPWATCH_ELAPSED, 0L);
+
+        timerTabVisible = timerRunning;
+        stopwatchTabVisible = stopwatchRunning;
+
+        if (timerRunning) {
+            timerTab.setVisibility(View.VISIBLE);
+            timerTab.setText("TMR\n" + ClockManager.formatDuration(timerRemaining));
+        } else {
+            timerTab.setVisibility(View.GONE);
+        }
+
+        if (stopwatchRunning) {
+            stopwatchTab.setVisibility(View.VISIBLE);
+            stopwatchTab.setText("SW\n" + ClockManager.formatDuration(stopwatchElapsed));
+        } else {
+            stopwatchTab.setVisibility(View.GONE);
+        }
     }
 
     private void playHackOverlay() {
