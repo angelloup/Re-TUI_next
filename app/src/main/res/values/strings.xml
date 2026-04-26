@@ -197,6 +197,7 @@
     <string name="output_flashoff">Flashlight OFF</string>
     <string name="output_flashlightnotavailable">Your device doesn\'t support flashlight</string>
 
+    <string name="help_dashboard">Navigate to the dashboard or switch pages.\n\nUsage:\ndashboard [page_number]</string>
     <!-- status -->
     <string name="battery_label">Battery:</string>
     <string name="mobile_data_label">Mobile data:</string>

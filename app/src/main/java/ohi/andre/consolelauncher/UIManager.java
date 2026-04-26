@@ -98,6 +98,10 @@ import ohi.andre.consolelauncher.managers.xml.options.Notifications;
 import ohi.andre.consolelauncher.managers.xml.options.Suggestions;
 import ohi.andre.consolelauncher.managers.xml.options.Theme;
 import ohi.andre.consolelauncher.managers.xml.options.Toolbar;
+
+import androidx.annotation.NonNull;
+import androidx.viewpager2.widget.ViewPager2;
+import androidx.recyclerview.widget.RecyclerView;
 import ohi.andre.consolelauncher.managers.xml.options.Ui;
 import ohi.andre.consolelauncher.tuils.AllowEqualsSequence;
 import ohi.andre.consolelauncher.tuils.MusicVisualizerView;
@@ -114,6 +118,7 @@ import ohi.andre.consolelauncher.tuils.interfaces.CommandExecuter;
 import ohi.andre.consolelauncher.tuils.interfaces.OnBatteryUpdate;
 import ohi.andre.consolelauncher.tuils.interfaces.OnRedirectionListener;
 import ohi.andre.consolelauncher.tuils.interfaces.OnTextChanged;
+import ohi.andre.consolelauncher.tuils.TuixtWindow;
 import ohi.andre.consolelauncher.tuils.stuff.PolicyReceiver;
 
 public class UIManager implements OnTouchListener {
@@ -144,6 +149,7 @@ public class UIManager implements OnTouchListener {
     public static final String ACTION_REQUEST_NOTIFICATION_FEED = NotificationService.ACTION_REQUEST_NOTIFICATION_FEED;
     public static final String ACTION_CLOCK_STATE = ClockManager.ACTION_CLOCK_STATE;
     public static final String ACTION_POMODORO_STATE = PomodoroManager.ACTION_POMODORO_STATE;
+    public static final String ACTION_DASHBOARD = BuildConfig.APPLICATION_ID + ".ui_dashboard";
     public static final String ACTION_NOTIFICATION_RECEIVED = BuildConfig.APPLICATION_ID + ".ui_notification_received";
     public static final String NOTIFICATION_TEXT = "notification_text";
 
@@ -206,6 +212,23 @@ public class UIManager implements OnTouchListener {
 
     private InputMethodManager imm;
     private TerminalManager mTerminalAdapter;
+    private List<String> pendingInputs = new ArrayList<>();
+    private static class OutputHolder {
+        CharSequence output;
+        int category;
+        Integer color;
+
+        OutputHolder(CharSequence output, int category) {
+            this.output = output;
+            this.category = category;
+        }
+
+        OutputHolder(int color, CharSequence output) {
+            this.color = color;
+            this.output = output;
+        }
+    }
+    private List<OutputHolder> pendingOutputs = new ArrayList<>();
     int mediumPercentage, lowPercentage;
     String batteryFormat;
 
@@ -407,6 +430,60 @@ public class UIManager implements OnTouchListener {
         }
     }
 
+    public void addDashboardWidget(String title, View content) {
+        if (dashboardContainer == null) return;
+        TuixtWindow window = new TuixtWindow(mContext);
+        window.setTitle(title);
+        window.setContent(content);
+        
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        params.bottomMargin = (int) UIUtils.dpToPx(mContext, 8);
+        dashboardContainer.addView(window, params);
+    }
+
+    private class PagerAdapter extends RecyclerView.Adapter<PagerAdapter.ViewHolder> {
+        @NonNull
+        @Override
+        public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            LayoutInflater inflater = LayoutInflater.from(parent.getContext());
+            View view;
+            if (viewType == 0) {
+                view = inflater.inflate(R.layout.empty_page, parent, false);
+            } else {
+                view = inflater.inflate(R.layout.dashboard_view, parent, false);
+                setupDashboardPage(view);
+            }
+            // ViewPager2 requires match_parent for its children
+            view.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            return new ViewHolder(view);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
+            // Re-binding logic if needed, but since we recreate views in onCreateViewHolder
+            // and ViewPager2 tends to keep them, we might need to be careful.
+            // However, with only 2 pages, they usually stay in memory.
+        }
+
+        @Override
+        public int getItemCount() {
+            return 2;
+        }
+
+        @Override
+        public int getItemViewType(int position) {
+            return position;
+        }
+
+        class ViewHolder extends RecyclerView.ViewHolder {
+            public ViewHolder(View itemView) {
+                super(itemView);
+            }
+        }
+    }
+
     private SuggestionsManager suggestionsManager;
 
     private TextView terminalView;
@@ -422,9 +499,165 @@ public class UIManager implements OnTouchListener {
 
     private final View mRootView;
 
+    private ViewPager2 viewPager;
+    private ViewGroup dashboardContainer;
+
+    private int strokeWidth, cornerRadius;
+    private String[] bgRectColors;
+    private String[] bgColors;
+    private String[] outlineColors;
+    private int shadowXOffset, shadowYOffset;
+    private float shadowRadius;
+    private boolean useDashed;
+    private int[][] margins;
+
+    private final int INPUT_BGCOLOR_INDEX = 10;
+    private final int OUTPUT_BGCOLOR_INDEX = 11;
+    private final int SUGGESTIONS_BGCOLOR_INDEX = 12;
+    private final int TOOLBAR_BGCOLOR_INDEX = 13;
+
+    private final int OUTPUT_MARGINS_INDEX = 1;
+    private final int INPUTAREA_MARGINS_INDEX = 2;
+    private final int INPUTFIELD_MARGINS_INDEX = 3;
+    private final int TOOLBAR_MARGINS_INDEX = 4;
+    private final int SUGGESTIONS_MARGINS_INDEX = 5;
+
+    private CommandExecuter mExecuter;
+
+    private void setupTerminalPage(View terminalPage) {
+        LayoutInflater inflater = LayoutInflater.from(mContext);
+        ViewGroup terminalContainer = terminalPage.findViewById(R.id.terminal_container);
+
+        terminalView = (TextView) terminalPage.findViewById(R.id.terminal_view);
+        terminalView.setOnTouchListener(this);
+        ((View) terminalView.getParent().getParent()).setOnTouchListener(this);
+
+        applyBgRect(mContext, terminalView, bgRectColors[OUTPUT_BGCOLOR_INDEX], bgColors[OUTPUT_BGCOLOR_INDEX], margins[OUTPUT_MARGINS_INDEX], strokeWidth, cornerRadius, useDashed, XMLPrefsManager.getColor(Theme.output_color));
+        applyShadow(terminalView, outlineColors[OUTPUT_BGCOLOR_INDEX], shadowXOffset, shadowYOffset, shadowRadius);
+
+        final EditText inputView = (EditText) mRootView.findViewById(R.id.input_view);
+        TextView prefixView = (TextView) mRootView.findViewById(R.id.prefix_view);
+
+        applyBgRect(mContext, mRootView.findViewById(R.id.input_group), bgRectColors[INPUT_BGCOLOR_INDEX], bgColors[INPUT_BGCOLOR_INDEX], margins[INPUTAREA_MARGINS_INDEX], strokeWidth, cornerRadius, useDashed, XMLPrefsManager.getColor(Theme.input_color));
+        applyShadow(inputView, outlineColors[INPUT_BGCOLOR_INDEX], shadowXOffset, shadowYOffset, shadowRadius);
+        applyShadow(prefixView, outlineColors[INPUT_BGCOLOR_INDEX], shadowXOffset, shadowYOffset, shadowRadius);
+
+        applyMargins(inputView, margins[INPUTFIELD_MARGINS_INDEX]);
+        applyMargins(prefixView, margins[INPUTFIELD_MARGINS_INDEX]);
+
+        ImageView submitView = (ImageView) mRootView.findViewById(R.id.submit_tv);
+        boolean showSubmit = XMLPrefsManager.getBoolean(Ui.show_enter_button);
+        if (!showSubmit) {
+            submitView.setVisibility(View.GONE);
+            submitView = null;
+        }
+
+        boolean showToolbar = XMLPrefsManager.getBoolean(Toolbar.show_toolbar);
+        ImageButton backView = null;
+        ImageButton nextView = null;
+        ImageButton deleteView = null;
+        ImageButton pasteView = null;
+
+        if(!showToolbar) {
+            mRootView.findViewById(R.id.tools_view).setVisibility(View.GONE);
+            toolbarView = null;
+        } else {
+            backView = (ImageButton) mRootView.findViewById(R.id.back_view);
+            nextView = (ImageButton) mRootView.findViewById(R.id.next_view);
+            deleteView = (ImageButton) mRootView.findViewById(R.id.delete_view);
+            pasteView = (ImageButton) mRootView.findViewById(R.id.paste_view);
+
+            toolbarView = mRootView.findViewById(R.id.tools_view);
+            hideToolbarNoInput = XMLPrefsManager.getBoolean(Toolbar.hide_toolbar_no_input);
+
+            applyBgRect(mContext, toolbarView, bgRectColors[TOOLBAR_BGCOLOR_INDEX], bgColors[TOOLBAR_BGCOLOR_INDEX], margins[TOOLBAR_MARGINS_INDEX], strokeWidth, cornerRadius, useDashed, XMLPrefsManager.getColor(Theme.toolbar_color));
+        }
+
+        if (MusicSettings.showWidget()) {
+            if (terminalContainer != null) {
+                View musicWidget = inflater.inflate(R.layout.music_widget, terminalContainer, false);
+                terminalContainer.addView(musicWidget);
+                styleMusicWidget(musicWidget);
+            }
+        }
+
+        if (NotificationSettings.showTerminal()) {
+            if (terminalContainer != null) {
+                View notificationWidget = terminalContainer.findViewById(R.id.notification_terminal_widget);
+                if (notificationWidget == null) {
+                    notificationWidget = inflater.inflate(R.layout.notification_widget, terminalContainer, false);
+                    notificationWidget.setId(R.id.notification_terminal_widget);
+                    terminalContainer.addView(notificationWidget);
+                }
+                styleNotificationWidget(notificationWidget);
+            }
+        }
+
+        mTerminalAdapter = new TerminalManager(terminalView, inputView, prefixView, submitView, backView, nextView, deleteView, pasteView, mContext, mainPack, mExecuter);
+
+        for (String s : pendingInputs) {
+            mTerminalAdapter.setInput(s);
+        }
+        pendingInputs.clear();
+
+        for (OutputHolder oh : pendingOutputs) {
+            if (oh.color != null) {
+                mTerminalAdapter.setOutput(oh.color, oh.output);
+            } else {
+                mTerminalAdapter.setOutput(oh.output, oh.category);
+            }
+        }
+        pendingOutputs.clear();
+
+        mTerminalAdapter.focusInputEnd();
+
+        if (XMLPrefsManager.getBoolean(Suggestions.show_suggestions)) {
+            HorizontalScrollView sv = (HorizontalScrollView) mRootView.findViewById(R.id.suggestions_container);
+            if (sv != null) {
+                sv.setFocusable(false);
+                sv.setOnFocusChangeListener((v, hasFocus) -> {
+                    if (hasFocus) {
+                        v.clearFocus();
+                    }
+                });
+                applyBgRect(mContext, sv, bgRectColors[SUGGESTIONS_BGCOLOR_INDEX], bgColors[SUGGESTIONS_BGCOLOR_INDEX], margins[SUGGESTIONS_MARGINS_INDEX], strokeWidth, cornerRadius, useDashed, XMLPrefsManager.getColor(Theme.suggestions_bgrectcolor));
+
+                LinearLayout suggestionsView = (LinearLayout) mRootView.findViewById(R.id.suggestions_group);
+                suggestionsManager = new SuggestionsManager(suggestionsView, mainPack, mTerminalAdapter);
+
+                inputView.addTextChangedListener(new SuggestionTextWatcher(suggestionsManager, (currentText, before) -> {
+                    if (!hideToolbarNoInput) return;
+
+                    if (currentText.length() == 0) toolbarView.setVisibility(View.GONE);
+                    else if (before == 0) toolbarView.setVisibility(View.VISIBLE);
+                }));
+            }
+        } else {
+            View sugGroup = mRootView.findViewById(R.id.suggestions_group);
+            if (sugGroup != null) sugGroup.setVisibility(View.GONE);
+        }
+
+        
+        scheduleTypefaceRefreshes();
+    }
+
+    private void setupDashboardPage(View dashboardPage) {
+        dashboardContainer = dashboardPage.findViewById(R.id.dashboard_container);
+        // Test Widget
+        TextView testView = new TextView(mContext);
+        testView.setText("Welcome to the TUI Dashboard.\nSwipe left/right or type 'dashboard' to navigate.");
+        testView.setTextColor(XMLPrefsManager.getColor(Theme.output_color));
+        testView.setTypeface(Tuils.getTypeface(mContext));
+        testView.setPadding(0, 20, 0, 20);
+        addDashboardWidget("Information", testView);
+        
+        scheduleTypefaceRefreshes();
+    }
+
     protected UIManager(final Context context, final ViewGroup rootView, MainPack mainPack, boolean canApplyTheme, CommandExecuter executer) {
         this.mRootView = rootView;
         this.mainPack = mainPack;
+        this.mExecuter = executer;
 
         IntentFilter filter = new IntentFilter();
         filter.addAction(ACTION_UPDATE_SUGGESTIONS);
@@ -443,6 +676,7 @@ public class UIManager implements OnTouchListener {
         filter.addAction(ACTION_NOTIFICATION_FEED);
         filter.addAction(ACTION_CLOCK_STATE);
         filter.addAction(ACTION_POMODORO_STATE);
+        filter.addAction(ACTION_DASHBOARD);
 
         receiver = new BroadcastReceiver() {
             @Override
@@ -459,6 +693,11 @@ public class UIManager implements OnTouchListener {
                     updateClockOverlay(intent);
                 } else if(action.equals(ACTION_POMODORO_STATE)) {
                     updatePomodoroOverlay(intent);
+                } else if(action.equals(ACTION_DASHBOARD)) {
+                    if (viewPager != null) {
+                        int page = intent.getIntExtra("page", 1);
+                        viewPager.setCurrentItem(page, true);
+                    }
                 } else if(action.equals(ACTION_NOROOT)) {
                     mTerminalAdapter.onStandard();
 //                } else if(action.equals(ACTION_CLEAR_SUGGESTIONS)) {
@@ -886,7 +1125,7 @@ public class UIManager implements OnTouchListener {
                 XMLPrefsManager.get(Theme.suggestions_bgrectcolor),
                 XMLPrefsManager.get(Theme.toolbar_bgrectcolor)
         };
-        String[] bgRectColors = new String[statusLinesBgRectColors.length + otherBgRectColors.length];
+        bgRectColors = new String[statusLinesBgRectColors.length + otherBgRectColors.length];
         System.arraycopy(statusLinesBgRectColors, 0, bgRectColors, 0, statusLinesBgRectColors.length);
         System.arraycopy(otherBgRectColors, 0, bgRectColors, statusLinesBgRectColors.length, otherBgRectColors.length);
 
@@ -897,7 +1136,7 @@ public class UIManager implements OnTouchListener {
                 XMLPrefsManager.get(Theme.suggestions_bg),
                 XMLPrefsManager.get(Theme.toolbar_bg)
         };
-        String[] bgColors = new String[statusLineBgColors.length + otherBgColors.length];
+        bgColors = new String[statusLineBgColors.length + otherBgColors.length];
         System.arraycopy(statusLineBgColors, 0, bgColors, 0, statusLineBgColors.length);
         System.arraycopy(otherBgColors, 0, bgColors, statusLineBgColors.length, otherBgColors.length);
 
@@ -906,36 +1145,22 @@ public class UIManager implements OnTouchListener {
                 XMLPrefsManager.get(Theme.input_shadow_color),
                 XMLPrefsManager.get(Theme.output_shadow_color),
         };
-        String[] outlineColors = new String[statusLineOutlineColors.length + otherOutlineColors.length];
+        outlineColors = new String[statusLineOutlineColors.length + otherOutlineColors.length];
         System.arraycopy(statusLineOutlineColors, 0, outlineColors, 0, statusLineOutlineColors.length);
         System.arraycopy(otherOutlineColors, 0, outlineColors, 10, otherOutlineColors.length);
 
-        int shadowXOffset, shadowYOffset;
-        float shadowRadius;
         String[] shadowParams = getListOfStringValues(XMLPrefsManager.get(Ui.shadow_params), 3, "0");
         shadowXOffset = Integer.parseInt(shadowParams[0]);
         shadowYOffset = Integer.parseInt(shadowParams[1]);
         shadowRadius = Float.parseFloat(shadowParams[2]);
 
-        final int INPUT_BGCOLOR_INDEX = 10;
-        final int OUTPUT_BGCOLOR_INDEX = 11;
-        final int SUGGESTIONS_BGCOLOR_INDEX = 12;
-        final int TOOLBAR_BGCOLOR_INDEX = 13;
-
-        int strokeWidth, cornerRadius;
         String[] rectParams = getListOfStringValues(XMLPrefsManager.get(Ui.bgrect_params), 2, "0");
         strokeWidth = Integer.parseInt(rectParams[0]);
         cornerRadius = Integer.parseInt(rectParams[1]);
 
-        boolean useDashed = AppearanceSettings.dashedBorders();
+        useDashed = AppearanceSettings.dashedBorders();
 
-        final int OUTPUT_MARGINS_INDEX = 1;
-        final int INPUTAREA_MARGINS_INDEX = 2;
-        final int INPUTFIELD_MARGINS_INDEX = 3;
-        final int TOOLBAR_MARGINS_INDEX = 4;
-        final int SUGGESTIONS_MARGINS_INDEX = 5;
-
-        final int[][] margins = new int[6][4];
+        margins = new int[6][4];
         margins[0] = getListOfIntValues(XMLPrefsManager.get(Ui.status_lines_margins), 4, 0);
         margins[1] = getListOfIntValues(XMLPrefsManager.get(Ui.output_field_margins), 4, 0);
         margins[2] = getListOfIntValues(XMLPrefsManager.get(Ui.input_area_margins), 4, 0);
@@ -1145,134 +1370,31 @@ public class UIManager implements OnTouchListener {
             }
         }
 
-        if(show[Label.unlock.ordinal()]) {
+        if (show[Label.unlock.ordinal()]) {
             unlockManager = new ohi.andre.consolelauncher.managers.status.UnlockManager(mContext, labelSizes[Label.unlock.ordinal()], statusUpdateListener);
             unlockManager.start();
         }
 
-        int layoutId = R.layout.input_down_layout;
-
-        LayoutInflater inflater = (LayoutInflater) mContext.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        View inputOutputView = inflater.inflate(layoutId, null);
-        ViewGroup terminalContainer = rootView.findViewById(R.id.terminal_container);
-        if (terminalContainer != null) {
-            terminalContainer.addView(inputOutputView);
-        } else {
-            ViewGroup mainContainer = rootView.findViewById(R.id.main_container);
-            if (mainContainer != null) {
-                mainContainer.addView(inputOutputView);
-            } else {
-                rootView.addView(inputOutputView, 0);
-            }
-        }
-
-        terminalView = (TextView) inputOutputView.findViewById(R.id.terminal_view);
-        terminalView.setOnTouchListener(this);
-        ((View) terminalView.getParent().getParent()).setOnTouchListener(this);
-
-        applyBgRect(mContext, terminalView, bgRectColors[OUTPUT_BGCOLOR_INDEX], bgColors[OUTPUT_BGCOLOR_INDEX], margins[OUTPUT_MARGINS_INDEX], strokeWidth, cornerRadius, useDashed, XMLPrefsManager.getColor(Theme.output_color));
-        applyShadow(terminalView, outlineColors[OUTPUT_BGCOLOR_INDEX], shadowXOffset, shadowYOffset, shadowRadius);
-
-        final EditText inputView = (EditText) inputOutputView.findViewById(R.id.input_view);
-        TextView prefixView = (TextView) inputOutputView.findViewById(R.id.prefix_view);
-
-        applyBgRect(mContext, inputOutputView.findViewById(R.id.input_group), bgRectColors[INPUT_BGCOLOR_INDEX], bgColors[INPUT_BGCOLOR_INDEX], margins[INPUTAREA_MARGINS_INDEX], strokeWidth, cornerRadius, useDashed, XMLPrefsManager.getColor(Theme.input_color));
-        applyShadow(inputView, outlineColors[INPUT_BGCOLOR_INDEX], shadowXOffset, shadowYOffset, shadowRadius);
-        applyShadow(prefixView, outlineColors[INPUT_BGCOLOR_INDEX], shadowXOffset, shadowYOffset, shadowRadius);
-
-        applyMargins(inputView, margins[INPUTFIELD_MARGINS_INDEX]);
-        applyMargins(prefixView, margins[INPUTFIELD_MARGINS_INDEX]);
-
-        ImageView submitView = (ImageView) inputOutputView.findViewById(R.id.submit_tv);
-        boolean showSubmit = XMLPrefsManager.getBoolean(Ui.show_enter_button);
-        if (!showSubmit) {
-            submitView.setVisibility(View.GONE);
-            submitView = null;
-        }
-
-//        final ImageButton finalSubmitView = submitView;
-//        inputView.getViewTreeObserver().addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
-//            @Override
-//            public boolean onPreDraw() {
-//                Tuils.scaleImage(finalSubmitView, 20, 20);
-//
-//                inputView.getViewTreeObserver().removeOnPreDrawListener(this);
-//
-//                return false;
-//            }
-//        });
-
-//        toolbar
-        boolean showToolbar = XMLPrefsManager.getBoolean(Toolbar.show_toolbar);
-        ImageButton backView = null;
-        ImageButton nextView = null;
-        ImageButton deleteView = null;
-        ImageButton pasteView = null;
-
-        if(!showToolbar) {
-            inputOutputView.findViewById(R.id.tools_view).setVisibility(View.GONE);
-            toolbarView = null;
-        } else {
-            backView = (ImageButton) inputOutputView.findViewById(R.id.back_view);
-            nextView = (ImageButton) inputOutputView.findViewById(R.id.next_view);
-            deleteView = (ImageButton) inputOutputView.findViewById(R.id.delete_view);
-            pasteView = (ImageButton) inputOutputView.findViewById(R.id.paste_view);
-
-            toolbarView = inputOutputView.findViewById(R.id.tools_view);
-            hideToolbarNoInput = XMLPrefsManager.getBoolean(Toolbar.hide_toolbar_no_input);
-
-            applyBgRect(mContext, toolbarView, bgRectColors[TOOLBAR_BGCOLOR_INDEX], bgColors[TOOLBAR_BGCOLOR_INDEX], margins[TOOLBAR_MARGINS_INDEX], strokeWidth, cornerRadius, useDashed, XMLPrefsManager.getColor(Theme.toolbar_color));
-        }
-
-        if (MusicSettings.showWidget()) {
-            LinearLayout contextContainer = rootView.findViewById(R.id.context_container);
-            if (contextContainer != null) {
-                View musicWidget = inflater.inflate(R.layout.music_widget, contextContainer, false);
-                contextContainer.addView(musicWidget);
-                styleMusicWidget(musicWidget);
-            }
-        }
-
-        if (NotificationSettings.showTerminal()) {
-            LinearLayout contextContainer = rootView.findViewById(R.id.context_container);
-            if (contextContainer != null) {
-                View notificationWidget = inflater.inflate(R.layout.notification_widget, contextContainer, false);
-                contextContainer.addView(notificationWidget);
-                styleNotificationWidget(notificationWidget);
-            }
-        }
+        // Setup ViewPager2
+        viewPager = mRootView.findViewById(R.id.view_pager);
+        viewPager.setAdapter(new PagerAdapter());
+        viewPager.setOffscreenPageLimit(1); // Keep both pages in memory
+        
+        setupTerminalPage(mRootView);
 
         styleClockOverlay(rootView);
-
-        mTerminalAdapter = new TerminalManager(terminalView, inputView, prefixView, submitView, backView, nextView, deleteView, pasteView, context, mainPack, executer);
-
-        if (XMLPrefsManager.getBoolean(Suggestions.show_suggestions)) {
-            HorizontalScrollView sv = (HorizontalScrollView) rootView.findViewById(R.id.suggestions_container);
-            sv.setFocusable(false);
-            sv.setOnFocusChangeListener((v, hasFocus) -> {
-                if(hasFocus) {
-                    v.clearFocus();
-                }
-            });
-            applyBgRect(mContext, sv, bgRectColors[SUGGESTIONS_BGCOLOR_INDEX], bgColors[SUGGESTIONS_BGCOLOR_INDEX], margins[SUGGESTIONS_MARGINS_INDEX], strokeWidth, cornerRadius, useDashed, XMLPrefsManager.getColor(Theme.suggestions_bgrectcolor));
-
-            LinearLayout suggestionsView = (LinearLayout) rootView.findViewById(R.id.suggestions_group);
-
-            suggestionsManager = new SuggestionsManager(suggestionsView, mainPack, mTerminalAdapter);
-
-            inputView.addTextChangedListener(new SuggestionTextWatcher(suggestionsManager, (currentText, before) -> {
-                if(!hideToolbarNoInput) return;
-
-                if(currentText.length() == 0) toolbarView.setVisibility(View.GONE);
-                else if(before == 0) toolbarView.setVisibility(View.VISIBLE);
-            }));
-        } else {
-            rootView.findViewById(R.id.suggestions_group).setVisibility(View.GONE);
-        }
 
         int drawTimes = XMLPrefsManager.getInt(Ui.text_redraw_times);
         if(drawTimes <= 0) drawTimes = 1;
         OutlineTextView.redrawTimes = drawTimes;
+
+        LocalBroadcastManager.getInstance(context.getApplicationContext()).registerReceiver(receiver, filter);
+        if (NotificationSettings.showTerminal()) {
+            final LocalBroadcastManager lbm = LocalBroadcastManager.getInstance(context.getApplicationContext());
+            lbm.sendBroadcast(new Intent(ACTION_REQUEST_NOTIFICATION_FEED));
+            rootView.postDelayed(() -> lbm.sendBroadcast(new Intent(ACTION_REQUEST_NOTIFICATION_FEED)), 350);
+            rootView.postDelayed(() -> lbm.sendBroadcast(new Intent(ACTION_REQUEST_NOTIFICATION_FEED)), 1100);
+        }
 
         scheduleTypefaceRefreshes();
     }
@@ -1742,16 +1864,7 @@ public class UIManager implements OnTouchListener {
     }
 
     private void updateContextContainerVisibility(View rootView) {
-        LinearLayout contextContainer = rootView.findViewById(R.id.context_container);
-        if (contextContainer == null) {
-            return;
-        }
-
-        View musicWidget = rootView.findViewById(R.id.music_widget);
-        View notificationWidget = rootView.findViewById(R.id.notification_widget);
-        boolean showMusicWidget = musicWidget != null && musicWidget.getVisibility() == View.VISIBLE;
-        boolean showNotificationWidget = notificationWidget != null && notificationWidget.getVisibility() == View.VISIBLE;
-        contextContainer.setVisibility(showMusicWidget || showNotificationWidget ? View.VISIBLE : View.GONE);
+        // Widgets are now inside terminalContainer in terminalPage
     }
 
     public boolean isAppsDrawerOpen() {
@@ -2272,24 +2385,41 @@ public class UIManager implements OnTouchListener {
         if (s == null)
             return;
 
+        if (mTerminalAdapter == null) {
+            pendingInputs.add(s);
+            return;
+        }
+
         mTerminalAdapter.setInput(s);
         mTerminalAdapter.focusInputEnd();
     }
 
     public void setHint(String hint) {
-        mTerminalAdapter.setHint(hint);
+        if (mTerminalAdapter != null) {
+            mTerminalAdapter.setHint(hint);
+        }
     }
 
     public void resetHint() {
-        mTerminalAdapter.setDefaultHint();
+        if (mTerminalAdapter != null) {
+            mTerminalAdapter.setDefaultHint();
+        }
     }
 
     public void setOutput(CharSequence s, int category) {
-        mTerminalAdapter.setOutput(s, category);
+        if (mTerminalAdapter != null) {
+            mTerminalAdapter.setOutput(s, category);
+        } else {
+            pendingOutputs.add(new OutputHolder(s, category));
+        }
     }
 
     public void setOutput(int color, CharSequence output) {
-        mTerminalAdapter.setOutput(color, output);
+        if (mTerminalAdapter != null) {
+            mTerminalAdapter.setOutput(color, output);
+        } else {
+            pendingOutputs.add(new OutputHolder(color, output));
+        }
     }
 
     public void disableSuggestions() {
@@ -2304,15 +2434,23 @@ public class UIManager implements OnTouchListener {
         if (pomodoroOverlayVisible) {
             return;
         }
+        if (viewPager != null && viewPager.getCurrentItem() != 0) {
+            viewPager.setCurrentItem(0, true);
+            return;
+        }
         if (isAppsDrawerOpen()) {
             hideAppsDrawer();
             return;
         }
-        mTerminalAdapter.onBackPressed();
+        if (mTerminalAdapter != null) {
+            mTerminalAdapter.onBackPressed();
+        }
     }
 
     public void focusTerminal() {
-        mTerminalAdapter.requestInputFocus();
+        if (mTerminalAdapter != null) {
+            mTerminalAdapter.requestInputFocus();
+        }
     }
 
     public void pause() {
