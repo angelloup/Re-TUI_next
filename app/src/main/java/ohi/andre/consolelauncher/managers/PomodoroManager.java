@@ -66,10 +66,50 @@ public class PomodoroManager {
         }
     };
 
+    private static final String PREF_NAME = "pomodoro_state";
+    private static final String KEY_RUNNING = "running";
+    private static final String KEY_END_TIME = "end_time";
+    private static final String KEY_DURATION = "duration";
+    private static final String KEY_TASK = "task";
+    private static final String KEY_TYPE = "type";
+    private static final String KEY_COMPLETED = "completed";
+
     private PomodoroManager(Context context) {
         this.appContext = context;
         this.lbm = LocalBroadcastManager.getInstance(context);
         this.handler = new Handler(Looper.getMainLooper());
+        restoreState();
+    }
+
+    private void saveState() {
+        appContext.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE).edit()
+                .putBoolean(KEY_RUNNING, running)
+                .putLong(KEY_END_TIME, sessionEndElapsedRealtime)
+                .putLong(KEY_DURATION, totalDuration)
+                .putString(KEY_TASK, taskName)
+                .putString(KEY_TYPE, currentType.name())
+                .putInt(KEY_COMPLETED, completedFocuses)
+                .apply();
+    }
+
+    private void restoreState() {
+        android.content.SharedPreferences prefs = appContext.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        this.running = prefs.getBoolean(KEY_RUNNING, false);
+        this.sessionEndElapsedRealtime = prefs.getLong(KEY_END_TIME, -1L);
+        this.totalDuration = prefs.getLong(KEY_DURATION, 0L);
+        this.taskName = prefs.getString(KEY_TASK, "");
+        this.completedFocuses = prefs.getInt(KEY_COMPLETED, 0);
+        try {
+            this.currentType = SessionType.valueOf(prefs.getString(KEY_TYPE, SessionType.FOCUS.name()));
+        } catch (Exception e) {
+            this.currentType = SessionType.FOCUS;
+        }
+
+        if (running && sessionEndElapsedRealtime > SystemClock.elapsedRealtime()) {
+            handler.post(ticker);
+        } else if (running && currentType != SessionType.FINISHED) {
+            handleTransition();
+        }
     }
 
     public synchronized void startPomodoro(String task) {
@@ -84,6 +124,7 @@ public class PomodoroManager {
         this.totalDuration = FOCUS_DURATION;
         this.sessionEndElapsedRealtime = SystemClock.elapsedRealtime() + totalDuration;
         
+        saveState();
         handler.removeCallbacks(ticker);
         handler.post(ticker);
         broadcastState("Focus session started: " + taskName);
@@ -94,6 +135,7 @@ public class PomodoroManager {
         this.totalDuration = BREAK_DURATION;
         this.sessionEndElapsedRealtime = SystemClock.elapsedRealtime() + totalDuration;
 
+        saveState();
         handler.removeCallbacks(ticker);
         handler.post(ticker);
         broadcastState("Take a break!");
@@ -106,6 +148,7 @@ public class PomodoroManager {
             if (completedFocuses >= TOTAL_CYCLES) {
                 currentType = SessionType.FINISHED;
                 running = true; // Stay in finished state to show the message
+                saveState();
                 broadcastState("Good job! You did great!");
             } else {
                 startBreakSession();
@@ -119,6 +162,7 @@ public class PomodoroManager {
         this.running = false;
         this.sessionEndElapsedRealtime = -1L;
         handler.removeCallbacks(ticker);
+        saveState();
         broadcastState("Session terminated.");
     }
 

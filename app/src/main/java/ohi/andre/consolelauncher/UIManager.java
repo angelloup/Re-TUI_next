@@ -196,6 +196,9 @@ public class UIManager implements OnTouchListener {
     private boolean timerTabVisible = false;
     private boolean stopwatchTabVisible = false;
     private boolean pomodoroOverlayVisible = false;
+    public boolean isPomodoroOverlayVisible() {
+        return pomodoroOverlayVisible;
+    }
     private String selectedAppsDrawerGroup = null;
     private String selectedAppsDrawerAlpha = null;
 
@@ -1487,6 +1490,8 @@ public class UIManager implements OnTouchListener {
 
         PomodoroManager.SessionType type = PomodoroManager.SessionType.valueOf(typeStr);
 
+        overlay.setKeepScreenOn(running && type == PomodoroManager.SessionType.FOCUS);
+
         if (type == PomodoroManager.SessionType.FINISHED) {
             title.setText("MISSION ACCOMPLISHED");
             title.setTextColor(XMLPrefsManager.getColor(Theme.input_color));
@@ -1516,6 +1521,7 @@ public class UIManager implements OnTouchListener {
 
         int color = XMLPrefsManager.getColor(Theme.input_color);
         int bgColor;
+        int textBgColor = ColorUtils.setAlphaComponent(Color.BLACK, 160);
         if (XMLPrefsManager.getBoolean(Ui.system_wallpaper)) {
             bgColor = XMLPrefsManager.getColor(Theme.overlay_color);
         } else {
@@ -1532,9 +1538,13 @@ public class UIManager implements OnTouchListener {
         taskDisplay.setTextColor(color);
         terminateBtn.setTextColor(color);
 
+        title.setBackgroundColor(textBgColor);
+        countdown.setBackgroundColor(textBgColor);
+        taskDisplay.setBackgroundColor(textBgColor);
+
         GradientDrawable btnBg = new GradientDrawable();
         btnBg.setStroke((int) Tuils.dpToPx(mContext, 1.4f), color);
-        btnBg.setColor(bgColor);
+        btnBg.setColor(textBgColor);
         terminateBtn.setBackground(btnBg);
 
         terminateBtn.setOnClickListener(v -> {
@@ -2291,6 +2301,9 @@ public class UIManager implements OnTouchListener {
     }
 
     public void onBackPressed() {
+        if (pomodoroOverlayVisible) {
+            return;
+        }
         if (isAppsDrawerOpen()) {
             hideAppsDrawer();
             return;
@@ -2327,6 +2340,19 @@ public class UIManager implements OnTouchListener {
         if (networkManager != null) networkManager.start();
         if (tuiTimeManager != null) tuiTimeManager.start();
         if (unlockManager != null) unlockManager.start();
+
+        // Refresh Pomodoro overlay on resume
+        PomodoroManager pomodoro = PomodoroManager.getInstance(mContext);
+        if (pomodoro.isRunning()) {
+            Intent intent = new Intent(PomodoroManager.ACTION_POMODORO_STATE);
+            intent.putExtra(PomodoroManager.EXTRA_POMODORO_RUNNING, true);
+            intent.putExtra(PomodoroManager.EXTRA_POMODORO_REMAINING, pomodoro.getRemainingMillis());
+            intent.putExtra(PomodoroManager.EXTRA_POMODORO_TOTAL, pomodoro.getTotalDuration());
+            intent.putExtra(PomodoroManager.EXTRA_POMODORO_TASK, pomodoro.getTaskName());
+            intent.putExtra(PomodoroManager.EXTRA_POMODORO_TYPE, pomodoro.getCurrentType().name());
+            intent.putExtra(PomodoroManager.EXTRA_POMODORO_CYCLE, pomodoro.getCompletedFocuses());
+            updatePomodoroOverlay(intent);
+        }
     }
 
     public void scheduleTypefaceRefreshes() {

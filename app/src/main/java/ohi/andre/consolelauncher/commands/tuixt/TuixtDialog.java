@@ -133,12 +133,14 @@ public final class TuixtDialog {
     }
 
     private static View wrap(Context context, String title, View content, View buttons) {
-        FrameLayout frame = new FrameLayout(context);
-        frame.setPadding(
+        FrameLayout root = new FrameLayout(context);
+        root.setPadding(
                 TuixtTheme.dp(context, 18),
                 TuixtTheme.dp(context, 18),
                 TuixtTheme.dp(context, 18),
                 TuixtTheme.dp(context, 18));
+
+        FrameLayout container = new FrameLayout(context);
 
         LinearLayout panel = new LinearLayout(context);
         panel.setOrientation(LinearLayout.VERTICAL);
@@ -162,10 +164,11 @@ public final class TuixtDialog {
             panel.addView(buttons);
         }
 
-        frame.addView(panel, new FrameLayout.LayoutParams(
+        FrameLayout.LayoutParams panelParams = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                Gravity.CENTER));
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        panelParams.topMargin = TuixtTheme.dp(context, 12);
+        container.addView(panel, panelParams);
 
         TextView header = new TextView(context);
         header.setText(title.toUpperCase());
@@ -174,11 +177,15 @@ public final class TuixtDialog {
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
         headerParams.gravity = Gravity.TOP | Gravity.START;
-        headerParams.leftMargin = TuixtTheme.dp(context, 54);
-        headerParams.topMargin = TuixtTheme.dp(context, 6);
-        frame.addView(header, headerParams);
+        headerParams.leftMargin = TuixtTheme.dp(context, 42);
+        container.addView(header, headerParams);
 
-        return frame;
+        root.addView(container, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.CENTER));
+
+        return root;
     }
 
     private static LinearLayout buttons(Context context, Dialog dialog, String positive, String negative, ConfirmAction action) {
