@@ -1365,6 +1365,38 @@ public enum Behavior implements XMLPrefsSave {
         public String type() {
             return XMLPrefsSave.TEXT;
         }
+    },
+    pomodoro_focus_minutes {
+        @Override
+        public String defaultValue() {
+            return "25";
+        }
+
+        @Override
+        public String info() {
+            return "Focus period length in minutes for Pomodoro sessions";
+        }
+
+        @Override
+        public String type() {
+            return XMLPrefsSave.INTEGER;
+        }
+    },
+    pomodoro_relax_minutes {
+        @Override
+        public String defaultValue() {
+            return "5";
+        }
+
+        @Override
+        public String info() {
+            return "Relax/break period length in minutes for Pomodoro sessions";
+        }
+
+        @Override
+        public String type() {
+            return XMLPrefsSave.INTEGER;
+        }
     };
 
     @Override

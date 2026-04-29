@@ -11,6 +11,8 @@ import android.os.SystemClock;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import ohi.andre.consolelauncher.BuildConfig;
+import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
+import ohi.andre.consolelauncher.managers.xml.options.Behavior;
 
 public class PomodoroManager {
 
@@ -27,9 +29,9 @@ public class PomodoroManager {
     public static final String EXTRA_POMODORO_CYCLE = "pomodoro_cycle";
     public static final String EXTRA_MESSAGE = "message";
 
-    private static final long FOCUS_DURATION = 25 * 60 * 1000L;
-    private static final long BREAK_DURATION = 5 * 60 * 1000L;
     private static final int TOTAL_CYCLES = 4;
+    private static final int DEFAULT_FOCUS_MINUTES = 25;
+    private static final int DEFAULT_RELAX_MINUTES = 5;
 
     private static PomodoroManager instance;
 
@@ -121,7 +123,7 @@ public class PomodoroManager {
 
     private void startFocusSession() {
         this.currentType = SessionType.FOCUS;
-        this.totalDuration = FOCUS_DURATION;
+        this.totalDuration = minutesToMillis(settingMinutes(Behavior.pomodoro_focus_minutes, DEFAULT_FOCUS_MINUTES));
         this.sessionEndElapsedRealtime = SystemClock.elapsedRealtime() + totalDuration;
         
         saveState();
@@ -132,13 +134,25 @@ public class PomodoroManager {
 
     private void startBreakSession() {
         this.currentType = SessionType.BREAK;
-        this.totalDuration = BREAK_DURATION;
+        this.totalDuration = minutesToMillis(settingMinutes(Behavior.pomodoro_relax_minutes, DEFAULT_RELAX_MINUTES));
         this.sessionEndElapsedRealtime = SystemClock.elapsedRealtime() + totalDuration;
 
         saveState();
         handler.removeCallbacks(ticker);
         handler.post(ticker);
         broadcastState("Take a break!");
+    }
+
+    private int settingMinutes(Behavior key, int fallback) {
+        try {
+            return Math.max(1, XMLPrefsManager.getInt(key));
+        } catch (Exception e) {
+            return fallback;
+        }
+    }
+
+    private long minutesToMillis(int minutes) {
+        return minutes * 60 * 1000L;
     }
 
     private void handleTransition() {

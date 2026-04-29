@@ -79,8 +79,6 @@ public class TuixtWindow extends FrameLayout {
             border.setStroke((int) UIUtils.dpToPx(context, 2), accentColor,
                     UIUtils.dpToPx(context, AppearanceSettings.dashLength()),
                     UIUtils.dpToPx(context, AppearanceSettings.dashGap()));
-        } else {
-            border.setStroke((int) UIUtils.dpToPx(context, 2), accentColor);
         }
         panel.setBackground(border);
 

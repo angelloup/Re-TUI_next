@@ -993,8 +993,6 @@ public class UIManager implements OnTouchListener {
                             gd.setStroke((int) UIUtils.dpToPx(mContext, 1.5f), widgetBorderColor,
                                     UIUtils.dpToPx(mContext, AppearanceSettings.dashLength()),
                                     UIUtils.dpToPx(mContext, AppearanceSettings.dashGap()));
-                        } else {
-                            gd.setStroke((int) UIUtils.dpToPx(mContext, 1.5f), widgetBorderColor);
                         }
                         gd.setColor(widgetBgColor);
                         borderView.setBackgroundDrawable(gd);
@@ -1011,8 +1009,6 @@ public class UIManager implements OnTouchListener {
                                     gd.setStroke((int) UIUtils.dpToPx(mContext, 1.5f), widgetBorderColor,
                                             UIUtils.dpToPx(mContext, AppearanceSettings.dashLength()),
                                             UIUtils.dpToPx(mContext, AppearanceSettings.dashGap()));
-                                } else {
-                                    gd.setStroke((int) UIUtils.dpToPx(mContext, 1.5f), widgetBorderColor);
                                 }
                                 gd.setColor(ColorUtils.setAlphaComponent(widgetBgColor, 255));
                                 widgetLabel.setBackgroundDrawable(gd);
@@ -1366,7 +1362,7 @@ public class UIManager implements OnTouchListener {
                     labelViews[count].setVerticalScrollBarEnabled(false);
                 }
 
-                applyBgRect(mContext, labelViews[count], bgRectColors[count], bgColors[count], margins[0], strokeWidth, cornerRadius, false, Color.TRANSPARENT);
+                applyBgRect(mContext, labelViews[count], bgRectColors[count], bgColors[count], margins[0], strokeWidth, cornerRadius, useDashed, XMLPrefsManager.getColor(Theme.input_color));
                 applyShadow(labelViews[count], outlineColors[count], shadowXOffset, shadowYOffset, shadowRadius);
             } else {
                 lViewsParent.removeView(labelViews[count]);
@@ -1550,8 +1546,6 @@ public class UIManager implements OnTouchListener {
                     gd.setStroke((int) Tuils.dpToPx(mContext, 1.2f), buttonColor,
                             Tuils.dpToPx(mContext, AppearanceSettings.dashLength() / 2),
                             Tuils.dpToPx(mContext, AppearanceSettings.dashGap() / 2));
-                } else {
-                    gd.setStroke((int) Tuils.dpToPx(mContext, 1.2f), buttonColor);
                 }
                 gd.setColor(Color.TRANSPARENT);
                 btn.setBackgroundDrawable(gd);
@@ -1616,8 +1610,6 @@ public class UIManager implements OnTouchListener {
             bg.setStroke((int) Tuils.dpToPx(mContext, 1.5f), border,
                     Tuils.dpToPx(mContext, AppearanceSettings.dashLength()),
                     Tuils.dpToPx(mContext, AppearanceSettings.dashGap()));
-        } else {
-            bg.setStroke((int) Tuils.dpToPx(mContext, 1.5f), border);
         }
         overlay.setBackground(bg);
         overlay.setOnClickListener(v -> dismissHackOverlay());
@@ -1645,8 +1637,6 @@ public class UIManager implements OnTouchListener {
                 border.setStroke((int) Tuils.dpToPx(mContext, 1.5f), borderColor,
                         Tuils.dpToPx(mContext, AppearanceSettings.dashLength()),
                         Tuils.dpToPx(mContext, AppearanceSettings.dashGap()));
-            } else {
-                border.setStroke((int) Tuils.dpToPx(mContext, 1.5f), borderColor);
             }
             termuxWindowBorder.setBackground(border);
         }
@@ -1684,7 +1674,11 @@ public class UIManager implements OnTouchListener {
             GradientDrawable inputBg = new GradientDrawable();
             inputBg.setShape(GradientDrawable.RECTANGLE);
             inputBg.setColor(ColorUtils.blendARGB(bgColor, Color.BLACK, 0.16f));
-            inputBg.setStroke((int) Tuils.dpToPx(mContext, 1.2f), ColorUtils.setAlphaComponent(borderColor, 180));
+            if (AppearanceSettings.dashedBorders()) {
+                inputBg.setStroke((int) Tuils.dpToPx(mContext, 1.2f), ColorUtils.setAlphaComponent(borderColor, 180),
+                        Tuils.dpToPx(mContext, AppearanceSettings.dashLength()),
+                        Tuils.dpToPx(mContext, AppearanceSettings.dashGap()));
+            }
             termuxInputGroup.setBackground(inputBg);
         }
 
@@ -1705,8 +1699,6 @@ public class UIManager implements OnTouchListener {
             bg.setStroke((int) Tuils.dpToPx(mContext, 1.5f), stroke,
                     Tuils.dpToPx(mContext, AppearanceSettings.dashLength()),
                     Tuils.dpToPx(mContext, AppearanceSettings.dashGap()));
-        } else {
-            bg.setStroke((int) Tuils.dpToPx(mContext, 1.5f), stroke);
         }
         return bg;
     }
@@ -2122,8 +2114,6 @@ public class UIManager implements OnTouchListener {
             bg.setStroke((int) Tuils.dpToPx(mContext, 1.4f), borderColor,
                     Tuils.dpToPx(mContext, AppearanceSettings.dashLength()),
                     Tuils.dpToPx(mContext, AppearanceSettings.dashGap()));
-        } else {
-            bg.setStroke((int) Tuils.dpToPx(mContext, 1.4f), borderColor);
         }
         bg.setColor(bgColor);
 
@@ -2255,7 +2245,11 @@ public class UIManager implements OnTouchListener {
         taskDisplay.setBackgroundColor(textBgColor);
 
         GradientDrawable btnBg = new GradientDrawable();
-        btnBg.setStroke((int) Tuils.dpToPx(mContext, 1.4f), color);
+        if (AppearanceSettings.dashedBorders()) {
+            btnBg.setStroke((int) Tuils.dpToPx(mContext, 1.4f), color,
+                    Tuils.dpToPx(mContext, AppearanceSettings.dashLength()),
+                    Tuils.dpToPx(mContext, AppearanceSettings.dashGap()));
+        }
         btnBg.setColor(textBgColor);
         terminateBtn.setBackground(btnBg);
 
@@ -2514,8 +2508,6 @@ public class UIManager implements OnTouchListener {
             GradientDrawable gd = (GradientDrawable) androidx.core.content.res.ResourcesCompat.getDrawable(mContext.getResources(), R.drawable.apps_drawer_border, null).mutate();
             if (useDashed) {
                 gd.setStroke((int) Tuils.dpToPx(mContext, 1.5f), borderColor, Tuils.dpToPx(mContext, dash), Tuils.dpToPx(mContext, gap));
-            } else {
-                gd.setStroke((int) Tuils.dpToPx(mContext, 1.5f), borderColor);
             }
             gd.setColor(widgetBgColor);
             appsDrawerRoot.findViewById(R.id.apps_drawer_container).setBackgroundDrawable(gd);
@@ -2526,8 +2518,6 @@ public class UIManager implements OnTouchListener {
             if (gd != null) {
                 if (useDashed) {
                     gd.setStroke((int) Tuils.dpToPx(mContext, 1.5f), borderColor, Tuils.dpToPx(mContext, dash), Tuils.dpToPx(mContext, gap));
-                } else {
-                    gd.setStroke((int) Tuils.dpToPx(mContext, 1.5f), borderColor);
                 }
                 gd.setColor(widgetBgColor);
                 appsDrawerHeader.setBackgroundDrawable(gd);
@@ -2619,7 +2609,11 @@ public class UIManager implements OnTouchListener {
 
         GradientDrawable bg = new GradientDrawable();
         bg.setCornerRadius(Tuils.dpToPx(mContext, 2));
-        bg.setStroke((int) Tuils.dpToPx(mContext, 1.5f), borderColor);
+        if (AppearanceSettings.dashedBorders()) {
+            bg.setStroke((int) Tuils.dpToPx(mContext, 1.5f), borderColor,
+                    Tuils.dpToPx(mContext, AppearanceSettings.dashLength()),
+                    Tuils.dpToPx(mContext, AppearanceSettings.dashGap()));
+        }
         bg.setColor(selected ? selectedColor : bgColor);
         tab.setBackground(bg);
         tab.setTextColor(selected ? widgetBgColor : fgColor);
@@ -2739,7 +2733,11 @@ public class UIManager implements OnTouchListener {
 
         GradientDrawable bg = new GradientDrawable();
         bg.setCornerRadius(Tuils.dpToPx(mContext, 2));
-        bg.setStroke((int) Tuils.dpToPx(mContext, 1.2f), borderColor);
+        if (AppearanceSettings.dashedBorders()) {
+            bg.setStroke((int) Tuils.dpToPx(mContext, 1.2f), borderColor,
+                    Tuils.dpToPx(mContext, AppearanceSettings.dashLength()),
+                    Tuils.dpToPx(mContext, AppearanceSettings.dashGap()));
+        }
         bg.setColor(selected ? selectedColor : widgetBgColor);
         tab.setBackground(bg);
     }
@@ -2905,16 +2903,12 @@ public class UIManager implements OnTouchListener {
             d.setCornerRadius(cornerRadius);
 
             boolean isTransparent = (strokeColor.startsWith("#00") && strokeColor.length() == 9);
-            if(!isTransparent || dashed) {
+            if(dashed) {
                 try {
                     int sColor = isTransparent ? fallbackColor : Color.parseColor(strokeColor);
-                    if (dashed) {
-                        d.setStroke((int) Tuils.dpToPx(context, 1.5f), sColor, 
-                                Tuils.dpToPx(context, AppearanceSettings.dashLength()), 
-                                Tuils.dpToPx(context, AppearanceSettings.dashGap()));
-                    } else {
-                        d.setStroke(strokeWidth, sColor);
-                    }
+                    d.setStroke((int) Tuils.dpToPx(context, 1.5f), sColor,
+                            Tuils.dpToPx(context, AppearanceSettings.dashLength()),
+                            Tuils.dpToPx(context, AppearanceSettings.dashGap()));
                 } catch (Exception e) {
                     d.setStroke(strokeWidth, Color.TRANSPARENT);
                 }
