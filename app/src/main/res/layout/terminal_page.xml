@@ -1,35 +1,69 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/terminal_container"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:background="@android:color/transparent"
+    android:clipChildren="false"
+    android:clipToPadding="false"
+    android:paddingTop="8dp">
 
-    <ScrollView
-        android:id="@+id/terminal_scroll"
+    <FrameLayout
+        android:id="@+id/terminal_output_border"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:fillViewport="true">
+        android:layout_height="match_parent"
+        android:layout_marginTop="10dp"
+        android:paddingStart="8dp"
+        android:paddingTop="12dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="6dp">
 
-        <LinearLayout
+        <ScrollView
+            android:id="@+id/terminal_scroll"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:layout_height="match_parent"
+            android:fillViewport="true">
 
-            <View
-                android:layout_width="0dp"
-                android:layout_height="0dp"
-                android:layout_weight="1" />
-
-            <ohi.andre.consolelauncher.tuils.OutlineTextView
-                android:id="@+id/terminal_view"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:scrollHorizontally="false"
-                android:scrollbars="vertical"
-                android:textIsSelectable="true"
-                android:gravity="bottom"/>
-        </LinearLayout>
-    </ScrollView>
-</LinearLayout>
+                android:orientation="vertical">
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:layout_weight="1" />
+
+                <ohi.andre.consolelauncher.tuils.OutlineTextView
+                    android:id="@+id/terminal_view"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="bottom"
+                    android:scrollHorizontally="false"
+                    android:scrollbars="vertical"
+                    android:textIsSelectable="true" />
+            </LinearLayout>
+        </ScrollView>
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/terminal_tray_toggle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignStart="@id/terminal_output_border"
+        android:layout_alignTop="@id/terminal_output_border"
+        android:layout_marginEnd="18dp"
+        android:layout_marginStart="24dp"
+        android:layout_marginTop="-10dp"
+        android:fontFamily="monospace"
+        android:gravity="center"
+        android:minWidth="130dp"
+        android:paddingStart="12dp"
+        android:paddingTop="2dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="2dp"
+        android:text="OUTPUT ^"
+        android:textAllCaps="true"
+        android:textSize="14sp" />
+
+</RelativeLayout>

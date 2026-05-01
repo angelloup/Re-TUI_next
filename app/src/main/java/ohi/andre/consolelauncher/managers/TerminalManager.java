@@ -187,8 +187,8 @@ public class TerminalManager {
         this.mTerminalView = terminalView;
         this.mTerminalView.setTypeface(Tuils.getTypeface(context));
         this.mTerminalView.setTextSize(ioSize);
-        this.mTerminalView.setFocusable(false);
         this.mTerminalView.setMovementMethod(LongClickMovementMethod.getInstance(XMLPrefsManager.getInt(Behavior.long_click_duration)));
+        this.mTerminalView.setTextIsSelectable(true);
 
         int hintColor = XMLPrefsManager.getColor(Theme.session_info_color);
 

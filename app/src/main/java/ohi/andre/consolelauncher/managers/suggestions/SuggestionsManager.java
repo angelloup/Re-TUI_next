@@ -19,7 +19,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -49,6 +51,7 @@ import ohi.andre.consolelauncher.managers.notifications.NotificationManager;
 import ohi.andre.consolelauncher.managers.notifications.reply.BoundApp;
 import ohi.andre.consolelauncher.managers.notifications.reply.ReplyManager;
 import ohi.andre.consolelauncher.managers.WebhookManager;
+import ohi.andre.consolelauncher.managers.modules.ModuleManager;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave;
 import ohi.andre.consolelauncher.managers.xml.options.Apps;
@@ -707,7 +710,7 @@ public class SuggestionsManager {
     private void suggestAlias(AliasManager aliasManager, List<Suggestion> suggestions, String lastWord) {
         int canInsert = lastWord == null || lastWord.length() == 0 ? noInputCounts[Suggestion.TYPE_ALIAS] : counts[Suggestion.TYPE_ALIAS];
 
-        for(AliasManager.Alias a : aliasManager.getAliases(true)) {
+        for(AliasManager.Alias a : aliasManager.getAliases(true, AliasManager.SCOPE_APP)) {
             if (lastWord.length() == 0 || a.name.startsWith(lastWord)) {
                 if (canInsert == 0) return;
                 canInsert--;
@@ -803,7 +806,7 @@ public class SuggestionsManager {
                 break;
         }
 
-        suggestClockCommandArgs(suggestions, afterLastSpace, beforeLastSpace);
+        suggestClockCommandArgs(info, suggestions, afterLastSpace, beforeLastSpace);
     }
 
     private void suggestClockCommandRoots(List<Suggestion> suggestions, String lastWord) {
@@ -827,9 +830,35 @@ public class SuggestionsManager {
                 suggestions.add(new Suggestion(null, option, true, Suggestion.TYPE_PERMANENT));
             }
         }
+
+        if ("termux".startsWith(lower)) {
+            suggestions.add(new Suggestion(null, "termux", true, Suggestion.TYPE_PERMANENT));
+            suggestions.add(new Suggestion(null, "termux -status", true, Suggestion.TYPE_PERMANENT));
+            suggestions.add(new Suggestion(null, "termux -setup", true, Suggestion.TYPE_PERMANENT));
+            suggestions.add(new Suggestion(null, "termux -open", true, Suggestion.TYPE_PERMANENT));
+            suggestions.add(new Suggestion(null, "termux -run", false, Suggestion.TYPE_PERMANENT));
+        }
+
+        if ("retui-token".startsWith(lower) || "retuitoken".startsWith(lower)) {
+            suggestions.add(new Suggestion(null, "retui-token -status", true, Suggestion.TYPE_PERMANENT));
+            suggestions.add(new Suggestion(null, "retui-token -show", true, Suggestion.TYPE_PERMANENT));
+            suggestions.add(new Suggestion(null, "retui-token -rotate", true, Suggestion.TYPE_PERMANENT));
+            suggestions.add(new Suggestion(null, "retui-token -off", true, Suggestion.TYPE_PERMANENT));
+        }
+
+        if ("module".startsWith(lower)) {
+            suggestions.add(new Suggestion(null, "module -ls", true, Suggestion.TYPE_PERMANENT));
+            suggestions.add(new Suggestion(null, "module -add", false, Suggestion.TYPE_PERMANENT));
+            suggestions.add(new Suggestion(null, "module -refresh", false, Suggestion.TYPE_PERMANENT));
+            suggestions.add(new Suggestion(null, "module -rm", false, Suggestion.TYPE_PERMANENT));
+            suggestions.add(new Suggestion(null, "module -show", false, Suggestion.TYPE_PERMANENT));
+            suggestions.add(new Suggestion(null, "module -close", true, Suggestion.TYPE_PERMANENT));
+            suggestions.add(new Suggestion(null, "module -dock add", false, Suggestion.TYPE_PERMANENT));
+            suggestions.add(new Suggestion(null, "module -dock remove", false, Suggestion.TYPE_PERMANENT));
+        }
     }
 
-    private void suggestClockCommandArgs(List<Suggestion> suggestions, String afterLastSpace, String beforeLastSpace) {
+    private void suggestClockCommandArgs(MainPack pack, List<Suggestion> suggestions, String afterLastSpace, String beforeLastSpace) {
         if (beforeLastSpace == null || beforeLastSpace.isEmpty()) {
             return;
         }
@@ -854,6 +883,128 @@ public class SuggestionsManager {
             suggestions.add(new Suggestion(beforeLastSpace, "-stop", true, Suggestion.TYPE_COMMAND));
             suggestions.add(new Suggestion(beforeLastSpace, "-reset", true, Suggestion.TYPE_COMMAND));
             suggestions.add(new Suggestion(beforeLastSpace, "-status", true, Suggestion.TYPE_COMMAND));
+        } else if ("termux".equals(normalized)) {
+            suggestions.add(new Suggestion(beforeLastSpace, "-status", true, Suggestion.TYPE_COMMAND));
+            suggestions.add(new Suggestion(beforeLastSpace, "-setup", true, Suggestion.TYPE_COMMAND));
+            suggestions.add(new Suggestion(beforeLastSpace, "-open", true, Suggestion.TYPE_COMMAND));
+            suggestions.add(new Suggestion(beforeLastSpace, "-run", false, Suggestion.TYPE_COMMAND));
+        } else if ("termux -run".equals(normalized) || "termux run".equals(normalized)) {
+            suggestScopedAliases(pack.aliasManager, suggestions, afterLastSpace, beforeLastSpace, AliasManager.SCOPE_SCRIPT);
+        } else if ("retui-token".equals(normalized) || "retuitoken".equals(normalized)) {
+            suggestions.add(new Suggestion(beforeLastSpace, "-status", true, Suggestion.TYPE_COMMAND));
+            suggestions.add(new Suggestion(beforeLastSpace, "-show", true, Suggestion.TYPE_COMMAND));
+            suggestions.add(new Suggestion(beforeLastSpace, "-rotate", true, Suggestion.TYPE_COMMAND));
+            suggestions.add(new Suggestion(beforeLastSpace, "-on", true, Suggestion.TYPE_COMMAND));
+            suggestions.add(new Suggestion(beforeLastSpace, "-off", true, Suggestion.TYPE_COMMAND));
+        } else if ("module".equals(normalized)) {
+            suggestions.add(new Suggestion(beforeLastSpace, "-ls", true, Suggestion.TYPE_COMMAND));
+            suggestions.add(new Suggestion(beforeLastSpace, "-add", false, Suggestion.TYPE_COMMAND));
+            suggestions.add(new Suggestion(beforeLastSpace, "-refresh", false, Suggestion.TYPE_COMMAND));
+            suggestions.add(new Suggestion(beforeLastSpace, "-rm", false, Suggestion.TYPE_COMMAND));
+            suggestions.add(new Suggestion(beforeLastSpace, "-show", false, Suggestion.TYPE_COMMAND));
+            suggestions.add(new Suggestion(beforeLastSpace, "-hide", false, Suggestion.TYPE_COMMAND));
+            suggestions.add(new Suggestion(beforeLastSpace, "-dock", false, Suggestion.TYPE_COMMAND));
+            suggestions.add(new Suggestion(beforeLastSpace, "-close", true, Suggestion.TYPE_COMMAND));
+        } else if ("module -show".equals(normalized)
+                || "module -hide".equals(normalized)
+                || "module -refresh".equals(normalized)
+                || "module -rm".equals(normalized)) {
+            suggestModules(suggestions, afterLastSpace, beforeLastSpace);
+        } else if ("module -add".equals(normalized)) {
+            suggestions.add(new Suggestion(beforeLastSpace, "server termux:/data/data/com.termux/files/home/retui/server-health.sh", false, Suggestion.TYPE_COMMAND));
+        } else if ("module -dock".equals(normalized) || normalized.startsWith("module -dock ")) {
+            suggestDockCommand(suggestions, afterLastSpace, beforeLastSpace);
+        }
+    }
+
+    private void suggestModules(List<Suggestion> suggestions, String lastWord, String beforeLastSpace) {
+        String filter = lastWord == null ? Tuils.EMPTYSTRING : lastWord.toLowerCase();
+        for (String module : ModuleManager.listAll(pack.context)) {
+            if (filter.length() == 0 || module.startsWith(filter)) {
+                suggestions.add(new Suggestion(beforeLastSpace, module, false, Suggestion.TYPE_COMMAND));
+            }
+        }
+    }
+
+    private void suggestDockCommand(List<Suggestion> suggestions, String lastWord, String beforeLastSpace) {
+        String prefix = beforeLastSpace == null ? Tuils.EMPTYSTRING : beforeLastSpace.trim();
+        String typed = lastWord == null ? Tuils.EMPTYSTRING : lastWord.trim().toLowerCase();
+        String[] parts = prefix.length() == 0 ? new String[0] : prefix.split("\\s+");
+
+        if (parts.length <= 2) {
+            suggestDockAction(suggestions, "add", typed, prefix);
+            suggestDockAction(suggestions, "remove", typed, prefix);
+            return;
+        }
+
+        String mode = parts[2].toLowerCase();
+        if ("add".equals(mode) || "-add".equals(mode)) {
+            suggestDockModules(suggestions, lastWord, beforeLastSpace, true);
+        } else if ("remove".equals(mode) || "-remove".equals(mode) || "rm".equals(mode) || "-rm".equals(mode)) {
+            suggestDockModules(suggestions, lastWord, beforeLastSpace, false);
+        }
+    }
+
+    private void suggestDockAction(List<Suggestion> suggestions, String action, String typed, String prefix) {
+        if (typed.length() == 0 || action.startsWith(typed)) {
+            suggestions.add(new Suggestion(prefix, action, false, Suggestion.TYPE_COMMAND));
+        }
+    }
+
+    private void suggestDockModules(List<Suggestion> suggestions, String lastWord, String beforeLastSpace, boolean addMode) {
+        String prefix = beforeLastSpace == null ? Tuils.EMPTYSTRING : beforeLastSpace.trim();
+        String typed = lastWord == null ? Tuils.EMPTYSTRING : lastWord.trim().toLowerCase();
+        Set<String> selected = new LinkedHashSet<>();
+
+        String[] parts = prefix.split("\\s+");
+        int moduleStart = 3;
+        if (addMode) {
+            selected.addAll(ModuleManager.getDock(pack.context));
+        }
+        for (int i = moduleStart; i < parts.length; i++) {
+            String id = ModuleManager.normalize(parts[i]);
+            if (ModuleManager.isKnown(pack.context, id)) {
+                selected.add(id);
+            }
+        }
+
+        String typedModule = ModuleManager.normalize(typed);
+        boolean typedIsCompleteModule = typed.length() > 0 && ModuleManager.isKnown(pack.context, typedModule);
+        String suggestionPrefix = prefix;
+        String filter = typed;
+
+        if (typedIsCompleteModule) {
+            selected.add(typedModule);
+            suggestionPrefix = (prefix + Tuils.SPACE + typed).trim();
+            filter = Tuils.EMPTYSTRING;
+        }
+
+        List<String> candidates = addMode ? ModuleManager.listAll(pack.context) : ModuleManager.getDock(pack.context);
+        for (String module : candidates) {
+            if (selected.contains(module)) {
+                continue;
+            }
+            if (filter.length() == 0 || module.startsWith(filter)) {
+                suggestions.add(new Suggestion(suggestionPrefix, module, false, Suggestion.TYPE_COMMAND));
+            }
+        }
+    }
+
+    private void suggestScopedAliases(AliasManager aliasManager, List<Suggestion> suggestions, String lastWord, String beforeLastSpace, String scope) {
+        if(aliasManager == null) {
+            return;
+        }
+
+        String filter = lastWord == null ? Tuils.EMPTYSTRING : lastWord;
+        int canInsert = filter.length() == 0 ? noInputCounts[Suggestion.TYPE_ALIAS] : counts[Suggestion.TYPE_ALIAS];
+
+        for(AliasManager.Alias a : aliasManager.getAliases(true, scope)) {
+            if (filter.length() == 0 || a.name.startsWith(filter)) {
+                if (canInsert == 0) return;
+                canInsert--;
+
+                suggestions.add(new Suggestion(beforeLastSpace, a.name, false, Suggestion.TYPE_ALIAS));
+            }
         }
     }
 

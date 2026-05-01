@@ -18,6 +18,7 @@ This wiki is organized like the original upstream docs, but rebuilt around the c
 - [Aliases](./Aliases.md)
 - [Migration Guide](./Migration-Guide.md)
 - [Preset Sharing](./Preset-Sharing.md)
+- [Termux Integration](./Termux-Integration.md)
 - [FAQ and Troubleshooting](./FAQ-and-Troubleshooting.md)
 - [Support and Release Channels](./Support-and-Release-Channels.md)
 
@@ -27,6 +28,7 @@ This wiki is organized like the original upstream docs, but rebuilt around the c
 - [Notifications](./Notifications.md)
 - [Music Visualizer](./Music-Visualizer.md)
 - [App Drawer](./App-Drawer.md)
+- [Termux Integration](./Termux-Integration.md)
 
 ## Philosophy
 
@@ -49,6 +51,7 @@ UI surfaces like the app drawer and settings hub exist to make the launcher easi
 - `wallpaper -live`
 - `wallpaper -auto`
 - `notifications`
+- `termux -setup`
 
 ## Notes
 

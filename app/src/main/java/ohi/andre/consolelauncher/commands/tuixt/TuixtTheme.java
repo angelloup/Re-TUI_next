@@ -109,8 +109,6 @@ final class TuixtTheme {
                     stroke,
                     Tuils.dpToPx(context, AppearanceSettings.dashLength()),
                     Tuils.dpToPx(context, AppearanceSettings.dashGap()));
-        } else {
-            drawable.setStroke(Math.max(1, dp(context, strokeDp)), stroke);
         }
         drawable.setColor(fill);
         return drawable;

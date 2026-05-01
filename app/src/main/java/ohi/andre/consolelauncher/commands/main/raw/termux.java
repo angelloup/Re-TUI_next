@@ -1,6 +1,7 @@
 package ohi.andre.consolelauncher.commands.main.raw;
 
 import android.content.Intent;
+
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import ohi.andre.consolelauncher.R;
@@ -8,48 +9,51 @@ import ohi.andre.consolelauncher.UIManager;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
 import ohi.andre.consolelauncher.commands.ExecutePack;
 
-public class dashboard implements CommandAbstraction {
+public class termux implements CommandAbstraction {
 
     @Override
-    public String exec(ExecutePack info) throws Exception {
-        Intent intent = new Intent(UIManager.ACTION_DASHBOARD);
+    public String exec(ExecutePack info) {
+        String command = null;
         if (info.args != null && info.args.length > 0) {
-            try {
-                Object arg = info.get();
-                int page = (arg instanceof Integer) ? (int) arg : Integer.parseInt(arg.toString());
-                intent.putExtra("page", page);
-            } catch (Exception e) {
-                intent.putExtra("page", 1);
+            Object arg = info.get();
+            if (arg != null) {
+                command = arg.toString();
             }
-        } else {
-            intent.putExtra("page", 1);
         }
-        LocalBroadcastManager.getInstance(info.context.getApplicationContext()).sendBroadcast(intent);
+
+        openConsole(info, command);
         return null;
+    }
+
+    private void openConsole(ExecutePack info, String command) {
+        Intent intent = new Intent(UIManager.ACTION_TERMUX_CONSOLE);
+        intent.putExtra(UIManager.EXTRA_TERMUX_COMMAND, command);
+        LocalBroadcastManager.getInstance(info.context.getApplicationContext()).sendBroadcast(intent);
     }
 
     @Override
     public int[] argType() {
-        return new int[]{CommandAbstraction.INT};
+        return new int[] {CommandAbstraction.PLAIN_TEXT};
     }
 
     @Override
     public int priority() {
-        return 2;
+        return 3;
     }
 
     @Override
     public int helpRes() {
-        return R.string.help_dashboard;
+        return R.string.help_termux;
     }
 
     @Override
     public String onArgNotFound(ExecutePack info, int index) {
-        return null;
+        return info.context.getString(R.string.help_termux);
     }
 
     @Override
     public String onNotArgEnough(ExecutePack info, int nArgs) {
+        openConsole(info, null);
         return null;
     }
 }

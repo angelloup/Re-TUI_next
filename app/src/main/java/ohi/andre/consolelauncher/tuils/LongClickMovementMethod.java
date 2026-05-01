@@ -51,10 +51,16 @@ public class LongClickMovementMethod extends LinkMovementMethod {
             y += widget.getScrollY();
 
             Layout layout = widget.getLayout();
+            if (layout == null) {
+                return super.onTouchEvent(widget, buffer, event);
+            }
             final int line = layout.getLineForVertical(y);
             int off = layout.getOffsetForHorizontal(line, x);
 
             final LongClickableSpan[] link = buffer.getSpans(off, off, LongClickableSpan.class);
+            if (link.length == 0 && runnable == null) {
+                return super.onTouchEvent(widget, buffer, event);
+            }
 
 //            Tuils.log("lastline", lastLine);
 //            Tuils.log("line", line);
@@ -100,16 +106,17 @@ public class LongClickMovementMethod extends LinkMovementMethod {
                             span.onLongClick(widget);
                         }
                     };
+                    widget.postDelayed(runnable, longClickDuration);
                 }
 
-                widget.postDelayed(runnable, longClickDuration);
             } else {
 //                Tuils.log("action move or cancel");
 
 //                action_move
-                if(line != lastLine) {
+                if(line != lastLine && runnable != null) {
 //                    Tuils.log("line != last line");
                     widget.removeCallbacks(runnable);
+                    runnable = null;
                 }
             }
 
