@@ -61,6 +61,8 @@ public class TuiWidgetDecorator {
                         gd.setStroke((int) Tuils.dpToPx(context, 1.5f), borderColor,
                                 Tuils.dpToPx(context, AppearanceSettings.dashLength()),
                                 Tuils.dpToPx(context, AppearanceSettings.dashGap()));
+                    } else {
+                        gd.setStroke(0, Color.TRANSPARENT);
                     }
                     gd.setColor(labelMaskColor);
                     widgetLabel.setBackground(gd);

@@ -188,6 +188,41 @@ Aliases are one of the best ways to make Re:T-UI feel personal without giving up
 
 ## Automation and Web
 
+### `termux`
+
+Open the Re:T-UI Termux console or dispatch a non-interactive Termux script.
+
+Common commands:
+
+- `termux`
+- `termux -status`
+- `termux -setup`
+- `termux -open`
+- `termux -run <script_path> [args...]`
+
+Script aliases use the `-s` alias scope:
+
+- `alias -add -s test /data/data/com.termux/files/home/retui/test.sh`
+- `termux -run test`
+
+Use this for scripts that print output and exit. Open Termux directly for interactive shells, editors, SSH sessions, and REPLs.
+
+### `module`
+
+Show built-in modules and script-backed custom modules.
+
+Common commands:
+
+- `module -ls`
+- `module -show music`
+- `module -dock add notifications`
+- `module -dock remove music`
+- `module -add server termux:/data/data/com.termux/files/home/retui/server-health.sh`
+- `module -refresh server`
+- `module -rm server`
+
+Script modules use Termux for execution and render text back inside a Re:T-UI module window. `module -rm` removes only Re:T-UI's registry entry; it does not delete the Termux script.
+
 ### `webhook`
 
 Create and trigger saved webhooks.
@@ -250,7 +285,9 @@ If you only memorize a handful of commands, make it these:
 - `preset -save <name>`
 - `preset -apply <name>`
 - `alias -add <name> <command>`
+- `alias -add -s <name> <script_path>`
 - `notifications -access`
+- `termux -setup`
 - `apps -ls`
 - `restart`
 - `debug -settings`

@@ -31,6 +31,8 @@ public class TermuxResultReceiver extends BroadcastReceiver {
         if (intent != null) {
             result.putExtra(UIManager.EXTRA_TERMUX_RESULT_PATH,
                     intent.getStringExtra(UIManager.EXTRA_TERMUX_RESULT_PATH));
+            result.putExtra(UIManager.EXTRA_TERMUX_RESULT_MODULE,
+                    intent.getStringExtra(UIManager.EXTRA_TERMUX_RESULT_MODULE));
 
             Bundle bundle = findResultBundle(intent);
             if (bundle != null) {

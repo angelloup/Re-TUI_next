@@ -18,6 +18,8 @@ They are useful for:
 ## Main Commands
 
 - `alias -add <name> <command content>`
+- `alias -add -a <name> <command content>`
+- `alias -add -s <name> <script path>`
 - `alias -rm <name>`
 - `alias -ls`
 - `alias -file`
@@ -47,6 +49,16 @@ Now:
 Now:
 
 `home`
+
+### Add a Termux script alias
+
+`alias -add -s test /data/data/com.termux/files/home/retui/test.sh`
+
+Now:
+
+`termux -run test`
+
+The `-s` scope means the alias appears where script aliases make sense, such as after `termux -run`.
 
 ## Where Aliases Live
 

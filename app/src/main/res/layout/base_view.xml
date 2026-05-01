@@ -36,10 +36,21 @@
                 android:layout_height="match_parent" />
         </FrameLayout>
 
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/terminal_tray_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:orientation="vertical">
+
         <include
             layout="@layout/terminal_page"
             android:layout_width="match_parent"
-            android:layout_height="96dp" />
+            android:layout_height="112dp" />
 
         <!-- Persistent Input Area -->
         <LinearLayout

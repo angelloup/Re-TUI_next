@@ -37,9 +37,12 @@ import ohi.andre.consolelauncher.commands.tuixt.TuixtDialog;
 import androidx.core.view.GestureDetectorCompat;
 import android.text.SpannableString;
 import android.text.TextUtils;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.text.method.LinkMovementMethod;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.GestureDetector;
 import android.view.GestureDetector.OnDoubleTapListener;
 import android.view.Gravity;
@@ -58,6 +61,7 @@ import ohi.andre.consolelauncher.managers.AppsManager;
 import ohi.andre.consolelauncher.managers.AliasManager;
 import ohi.andre.consolelauncher.managers.ClockManager;
 import ohi.andre.consolelauncher.managers.music.MusicService;
+import ohi.andre.consolelauncher.managers.modules.ModuleManager;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -122,7 +126,6 @@ import ohi.andre.consolelauncher.tuils.interfaces.CommandExecuter;
 import ohi.andre.consolelauncher.tuils.interfaces.OnBatteryUpdate;
 import ohi.andre.consolelauncher.tuils.interfaces.OnRedirectionListener;
 import ohi.andre.consolelauncher.tuils.interfaces.OnTextChanged;
-import ohi.andre.consolelauncher.tuils.TuixtWindow;
 import ohi.andre.consolelauncher.tuils.stuff.PolicyReceiver;
 
 public class UIManager implements OnTouchListener {
@@ -153,9 +156,11 @@ public class UIManager implements OnTouchListener {
     public static final String ACTION_REQUEST_NOTIFICATION_FEED = NotificationService.ACTION_REQUEST_NOTIFICATION_FEED;
     public static final String ACTION_CLOCK_STATE = ClockManager.ACTION_CLOCK_STATE;
     public static final String ACTION_POMODORO_STATE = PomodoroManager.ACTION_POMODORO_STATE;
-    public static final String ACTION_DASHBOARD = BuildConfig.APPLICATION_ID + ".ui_dashboard";
     public static final String ACTION_TERMUX_CONSOLE = BuildConfig.APPLICATION_ID + ".ui_termux_console";
     public static final String EXTRA_TERMUX_COMMAND = "termux_command";
+    public static final String ACTION_MODULE_COMMAND = BuildConfig.APPLICATION_ID + ".ui_module_command";
+    public static final String EXTRA_MODULE_COMMAND = "module_command";
+    public static final String EXTRA_MODULE_NAME = "module_name";
     private static final String TERMUX_PACKAGE = "com.termux";
     private static final String TERMUX_RUN_COMMAND_PERMISSION = "com.termux.permission.RUN_COMMAND";
     private static final String TERMUX_RUN_COMMAND_ACTION = "com.termux.RUN_COMMAND";
@@ -171,6 +176,7 @@ public class UIManager implements OnTouchListener {
     public static final String EXTRA_TERMUX_RESULT_EXIT_CODE = "termux_result_exit_code";
     public static final String EXTRA_TERMUX_RESULT_ERROR = "termux_result_error";
     public static final String EXTRA_TERMUX_RESULT_DEBUG = "termux_result_debug";
+    public static final String EXTRA_TERMUX_RESULT_MODULE = "termux_result_module";
     public static final String ACTION_NOTIFICATION_RECEIVED = BuildConfig.APPLICATION_ID + ".ui_notification_received";
     public static final String NOTIFICATION_TEXT = "notification_text";
 
@@ -246,6 +252,20 @@ public class UIManager implements OnTouchListener {
     private View suggestionsContainer;
     private int suggestionsVisibilityBeforeTermux = View.VISIBLE;
     private boolean termuxConsoleOpen = false;
+    private View terminalTrayContainer;
+    private ViewGroup terminalContainer;
+    private View terminalOutputBorder;
+    private TextView terminalTrayToggle;
+    private boolean terminalTrayExpanded = false;
+    private boolean keyboardVisible = false;
+    private LinearLayout moduleDock;
+    private final LinkedHashMap<String, TextView> moduleDockButtons = new LinkedHashMap<>();
+    private String activeModule = ModuleManager.NOTIFICATIONS;
+    private Intent lastClockStateIntent;
+    private Intent lastPomodoroStateIntent;
+    private String lastMusicSong;
+    private String lastMusicSinger;
+    private boolean lastMusicPlaying = false;
 
     SharedPreferences preferences;
 
@@ -469,32 +489,14 @@ public class UIManager implements OnTouchListener {
         }
     }
 
-    public void addDashboardWidget(String title, View content) {
-        if (dashboardContainer == null) return;
-        TuixtWindow window = new TuixtWindow(mContext);
-        window.setTitle(title);
-        window.setContent(content);
-        
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
-        params.bottomMargin = (int) UIUtils.dpToPx(mContext, 8);
-        dashboardContainer.addView(window, params);
-    }
-
     private class PagerAdapter extends RecyclerView.Adapter<PagerAdapter.ViewHolder> {
         @NonNull
         @Override
         public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             LayoutInflater inflater = LayoutInflater.from(parent.getContext());
             View view;
-            if (viewType == 0) {
-                view = inflater.inflate(R.layout.home_widgets_page, parent, false);
-                setupHomeWidgetsPage(view);
-            } else {
-                view = inflater.inflate(R.layout.dashboard_view, parent, false);
-                setupDashboardPage(view);
-            }
+            view = inflater.inflate(R.layout.home_widgets_page, parent, false);
+            setupHomeWidgetsPage(view);
             // ViewPager2 requires match_parent for its children
             view.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
             return new ViewHolder(view);
@@ -502,14 +504,12 @@ public class UIManager implements OnTouchListener {
 
         @Override
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-            // Re-binding logic if needed, but since we recreate views in onCreateViewHolder
-            // and ViewPager2 tends to keep them, we might need to be careful.
-            // However, with only 2 pages, they usually stay in memory.
+            // Home module surfaces are created when the single pager page is inflated.
         }
 
         @Override
         public int getItemCount() {
-            return 2;
+            return 1;
         }
 
         @Override
@@ -541,7 +541,6 @@ public class UIManager implements OnTouchListener {
 
     private ViewPager2 viewPager;
     private ViewGroup homeWidgetsContainer;
-    private ViewGroup dashboardContainer;
 
     private int strokeWidth, cornerRadius;
     private String[] bgRectColors;
@@ -566,14 +565,34 @@ public class UIManager implements OnTouchListener {
     private CommandExecuter mExecuter;
 
     private void setupTerminalPage(View terminalPage) {
-        ViewGroup terminalContainer = terminalPage.findViewById(R.id.terminal_container);
+        terminalTrayContainer = mRootView.findViewById(R.id.terminal_tray_container);
+        terminalContainer = terminalPage.findViewById(R.id.terminal_container);
+        terminalOutputBorder = terminalPage.findViewById(R.id.terminal_output_border);
+        terminalTrayToggle = terminalPage.findViewById(R.id.terminal_tray_toggle);
 
         terminalView = (TextView) terminalPage.findViewById(R.id.terminal_view);
         terminalView.setOnTouchListener(this);
         ((View) terminalView.getParent().getParent()).setOnTouchListener(this);
 
-        applyBgRect(mContext, terminalView, bgRectColors[OUTPUT_BGCOLOR_INDEX], bgColors[OUTPUT_BGCOLOR_INDEX], margins[OUTPUT_MARGINS_INDEX], strokeWidth, cornerRadius, useDashed, XMLPrefsManager.getColor(Theme.output_color));
+        applyBgRect(mContext, terminalOutputBorder, bgRectColors[OUTPUT_BGCOLOR_INDEX], bgColors[OUTPUT_BGCOLOR_INDEX], margins[OUTPUT_MARGINS_INDEX], strokeWidth, cornerRadius, useDashed, XMLPrefsManager.getColor(Theme.output_color));
+        terminalView.setBackgroundColor(Color.TRANSPARENT);
+        terminalView.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                if (!terminalTrayExpanded && terminalContainer != null) {
+                    terminalContainer.post(() -> applyTerminalTrayState(false));
+                }
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {}
+        });
         applyShadow(terminalView, outlineColors[OUTPUT_BGCOLOR_INDEX], shadowXOffset, shadowYOffset, shadowRadius);
+        styleTerminalTrayToggle();
+        applyTerminalTrayState(false);
 
         final EditText inputView = (EditText) mRootView.findViewById(R.id.input_view);
         TextView prefixView = (TextView) mRootView.findViewById(R.id.prefix_view);
@@ -672,49 +691,401 @@ public class UIManager implements OnTouchListener {
         scheduleTypefaceRefreshes();
     }
 
-    private void setupHomeWidgetsPage(View homePage) {
-        LayoutInflater inflater = LayoutInflater.from(mContext);
-        homeWidgetsContainer = homePage.findViewById(R.id.home_widgets_container);
-        if (homeWidgetsContainer == null) return;
+    private void styleTerminalTrayToggle() {
+        if (terminalTrayToggle == null) {
+            return;
+        }
+        int outputColor = AppearanceSettings.notificationWidgetTextColor();
+        terminalTrayToggle.setTextColor(outputColor);
+        terminalTrayToggle.setTypeface(Tuils.getTypeface(mContext), Typeface.BOLD);
+        try {
+            GradientDrawable gd = (GradientDrawable) androidx.core.content.res.ResourcesCompat.getDrawable(
+                    mContext.getResources(), R.drawable.apps_drawer_header_border, null);
+            if (gd != null) {
+                gd = (GradientDrawable) gd.mutate();
+                if (AppearanceSettings.dashedBorders()) {
+                    gd.setStroke((int) Tuils.dpToPx(mContext, 1.5f), outputColor,
+                            Tuils.dpToPx(mContext, AppearanceSettings.dashLength()),
+                            Tuils.dpToPx(mContext, AppearanceSettings.dashGap()));
+                } else {
+                    gd.setStroke(0, Color.TRANSPARENT);
+                }
+                gd.setColor(resolveTerminalWindowBgColor(bgColors[OUTPUT_BGCOLOR_INDEX]));
+                terminalTrayToggle.setBackground(gd);
+            }
+        } catch (Exception ignored) {}
+        terminalTrayToggle.setOnClickListener(v -> setTerminalTrayExpanded(!terminalTrayExpanded));
+        updateTerminalTrayToggleText();
+    }
 
-        if (MusicSettings.showWidget()) {
-            View musicWidget = inflater.inflate(R.layout.music_widget, homeWidgetsContainer, false);
-            homeWidgetsContainer.addView(musicWidget);
-            styleMusicWidget(musicWidget);
+    private void setTerminalTrayExpanded(boolean expanded) {
+        terminalTrayExpanded = expanded;
+        applyTerminalTrayState(true);
+    }
+
+    private void applyTerminalTrayState(boolean refocusInput) {
+        if (terminalContainer == null) {
+            return;
         }
 
-        if (NotificationSettings.showTerminal()) {
-            View notificationWidget = homeWidgetsContainer.findViewById(R.id.notification_widget);
-            if (notificationWidget == null) {
-                notificationWidget = inflater.inflate(R.layout.notification_widget, homeWidgetsContainer, false);
-                homeWidgetsContainer.addView(notificationWidget);
-            }
-            notificationWidget.setClickable(true);
-            notificationWidget.setFocusable(true);
-            notificationWidget.setOnClickListener(v -> openNotificationShade());
-            View notificationBorder = notificationWidget.findViewById(R.id.notification_widget_border);
-            if (notificationBorder != null) {
-                notificationBorder.setOnClickListener(v -> openNotificationShade());
-            }
-            View notificationLabel = notificationWidget.findViewById(R.id.notification_widget_label);
-            if (notificationLabel != null) {
-                notificationLabel.setOnClickListener(v -> openNotificationShade());
-            }
-            styleNotificationWidget(notificationWidget);
+        int collapsedHeight = calculateCollapsedTerminalTrayHeight();
+        int expandedHeight = UIUtils.dpToPx(mContext, keyboardVisible ? 220 : 320);
+        int rootHeight = mRootView != null ? mRootView.getHeight() : 0;
+        if (rootHeight > 0) {
+            int cap = (int) (rootHeight * (keyboardVisible ? 0.34f : 0.48f));
+            expandedHeight = Math.max(collapsedHeight, Math.min(expandedHeight, cap));
+        }
+
+        ViewGroup.LayoutParams params = terminalContainer.getLayoutParams();
+        int targetHeight = terminalTrayExpanded ? expandedHeight : collapsedHeight;
+        if (params != null && params.height != targetHeight) {
+            params.height = targetHeight;
+            terminalContainer.setLayoutParams(params);
+        }
+
+        updateTerminalTrayToggleText();
+        if (terminalTrayExpanded && mTerminalAdapter != null) {
+            mTerminalAdapter.scrollToEnd();
+        }
+        if (refocusInput && mTerminalAdapter != null) {
+            mTerminalAdapter.requestInputFocus();
         }
     }
 
-    private void setupDashboardPage(View dashboardPage) {
-        dashboardContainer = dashboardPage.findViewById(R.id.dashboard_container);
-        // Test Widget
-        TextView testView = new TextView(mContext);
-        testView.setText("Welcome to the TUI Dashboard.\nSwipe left/right or type 'dashboard' to navigate.");
-        testView.setTextColor(XMLPrefsManager.getColor(Theme.output_color));
-        testView.setTypeface(Tuils.getTypeface(mContext));
-        testView.setPadding(0, 20, 0, 20);
-        addDashboardWidget("Information", testView);
-        
-        scheduleTypefaceRefreshes();
+    private void updateTerminalTrayToggleText() {
+        if (terminalTrayToggle != null) {
+            terminalTrayToggle.setText(terminalTrayExpanded ? "OUTPUT v" : "OUTPUT ^");
+        }
+    }
+
+    private int calculateCollapsedTerminalTrayHeight() {
+        int minHeight = UIUtils.dpToPx(mContext, 66);
+        int maxHeight = UIUtils.dpToPx(mContext, keyboardVisible ? 96 : 132);
+        if (terminalView == null || TextUtils.isEmpty(terminalView.getText())) {
+            return minHeight;
+        }
+
+        int lineCount = Math.max(1, terminalView.getLineCount());
+        if (lineCount <= 0) {
+            lineCount = terminalView.getText().toString().split("\\n", -1).length;
+        }
+        int contentHeight = (lineCount * Math.max(terminalView.getLineHeight(), UIUtils.dpToPx(mContext, 18)))
+                + UIUtils.dpToPx(mContext, 38);
+        return Math.max(minHeight, Math.min(maxHeight, contentHeight));
+    }
+
+    private int resolveTerminalWindowBgColor(String bgColor) {
+        try {
+            int color = Color.parseColor(bgColor);
+            if (color != Color.TRANSPARENT) {
+                return color;
+            }
+        } catch (Exception ignored) {}
+        return AppearanceSettings.terminalWindowBackground();
+    }
+
+    private void setupHomeWidgetsPage(View homePage) {
+        moduleDock = homePage.findViewById(R.id.module_dock);
+        homeWidgetsContainer = homePage.findViewById(R.id.home_widgets_container);
+        if (homeWidgetsContainer == null) return;
+
+        rebuildModuleDock();
+        if (!ModuleManager.getDock(mContext).contains(activeModule)) {
+            activeModule = chooseDefaultModule();
+        }
+        showHomeModule(activeModule);
+    }
+
+    private void rebuildModuleDock() {
+        if (moduleDock == null) return;
+
+        moduleDock.removeAllViews();
+        moduleDockButtons.clear();
+
+        for (String module : ModuleManager.getDock(mContext)) {
+            addModuleDockButton(module);
+        }
+        addModuleDockButton("close");
+        updateModuleDockSelection();
+    }
+
+    private void addModuleDockButton(String module) {
+        TextView button = new TextView(mContext);
+        button.setText("close".equals(module) ? "X" : ModuleManager.displayName(module));
+        button.setTypeface(Tuils.getTypeface(mContext), Typeface.BOLD);
+        button.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        button.setSingleLine(true);
+        button.setGravity(Gravity.CENTER);
+        int padX = (int) Tuils.dpToPx(mContext, "close".equals(module) ? 14 : 16);
+        int padY = (int) Tuils.dpToPx(mContext, 7);
+        button.setPadding(padX, padY, padX, padY);
+
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.setMargins(0, 0, (int) Tuils.dpToPx(mContext, 8), 0);
+        button.setLayoutParams(lp);
+
+        button.setOnClickListener(v -> {
+            if ("close".equals(module)) closeHomeModule();
+            else showHomeModule(module);
+        });
+
+        moduleDock.addView(button);
+        moduleDockButtons.put(module, button);
+    }
+
+    private void styleModuleDockButton(TextView button, boolean selected) {
+        int borderColor = AppearanceSettings.notificationWidgetBorderColor();
+        int textColor = AppearanceSettings.notificationWidgetTextColor();
+        int bg = selected
+                ? ColorUtils.setAlphaComponent(textColor, 80)
+                : ColorUtils.setAlphaComponent(AppearanceSettings.terminalWindowBackground(), 210);
+
+        GradientDrawable gd = new GradientDrawable();
+        gd.setShape(GradientDrawable.RECTANGLE);
+        gd.setColor(bg);
+        if (AppearanceSettings.dashedBorders()) {
+            gd.setStroke((int) Tuils.dpToPx(mContext, 1.2f), borderColor,
+                    Tuils.dpToPx(mContext, AppearanceSettings.dashLength()),
+                    Tuils.dpToPx(mContext, AppearanceSettings.dashGap()));
+        }
+        button.setTextColor(textColor);
+        button.setBackground(gd);
+    }
+
+    private void updateModuleDockSelection() {
+        for (Map.Entry<String, TextView> entry : moduleDockButtons.entrySet()) {
+            styleModuleDockButton(entry.getValue(), entry.getKey().equals(activeModule));
+        }
+    }
+
+    private String chooseDefaultModule() {
+        List<String> dock = ModuleManager.getDock(mContext);
+        if (dock.contains(ModuleManager.NOTIFICATIONS) && NotificationSettings.showTerminal()) {
+            return ModuleManager.NOTIFICATIONS;
+        }
+        if (dock.contains(ModuleManager.MUSIC) && MusicSettings.showWidget()) {
+            return ModuleManager.MUSIC;
+        }
+        return dock.isEmpty() ? ModuleManager.TIMER : dock.get(0);
+    }
+
+    private void showHomeModule(String module) {
+        if (homeWidgetsContainer == null) return;
+
+        String id = ModuleManager.normalize(module);
+        if (!ModuleManager.isKnown(mContext, id)) {
+            return;
+        }
+
+        activeModule = id;
+        updateModuleDockSelection();
+        homeWidgetsContainer.removeAllViews();
+
+        if (ModuleManager.MUSIC.equals(id)) {
+            showMusicModule();
+        } else if (ModuleManager.NOTIFICATIONS.equals(id)) {
+            showNotificationsModule();
+        } else if (ModuleManager.TIMER.equals(id)) {
+            showTextModule(ModuleManager.TIMER, buildTimerModuleText());
+        } else if (ModuleManager.CALENDAR.equals(id)) {
+            showTextModule(ModuleManager.CALENDAR, buildCalendarModuleText());
+        } else {
+            String text = ModuleManager.getScriptText(mContext, id);
+            showTextModule(id, TextUtils.isEmpty(text) ? "No module output yet." : text);
+        }
+    }
+
+    private void showMusicModule() {
+        View musicWidget = LayoutInflater.from(mContext).inflate(R.layout.music_widget, homeWidgetsContainer, false);
+        homeWidgetsContainer.addView(musicWidget);
+        musicWidget.setVisibility(View.VISIBLE);
+        styleMusicWidget(musicWidget);
+        updateMusicModuleText(musicWidget);
+    }
+
+    private void showNotificationsModule() {
+        View notificationWidget = LayoutInflater.from(mContext).inflate(R.layout.notification_widget, homeWidgetsContainer, false);
+        homeWidgetsContainer.addView(notificationWidget);
+        notificationWidget.setVisibility(View.VISIBLE);
+        notificationWidget.setClickable(true);
+        notificationWidget.setFocusable(true);
+        notificationWidget.setOnClickListener(v -> openNotificationShade());
+        View notificationBorder = notificationWidget.findViewById(R.id.notification_widget_border);
+        if (notificationBorder != null) {
+            notificationBorder.setOnClickListener(v -> openNotificationShade());
+        }
+        View notificationLabel = notificationWidget.findViewById(R.id.notification_widget_label);
+        if (notificationLabel != null) {
+            notificationLabel.setOnClickListener(v -> openNotificationShade());
+        }
+        styleNotificationWidget(notificationWidget);
+        LocalBroadcastManager.getInstance(mContext.getApplicationContext()).sendBroadcast(new Intent(ACTION_REQUEST_NOTIFICATION_FEED));
+    }
+
+    private void showTextModule(String module, String text) {
+        View moduleView = LayoutInflater.from(mContext).inflate(R.layout.module_text_widget, homeWidgetsContainer, false);
+        homeWidgetsContainer.addView(moduleView);
+
+        TextView label = moduleView.findViewById(R.id.module_text_label);
+        TextView body = moduleView.findViewById(R.id.module_text_body);
+        TextView close = moduleView.findViewById(R.id.module_text_close);
+        if (label != null) {
+            label.setText(ModuleManager.displayName(module));
+        }
+        if (body != null) {
+            body.setText(text);
+            body.setTextColor(AppearanceSettings.notificationWidgetTextColor());
+            body.setTypeface(Tuils.getTypeface(mContext));
+        }
+        if (close != null) {
+            close.setOnClickListener(v -> closeHomeModule());
+            close.setTextColor(AppearanceSettings.notificationWidgetTextColor());
+            close.setTypeface(Tuils.getTypeface(mContext), Typeface.BOLD);
+        }
+
+        ohi.andre.consolelauncher.tuils.TuiWidgetDecorator.decorateWidget(
+                moduleView,
+                R.id.module_text_border,
+                R.id.module_text_label,
+                AppearanceSettings.notificationWidgetBorderColor(),
+                AppearanceSettings.notificationWidgetTextColor());
+        styleModuleClose(close);
+    }
+
+    private void styleModuleClose(TextView close) {
+        if (close == null) return;
+        int borderColor = AppearanceSettings.notificationWidgetBorderColor();
+        int bgColor = AppearanceSettings.terminalWindowBackground();
+        GradientDrawable gd = new GradientDrawable();
+        gd.setShape(GradientDrawable.RECTANGLE);
+        gd.setColor(ColorUtils.setAlphaComponent(bgColor, 255));
+        if (AppearanceSettings.dashedBorders()) {
+            gd.setStroke((int) Tuils.dpToPx(mContext, 1.5f), borderColor,
+                    Tuils.dpToPx(mContext, AppearanceSettings.dashLength()),
+                    Tuils.dpToPx(mContext, AppearanceSettings.dashGap()));
+        }
+        close.setBackground(gd);
+    }
+
+    private void closeHomeModule() {
+        activeModule = "";
+        if (homeWidgetsContainer != null) {
+            homeWidgetsContainer.removeAllViews();
+        }
+        updateModuleDockSelection();
+    }
+
+    private void refreshActiveModuleIfNeeded() {
+        if (ModuleManager.TIMER.equals(activeModule)) {
+            showHomeModule(ModuleManager.TIMER);
+        }
+    }
+
+    private void updateMusicModuleText(View musicWidget) {
+        TextView title = musicWidget.findViewById(R.id.music_song_title);
+        TextView singer = musicWidget.findViewById(R.id.music_singer);
+        MusicVisualizerView visualizer = musicWidget.findViewById(R.id.music_visualizer);
+        int textColor = AppearanceSettings.musicWidgetTextColor();
+        if (title != null) {
+            title.setText(!TextUtils.isEmpty(lastMusicSong) ? "Title: " + lastMusicSong.toUpperCase() : "Title: -");
+            title.setTextColor(textColor);
+        }
+        if (singer != null) {
+            singer.setText(!TextUtils.isEmpty(lastMusicSinger) ? "Singer      : " + lastMusicSinger.toUpperCase() : "Singer      : -");
+            singer.setTextColor(textColor);
+        }
+        if (visualizer != null) {
+            visualizer.setBarColor(textColor);
+            visualizer.setPlaying(lastMusicPlaying);
+        }
+    }
+
+    private String buildTimerModuleText() {
+        StringBuilder out = new StringBuilder();
+        ClockManager clockManager = ClockManager.getInstance(mContext.getApplicationContext());
+        out.append(clockManager.getTimerStatus()).append('\n');
+        out.append(clockManager.getStopwatchStatus()).append('\n');
+
+        PomodoroManager pomodoro = PomodoroManager.getInstance(mContext.getApplicationContext());
+        if (pomodoro.isRunning()) {
+            out.append("Pomodoro: ")
+                    .append(pomodoro.getCurrentType().name().toLowerCase(Locale.US))
+                    .append(" ")
+                    .append(ClockManager.formatDuration(pomodoro.getRemainingMillis()))
+                    .append('\n');
+        } else {
+            out.append("Pomodoro: idle\n");
+        }
+        out.append("Commands: timer, stopwatch, pomodoro");
+        return out.toString();
+    }
+
+    private String buildCalendarModuleText() {
+        Calendar calendar = Calendar.getInstance();
+        String[] months = {"JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"};
+        int month = calendar.get(Calendar.MONTH);
+        int year = calendar.get(Calendar.YEAR);
+        calendar.set(Calendar.DAY_OF_MONTH, 1);
+        int firstDay = calendar.get(Calendar.DAY_OF_WEEK);
+        int max = calendar.getActualMaximum(Calendar.DAY_OF_MONTH);
+        int today = Calendar.getInstance().get(Calendar.DAY_OF_MONTH);
+
+        StringBuilder out = new StringBuilder();
+        out.append(months[month]).append(' ').append(year).append('\n');
+        out.append("SU MO TU WE TH FR SA\n");
+        for (int i = Calendar.SUNDAY; i < firstDay; i++) {
+            out.append("   ");
+        }
+        for (int day = 1; day <= max; day++) {
+            if (day == today) {
+                out.append('[').append(day < 10 ? "0" : "").append(day).append(']');
+            } else {
+                if (day < 10) out.append('0');
+                out.append(day).append(' ');
+            }
+            int dow = calendar.get(Calendar.DAY_OF_WEEK);
+            if (dow == Calendar.SATURDAY) {
+                out.append('\n');
+            }
+            calendar.add(Calendar.DAY_OF_MONTH, 1);
+        }
+        return out.toString();
+    }
+
+    private void handleModuleCommand(Intent intent) {
+        String command = intent.getStringExtra(EXTRA_MODULE_COMMAND);
+        String module = intent.getStringExtra(EXTRA_MODULE_NAME);
+
+        if ("rebuild".equals(command)) {
+            rebuildModuleDock();
+            if (homeWidgetsContainer != null && !TextUtils.isEmpty(activeModule)
+                    && ModuleManager.getDock(mContext).contains(activeModule)) {
+                showHomeModule(activeModule);
+            }
+        } else if ("show".equals(command)) {
+            showHomeModule(module);
+        } else if ("close".equals(command)) {
+            closeHomeModule();
+        } else if ("update".equals(command)) {
+            if (!TextUtils.isEmpty(module) && module.equals(activeModule)) {
+                showHomeModule(module);
+            }
+            rebuildModuleDock();
+        } else if ("refresh".equals(command)) {
+            refreshScriptModule(module);
+        }
+    }
+
+    private void refreshScriptModule(String module) {
+        String id = ModuleManager.normalize(module);
+        String path = ModuleManager.getScriptPath(mContext, id);
+        if (TextUtils.isEmpty(path)) {
+            Tuils.sendOutput(mContext, "Module has no Termux script: " + id);
+            return;
+        }
+        runTermuxScript(path, new ArrayList<>(), id, false);
     }
 
     private void setupTermuxConsole(ViewGroup rootView) {
@@ -813,9 +1184,9 @@ public class UIManager implements OnTouchListener {
         filter.addAction(ACTION_NOTIFICATION_FEED);
         filter.addAction(ACTION_CLOCK_STATE);
         filter.addAction(ACTION_POMODORO_STATE);
-        filter.addAction(ACTION_DASHBOARD);
         filter.addAction(ACTION_TERMUX_CONSOLE);
         filter.addAction(ACTION_TERMUX_RESULT);
+        filter.addAction(ACTION_MODULE_COMMAND);
 
         receiver = new BroadcastReceiver() {
             @Override
@@ -829,18 +1200,19 @@ public class UIManager implements OnTouchListener {
                 } else if(action.equals(ACTION_ROOT)) {
                     mTerminalAdapter.onRoot();
                 } else if(action.equals(ACTION_CLOCK_STATE)) {
+                    lastClockStateIntent = new Intent(intent);
                     updateClockOverlay(intent);
+                    refreshActiveModuleIfNeeded();
                 } else if(action.equals(ACTION_POMODORO_STATE)) {
+                    lastPomodoroStateIntent = new Intent(intent);
                     updatePomodoroOverlay(intent);
-                } else if(action.equals(ACTION_DASHBOARD)) {
-                    if (viewPager != null) {
-                        int page = intent.getIntExtra("page", 1);
-                        viewPager.setCurrentItem(page, true);
-                    }
+                    refreshActiveModuleIfNeeded();
                 } else if(action.equals(ACTION_TERMUX_CONSOLE)) {
                     openTermuxConsole(intent.getStringExtra(EXTRA_TERMUX_COMMAND));
                 } else if(action.equals(ACTION_TERMUX_RESULT)) {
                     appendTermuxResult(intent);
+                } else if(action.equals(ACTION_MODULE_COMMAND)) {
+                    handleModuleCommand(intent);
                 } else if(action.equals(ACTION_NOROOT)) {
                     mTerminalAdapter.onStandard();
 //                } else if(action.equals(ACTION_CLEAR_SUGGESTIONS)) {
@@ -956,6 +1328,9 @@ public class UIManager implements OnTouchListener {
 
                     boolean hasContent = (song != null && !song.isEmpty() && !song.equals("-"));
                     boolean showMusicWidget = isPlaying || hasContent;
+                    lastMusicSong = song;
+                    lastMusicSinger = singer;
+                    lastMusicPlaying = isPlaying;
 
                     View musicWidget = rootView.findViewById(R.id.music_widget);
                     if (musicWidget != null) {
@@ -1009,6 +1384,8 @@ public class UIManager implements OnTouchListener {
                                     gd.setStroke((int) UIUtils.dpToPx(mContext, 1.5f), widgetBorderColor,
                                             UIUtils.dpToPx(mContext, AppearanceSettings.dashLength()),
                                             UIUtils.dpToPx(mContext, AppearanceSettings.dashGap()));
+                                } else {
+                                    gd.setStroke(0, Color.TRANSPARENT);
                                 }
                                 gd.setColor(ColorUtils.setAlphaComponent(widgetBgColor, 255));
                                 widgetLabel.setBackgroundDrawable(gd);
@@ -1051,8 +1428,9 @@ public class UIManager implements OnTouchListener {
 //        scrolllllll
         rootView.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
             int heightDiff = rootView.getRootView().getHeight() - rootView.getHeight();
-            boolean keyboardVisible = heightDiff > UIUtils.dpToPx(context, 200);
+            keyboardVisible = heightDiff > UIUtils.dpToPx(context, 200);
             setNotificationWidgetCompact(rootView, keyboardVisible);
+            applyTerminalTrayState(false);
             if (keyboardVisible && XMLPrefsManager.getBoolean(Behavior.auto_scroll)) {
                 if(mTerminalAdapter != null) mTerminalAdapter.scrollToEnd();
             }
@@ -1498,7 +1876,7 @@ public class UIManager implements OnTouchListener {
         // Setup ViewPager2
         viewPager = mRootView.findViewById(R.id.view_pager);
         viewPager.setAdapter(new PagerAdapter());
-        viewPager.setOffscreenPageLimit(1); // Keep both pages in memory
+        viewPager.setOffscreenPageLimit(1);
         setupTerminalPage(mRootView);
 
         styleClockOverlay(rootView);
@@ -1524,6 +1902,17 @@ public class UIManager implements OnTouchListener {
         if (musicWidget == null) return;
         ohi.andre.consolelauncher.tuils.TuiWidgetDecorator.decorateWidget(musicWidget, R.id.music_widget_border, R.id.music_widget_label);
 
+        TextView titleView = musicWidget.findViewById(R.id.music_song_title);
+        TextView singerView = musicWidget.findViewById(R.id.music_singer);
+        if (titleView != null) {
+            titleView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13f);
+            titleView.setIncludeFontPadding(false);
+        }
+        if (singerView != null) {
+            singerView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 11f);
+            singerView.setIncludeFontPadding(false);
+        }
+
         // Style control buttons
         int widgetColor = AppearanceSettings.musicWidgetTextColor();
         boolean useDashed = AppearanceSettings.dashedBorders();
@@ -1539,6 +1928,10 @@ public class UIManager implements OnTouchListener {
                 TextView btn = (TextView) b;
                 btn.setTextColor(buttonColor);
                 btn.setTypeface(Tuils.getTypeface(mContext));
+                btn.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 12f);
+                btn.setIncludeFontPadding(false);
+                btn.setSingleLine(true);
+                btn.setEllipsize(TextUtils.TruncateAt.END);
                 
                 GradientDrawable gd = new GradientDrawable();
                 gd.setShape(GradientDrawable.RECTANGLE);
@@ -1810,12 +2203,15 @@ public class UIManager implements OnTouchListener {
         } else if ("help".equals(lower)) {
             appendTermuxLine("help");
             appendTermuxLine("status  -> check Termux bridge readiness");
+            appendTermuxLine("setup   -> show Termux bridge setup checklist");
             appendTermuxLine("open    -> launch Termux");
             appendTermuxLine("run <script> [args...] -> dispatch a Termux script");
             appendTermuxLine("clear   -> clear this console");
             appendTermuxLine("exit    -> close this console");
         } else if ("status".equals(lower)) {
             appendTermuxStatus();
+        } else if ("setup".equals(lower)) {
+            appendTermuxSetup();
         } else if ("open".equals(lower)) {
             openTermuxApp();
         } else if (lower.startsWith("run")) {
@@ -1824,6 +2220,33 @@ public class UIManager implements OnTouchListener {
             appendTermuxLine("unknown termux console command: " + command);
             appendTermuxLine("type help for available commands.");
         }
+    }
+
+    private void appendTermuxSetup() {
+        appendTermuxLine("Termux bridge setup");
+        appendTermuxLine("1. Install current Termux from F-Droid/GitHub.");
+        appendTermuxLine("2. In Termux, enable external app commands:");
+        appendTermuxLine("   mkdir -p ~/.termux");
+        appendTermuxLine("   echo 'allow-external-apps = true' >> ~/.termux/termux.properties");
+        appendTermuxLine("   termux-reload-settings");
+        appendTermuxLine("3. Put scripts in a stable folder, for example:");
+        appendTermuxLine("   mkdir -p ~/retui");
+        appendTermuxLine("   nano ~/retui/test.sh");
+        appendTermuxLine("   chmod +x ~/retui/test.sh");
+        appendTermuxLine("4. Create a Re:T-UI script alias:");
+        appendTermuxLine("   alias -add -s test /data/data/com.termux/files/home/retui/test.sh");
+        appendTermuxLine("5. Run it from Re:T-UI:");
+        appendTermuxLine("   termux -run test");
+        appendTermuxLine("6. For callback modules, package-scope the broadcast:");
+        appendTermuxLine("   am broadcast -p com.dvil.tui_renewed -a com.dvil.tui_renewed.RETUI_CALLBACK ...");
+        appendTermuxLine("7. Optional helper:");
+        appendTermuxLine("   retui-token -show");
+        appendTermuxLine("   create ~/retui/retui-helper.sh with retui_module/retui_output helpers.");
+        appendTermuxLine("8. Script-backed module:");
+        appendTermuxLine("   module -add server termux:/data/data/com.termux/files/home/retui/server-health.sh");
+        appendTermuxLine("   module -refresh server");
+        appendTermuxLine("If Android asks for RUN_COMMAND permission, allow Re:T-UI and retry.");
+        appendTermuxStatus();
     }
 
     private String normalizeTermuxConsoleCommand(String command) {
@@ -1874,25 +2297,6 @@ public class UIManager implements OnTouchListener {
             return;
         }
 
-        if (!isPackageInstalled(TERMUX_PACKAGE)) {
-            appendTermuxLine("Termux is not installed.");
-            return;
-        }
-
-        if (!termuxDeclaresRunCommandPermission()) {
-            appendTermuxLine("This Termux build does not expose RUN_COMMAND.");
-            appendTermuxLine("Install/update Termux from F-Droid or GitHub, then retry.");
-            return;
-        }
-
-        if (!hasTermuxRunCommandPermission()) {
-            requestTermuxRunCommandPermission();
-            appendTermuxLine("RunCommand permission is not granted yet.");
-            appendTermuxLine("If Android shows a permission prompt, allow Re:T-UI and retry.");
-            appendTermuxLine("Termux must also have allow-external-apps=true.");
-            return;
-        }
-
         String path = parts.get(1);
         String aliasName = path;
         path = resolveTermuxAlias(path);
@@ -1901,11 +2305,38 @@ public class UIManager implements OnTouchListener {
             args.addAll(parts.subList(2, parts.size()));
         }
 
+        runTermuxScript(path, args, null, true, aliasName);
+    }
+
+    private boolean runTermuxScript(String path, ArrayList<String> args, String module, boolean echoToConsole) {
+        return runTermuxScript(path, args, module, echoToConsole, path);
+    }
+
+    private boolean runTermuxScript(String path, ArrayList<String> args, String module, boolean echoToConsole, String aliasName) {
+        if (!isPackageInstalled(TERMUX_PACKAGE)) {
+            reportTermuxDispatch("Termux is not installed.", echoToConsole);
+            return false;
+        }
+
+        if (!termuxDeclaresRunCommandPermission()) {
+            reportTermuxDispatch("This Termux build does not expose RUN_COMMAND.", echoToConsole);
+            reportTermuxDispatch("Install/update Termux from F-Droid or GitHub, then retry.", echoToConsole);
+            return false;
+        }
+
+        if (!hasTermuxRunCommandPermission()) {
+            requestTermuxRunCommandPermission();
+            reportTermuxDispatch("RunCommand permission is not granted yet.", echoToConsole);
+            reportTermuxDispatch("If Android shows a permission prompt, allow Re:T-UI and retry.", echoToConsole);
+            reportTermuxDispatch("Termux must also have allow-external-apps=true.", echoToConsole);
+            return false;
+        }
+
         Intent intent = new Intent(TERMUX_RUN_COMMAND_ACTION);
         intent.setClassName(TERMUX_PACKAGE, TERMUX_RUN_COMMAND_SERVICE);
         intent.putExtra(TERMUX_RUN_COMMAND_PATH, path);
         intent.putExtra(TERMUX_RUN_COMMAND_BACKGROUND, true);
-        intent.putExtra(TERMUX_RUN_COMMAND_PENDING_INTENT, createTermuxResultPendingIntent(path));
+        intent.putExtra(TERMUX_RUN_COMMAND_PENDING_INTENT, createTermuxResultPendingIntent(path, module));
         if (!args.isEmpty()) {
             intent.putExtra(TERMUX_RUN_COMMAND_ARGUMENTS, args.toArray(new String[0]));
         }
@@ -1916,19 +2347,31 @@ public class UIManager implements OnTouchListener {
             } else {
                 mContext.startService(intent);
             }
-            appendTermuxLine("dispatched to Termux: " + path);
-            if (!aliasName.equals(path)) {
-                appendTermuxLine("alias: " + aliasName + " -> " + path);
+            if (echoToConsole) {
+                appendTermuxLine("dispatched to Termux: " + path);
+                if (aliasName != null && !aliasName.equals(path)) {
+                    appendTermuxLine("alias: " + aliasName + " -> " + path);
+                }
+                if (!args.isEmpty()) {
+                    appendTermuxLine("args: " + Tuils.toPlanString(args, Tuils.SPACE));
+                }
             }
-            if (!args.isEmpty()) {
-                appendTermuxLine("args: " + Tuils.toPlanString(args, Tuils.SPACE));
-            }
+            return true;
         } catch (SecurityException e) {
-            appendTermuxLine("Termux rejected the command: permission denied.");
-            appendTermuxLine("Check allow-external-apps=true and grant RUN_COMMAND permission.");
+            reportTermuxDispatch("Termux rejected the command: permission denied.", echoToConsole);
+            reportTermuxDispatch("Check allow-external-apps=true and grant RUN_COMMAND permission.", echoToConsole);
         } catch (Exception e) {
-            appendTermuxLine("unable to dispatch Termux command: " + e.getClass().getSimpleName());
-            appendTermuxLine("Open Termux once, then retry from this console.");
+            reportTermuxDispatch("unable to dispatch Termux command: " + e.getClass().getSimpleName(), echoToConsole);
+            reportTermuxDispatch("Open Termux once, then retry from this console.", echoToConsole);
+        }
+        return false;
+    }
+
+    private void reportTermuxDispatch(String message, boolean echoToConsole) {
+        if (echoToConsole) {
+            appendTermuxLine(message);
+        } else {
+            Tuils.sendOutput(mContext, message);
         }
     }
 
@@ -1949,9 +2392,12 @@ public class UIManager implements OnTouchListener {
         return alias[0].trim();
     }
 
-    private PendingIntent createTermuxResultPendingIntent(String path) {
+    private PendingIntent createTermuxResultPendingIntent(String path, String module) {
         Intent resultIntent = new Intent(mContext, ohi.andre.consolelauncher.managers.termux.TermuxResultService.class);
         resultIntent.putExtra(EXTRA_TERMUX_RESULT_PATH, path);
+        if (!TextUtils.isEmpty(module)) {
+            resultIntent.putExtra(EXTRA_TERMUX_RESULT_MODULE, ModuleManager.normalize(module));
+        }
 
         int flags = PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_UPDATE_CURRENT;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -1972,6 +2418,14 @@ public class UIManager implements OnTouchListener {
         int exitCode = intent.getIntExtra(EXTRA_TERMUX_RESULT_EXIT_CODE, Integer.MIN_VALUE);
         String error = intent.getStringExtra(EXTRA_TERMUX_RESULT_ERROR);
         String debug = intent.getStringExtra(EXTRA_TERMUX_RESULT_DEBUG);
+        String module = intent.getStringExtra(EXTRA_TERMUX_RESULT_MODULE);
+
+        if (!TextUtils.isEmpty(module)) {
+            updateModuleFromTermuxResult(module, stdout, stderr, error, exitCode);
+            if (termuxOverlay == null || termuxOverlay.getVisibility() != View.VISIBLE) {
+                return;
+            }
+        }
 
         appendTermuxLine("result: " + (path == null ? "termux command" : path));
         if (exitCode != Integer.MIN_VALUE) {
@@ -1979,7 +2433,9 @@ public class UIManager implements OnTouchListener {
         }
         if (stdout != null && stdout.trim().length() > 0) {
             appendTermuxLine("stdout:");
-            appendTermuxLine(stdout.trim());
+            String trimmedStdout = stdout.trim();
+            appendTermuxLine(trimmedStdout);
+            appendTermuxCallbackHint(trimmedStdout);
         }
         if (stderr != null && stderr.trim().length() > 0) {
             appendTermuxLine("stderr:");
@@ -1995,6 +2451,45 @@ public class UIManager implements OnTouchListener {
                 && (stderr == null || stderr.trim().length() == 0)
                 && (error == null || error.trim().length() == 0)) {
             appendTermuxLine("no output returned.");
+        }
+    }
+
+    private void updateModuleFromTermuxResult(String module, String stdout, String stderr, String error, int exitCode) {
+        String text;
+        if (!TextUtils.isEmpty(stdout) && stdout.trim().length() > 0) {
+            text = stdout.trim();
+        } else if (!TextUtils.isEmpty(stderr) && stderr.trim().length() > 0) {
+            text = "stderr:\n" + stderr.trim();
+        } else if (!TextUtils.isEmpty(error) && error.trim().length() > 0) {
+            text = "error: " + error.trim();
+        } else if (exitCode != Integer.MIN_VALUE) {
+            text = "exit: " + exitCode + "\nNo output returned.";
+        } else {
+            text = "No output returned.";
+        }
+
+        String id = ModuleManager.normalize(module);
+        ModuleManager.setScriptText(mContext, id, text);
+        if (id.equals(activeModule)) {
+            showHomeModule(id);
+        }
+        rebuildModuleDock();
+        Tuils.sendOutput(mContext, "Module refreshed: " + id);
+    }
+
+    private void appendTermuxCallbackHint(String stdout) {
+        if (stdout == null) {
+            return;
+        }
+
+        String lower = stdout.toLowerCase(Locale.US);
+        if (!lower.contains("retui_callback") && !lower.contains("broadcasting: intent")) {
+            return;
+        }
+
+        if (!lower.contains("-p com.dvil.tui_renewed") && !lower.contains("pkg=com.dvil.tui_renewed")) {
+            appendTermuxLine("callback hint: if the module did not appear, add this to the script broadcast:");
+            appendTermuxLine("  -p com.dvil.tui_renewed");
         }
     }
 
@@ -2347,7 +2842,7 @@ public class UIManager implements OnTouchListener {
 
         View notificationWidget = rootView.findViewById(R.id.notification_widget);
         if (notificationWidget != null) {
-            boolean visible = !currentOverlayNotifications.isEmpty();
+            boolean visible = ModuleManager.NOTIFICATIONS.equals(activeModule) || !currentOverlayNotifications.isEmpty();
             notificationWidget.setVisibility(visible ? View.VISIBLE : View.GONE);
             if (visible) {
                 styleNotificationWidget(notificationWidget);
@@ -2368,23 +2863,17 @@ public class UIManager implements OnTouchListener {
         int widgetBorderColor = AppearanceSettings.notificationWidgetBorderColor();
 
         int maxRows = notificationCompactForKeyboard ? Math.min(1, currentOverlayNotifications.size()) : currentOverlayNotifications.size();
+        if (maxRows == 0) {
+            TextView row = buildNotificationRow("No notifications.", widgetTextColor, widgetBorderColor);
+            rows.addView(row);
+            if (scrollView != null) {
+                scrollView.post(() -> scrollView.scrollTo(0, 0));
+            }
+            return;
+        }
         for (int i = 0; i < maxRows; i++) {
             NotificationService.Notification notification = currentOverlayNotifications.get(i);
-            TextView row = new TextView(mContext);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            lp.bottomMargin = notificationCompactForKeyboard ? 0 : (int) Tuils.dpToPx(mContext, 6);
-            row.setLayoutParams(lp);
-            row.setTypeface(Tuils.getTypeface(mContext));
-            row.setTextSize(12);
-            row.setSingleLine(true);
-            row.setEllipsize(TextUtils.TruncateAt.END);
-            row.setGravity(Gravity.CENTER_VERTICAL);
-            int verticalPadding = (int) Tuils.dpToPx(mContext, notificationCompactForKeyboard ? 5 : 8);
-            row.setPadding((int) Tuils.dpToPx(mContext, 10), verticalPadding, (int) Tuils.dpToPx(mContext, 10), verticalPadding);
-            row.setTextColor(widgetTextColor);
-            row.setText(buildNotificationLine(notification));
-
-            row.setBackground(ohi.andre.consolelauncher.tuils.TuiWidgetDecorator.getRowBackground(mContext, widgetBorderColor));
+            TextView row = buildNotificationRow(buildNotificationLine(notification), widgetTextColor, widgetBorderColor);
 
             if (notification.pendingIntent != null) {
                 row.setClickable(true);
@@ -2404,6 +2893,24 @@ public class UIManager implements OnTouchListener {
         if (scrollView != null) {
             scrollView.post(() -> scrollView.fullScroll(View.FOCUS_UP));
         }
+    }
+
+    private TextView buildNotificationRow(CharSequence text, int widgetTextColor, int widgetBorderColor) {
+        TextView row = new TextView(mContext);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.bottomMargin = notificationCompactForKeyboard ? 0 : (int) Tuils.dpToPx(mContext, 6);
+        row.setLayoutParams(lp);
+        row.setTypeface(Tuils.getTypeface(mContext));
+        row.setTextSize(12);
+        row.setSingleLine(true);
+        row.setEllipsize(TextUtils.TruncateAt.END);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        int verticalPadding = (int) Tuils.dpToPx(mContext, notificationCompactForKeyboard ? 5 : 8);
+        row.setPadding((int) Tuils.dpToPx(mContext, 10), verticalPadding, (int) Tuils.dpToPx(mContext, 10), verticalPadding);
+        row.setTextColor(widgetTextColor);
+        row.setText(text);
+        row.setBackground(ohi.andre.consolelauncher.tuils.TuiWidgetDecorator.getRowBackground(mContext, widgetBorderColor));
+        return row;
     }
 
     private CharSequence buildNotificationLine(NotificationService.Notification notification) {
@@ -2508,6 +3015,8 @@ public class UIManager implements OnTouchListener {
             GradientDrawable gd = (GradientDrawable) androidx.core.content.res.ResourcesCompat.getDrawable(mContext.getResources(), R.drawable.apps_drawer_border, null).mutate();
             if (useDashed) {
                 gd.setStroke((int) Tuils.dpToPx(mContext, 1.5f), borderColor, Tuils.dpToPx(mContext, dash), Tuils.dpToPx(mContext, gap));
+            } else {
+                gd.setStroke(0, Color.TRANSPARENT);
             }
             gd.setColor(widgetBgColor);
             appsDrawerRoot.findViewById(R.id.apps_drawer_container).setBackgroundDrawable(gd);
@@ -2518,6 +3027,8 @@ public class UIManager implements OnTouchListener {
             if (gd != null) {
                 if (useDashed) {
                     gd.setStroke((int) Tuils.dpToPx(mContext, 1.5f), borderColor, Tuils.dpToPx(mContext, dash), Tuils.dpToPx(mContext, gap));
+                } else {
+                    gd.setStroke(0, Color.TRANSPARENT);
                 }
                 gd.setColor(widgetBgColor);
                 appsDrawerHeader.setBackgroundDrawable(gd);
@@ -3038,12 +3549,12 @@ public class UIManager implements OnTouchListener {
         if (pomodoroOverlayVisible) {
             return;
         }
-        if (viewPager != null && viewPager.getCurrentItem() != 0) {
-            viewPager.setCurrentItem(0, true);
-            return;
-        }
         if (isAppsDrawerOpen()) {
             hideAppsDrawer();
+            return;
+        }
+        if (terminalTrayExpanded) {
+            setTerminalTrayExpanded(false);
             return;
         }
         if (mTerminalAdapter != null) {

@@ -197,8 +197,36 @@
     <string name="output_flashoff">Flashlight OFF</string>
     <string name="output_flashlightnotavailable">Your device doesn\'t support flashlight</string>
 
-    <string name="help_dashboard">Navigate to the dashboard or switch pages.\n\nUsage:\ndashboard [page_number]</string>
-    <string name="help_termux">Open the Re:T-UI Termux console.\n\nUsage:\ntermux\ntermux -status\ntermux -open\ntermux -run &lt;script_path&gt; [args...]\n\nInside the console:\nstatus, open, run, help, clear, exit</string>
+    <string name="help_termux">Open the Re:T-UI Termux console.\n\nUsage:\ntermux\ntermux -status\ntermux -setup\ntermux -open\ntermux -run &lt;script_path&gt; [args...]\n\nInside the console:\nstatus, setup, open, run, help, clear, exit\n\nFor script modules:\nmodule -add server termux:/data/data/com.termux/files/home/retui/server-health.sh\nmodule -refresh server</string>
+    <string name="help_retuitoken">Manage the Re:T-UI callback token for Termux, Tasker, and future modules.
+        \n\nUsage:
+        \n$ retui-token -status
+        \n$ retui-token -show
+        \n$ retui-token -rotate
+        \n$ retui-token -on
+        \n$ retui-token -off
+        \n\nCallback action:
+        \ncom.dvil.tui_renewed.RETUI_CALLBACK
+        \n\nExtras:
+        \ntoken, action, text, title, module
+        \n\nSafe actions now:
+        \noutput, notify, module_set
+        \n\nTermux callback example:
+        \nam broadcast -p com.dvil.tui_renewed -a com.dvil.tui_renewed.RETUI_CALLBACK --es token TOKEN --es action module_set --es module server --es text ONLINE</string>
+    <string name="help_module">Show and manage Re:T-UI modules.
+        \n\nUsage:
+        \n$ module -ls
+        \n$ module -show music
+        \n$ module -show notifications
+        \n$ module -show timer
+        \n$ module -show calendar
+        \n$ module -add server termux:/data/data/com.termux/files/home/retui/server-health.sh
+        \n$ module -refresh server
+        \n$ module -rm server
+        \n$ module -hide music
+        \n$ module -dock add server
+        \n$ module -dock remove music
+        \n$ module -close</string>
     <!-- status -->
     <string name="battery_label">Battery:</string>
     <string name="mobile_data_label">Mobile data:</string>
