@@ -627,6 +627,12 @@ public class SuggestionsManager {
                         suggestPermanentSuggestions(suggestionList, (PermanentSuggestionCommand) cmd.cmd);
                     }
 
+                    if (isFileOpenCommand(beforeLastSpace)) {
+                        suggestOpenableFile(pack, suggestionList, null, beforeLastSpace);
+                        Collections.sort(suggestionList, comparator);
+                        return suggestionList;
+                    }
+
                     if (cmd.mArgs != null && cmd.mArgs.length > 0 && cmd.cmd instanceof ParamCommand && cmd.nArgs >= 1 && cmd.mArgs[0] instanceof Param && ((Param) cmd.mArgs[0]).args().length + 1 == cmd.nArgs) {
 //                        nothing
                     } else {
@@ -675,6 +681,12 @@ public class SuggestionsManager {
                 if (cmd != null) {
                     if(cmd.cmd instanceof PermanentSuggestionCommand) {
                         suggestPermanentSuggestions(suggestionList, (PermanentSuggestionCommand) cmd.cmd);
+                    }
+
+                    if (isFileOpenCommand(beforeLastSpace)) {
+                        suggestOpenableFile(pack, suggestionList, lastWord, beforeLastSpace);
+                        Collections.sort(suggestionList, comparator);
+                        return suggestionList;
                     }
 
 //                    if (cmd.cmd.maxArgs() == 1 && beforeLastSpace .contains(Tuils.SPACE)) {

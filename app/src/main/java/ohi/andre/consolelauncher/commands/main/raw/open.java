@@ -1,5 +1,7 @@
 package ohi.andre.consolelauncher.commands.main.raw;
 
+import android.content.Intent;
+
 import java.io.File;
 
 import ohi.andre.consolelauncher.R;
@@ -7,6 +9,7 @@ import ohi.andre.consolelauncher.commands.CommandAbstraction;
 import ohi.andre.consolelauncher.commands.ExecutePack;
 import ohi.andre.consolelauncher.commands.main.MainPack;
 import ohi.andre.consolelauncher.managers.FileManager;
+import ohi.andre.consolelauncher.managers.TerminalManager;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
 public class open implements CommandAbstraction {
@@ -14,14 +17,38 @@ public class open implements CommandAbstraction {
     @Override
     public String exec(ExecutePack pack) {
         MainPack info = (MainPack) pack;
-        File file = info.get(File.class);
+        String path = info.getString();
+        File file = resolve(info.currentDirectory, path);
+        if (file == null || !file.exists()) {
+            return info.res.getString(R.string.output_filenotfound);
+        }
+        if (file.isDirectory()) {
+            return info.res.getString(R.string.output_isdirectory);
+        }
 
-        int result = FileManager.openFile(info.context, file);
+        Intent view = Tuils.openFile(info.context, file);
+        info.context.startActivity(Intent.createChooser(view, "Open with"));
 
-        if (result == FileManager.ISDIRECTORY) return info.res.getString(R.string.output_isdirectory);
-        if (result == FileManager.IOERROR) return info.res.getString(R.string.output_error);
+        Tuils.sendOutput(info.context, "Opening: " + file.getName(), TerminalManager.CATEGORY_OUTPUT);
+        return null;
+    }
 
-        return Tuils.EMPTYSTRING;
+    private File resolve(File currentDirectory, String path) {
+        if (path == null || path.trim().length() == 0) {
+            return null;
+        }
+
+        path = path.trim();
+        File file = path.startsWith(File.separator) ? new File(path) : new File(currentDirectory, path);
+        if (file.exists()) {
+            return file;
+        }
+
+        FileManager.DirInfo dirInfo = FileManager.cd(currentDirectory, path);
+        if (dirInfo != null && dirInfo.notFound == null) {
+            return dirInfo.file;
+        }
+        return file;
     }
 
     @Override
@@ -31,7 +58,7 @@ public class open implements CommandAbstraction {
 
     @Override
     public int[] argType() {
-        return new int[]{CommandAbstraction.FILE};
+        return new int[]{CommandAbstraction.PLAIN_TEXT};
     }
 
     @Override
