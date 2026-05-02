@@ -540,6 +540,18 @@
         \nUsage:
         \n$ open [pathToFile]
     </string>
+    <string name="help_intent">Dispatch Android intents from Re:T-UI.
+        \nUsage:
+        \n$ intent -view &lt;uri&gt;
+        \n$ intent -activity -a &lt;action&gt; [-d &lt;data&gt;] [-t &lt;mime&gt;] [-p &lt;package&gt;] [-n &lt;package/class&gt;] [--es key value] [--ei key value] [--ez key true|false]
+        \n$ intent -broadcast -a &lt;action&gt; [-p &lt;package&gt;] [-n &lt;package/class&gt;] [--es key value]
+        \n$ intent -uri &lt;intent-uri&gt;
+        \n$ intent -check ...
+        \nExamples:
+        \n$ intent -view geo:0,0?q=home
+        \n$ intent -activity -a android.intent.action.SEND -t text/plain --es android.intent.extra.TEXT "standup notes"
+        \n$ intent -broadcast -a net.dinglisch.android.tasker.ACTION_TASK -p net.dinglisch.android.taskerm --es task_name Work
+    </string>
 
     <string name="help_username">Change the username and device name: username [new_user] [new_device]</string>
     <string name="help_bbman">-install -> download and setup BusyBox\n-remove -> uninstall BusyBox</string>

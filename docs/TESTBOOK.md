@@ -223,6 +223,27 @@ Create or update a script to output:
   - failure handling
   - external triggers
 
+## Intent Router MVP
+
+- Run `help intent`.
+- Confirm usage covers `-view`, `-activity`, `-broadcast`, `-uri`, and `-check`.
+- Run `intent -check -view https://example.com`.
+- Confirm at least one browser/handler is listed, or a clean "No handlers found" message appears.
+- Run `intent -view https://example.com`.
+- Confirm Android opens a browser or chooser.
+- Run `intent -check -activity -a android.intent.action.SEND -t text/plain --es android.intent.extra.TEXT "hello from retui"`.
+- Confirm share-capable handlers are listed.
+- Run `intent -activity -a android.intent.action.SEND -t text/plain --es android.intent.extra.TEXT "hello from retui"`.
+- Confirm Android opens a share target or chooser.
+- Run `intent -broadcast -a com.example.TEST`.
+- Confirm Re:T-UI refuses the broad implicit broadcast and asks for `-p`, `-n`, or `--unsafe-implicit`.
+- Create an alias:
+  - `alias -add intent-test intent -view https://example.com`
+- Run `intent-test`.
+- Confirm the alias dispatches the intent.
+- Remove it:
+  - `alias -rm intent-test`
+
 ## Phase 4 - Deliberate App Drawer
 
 - Open the app drawer.

@@ -170,17 +170,17 @@ The product boundary:
 
 ### Intent Route Phase 1 - Intent Command MVP
 
-- Add a new `intent` command for common Android intent dispatch.
-- Support the most useful safe primitives first:
-  - `intent -view <uri>`
-  - `intent -activity -a <action> [-d <data>] [-t <mime>] [-p <package>] [-n <package/class>]`
-  - `intent -broadcast -a <action> [-p <package>] [-n <package/class>]`
-  - `intent -uri <intent-uri>`
-  - `intent -check ...`
+- [x] Add a new `intent` command for common Android intent dispatch.
+- [x] Support the most useful safe primitives first:
+  - [x] `intent -view <uri>`
+  - [x] `intent -activity -a <action> [-d <data>] [-t <mime>] [-p <package>] [-n <package/class>]`
+  - [x] `intent -broadcast -a <action> [-p <package>] [-n <package/class>]`
+  - [x] `intent -uri <intent-uri>`
+  - [x] `intent -check ...`
 - Extras should be explicit and typed:
-  - `--es key value` for string
-  - `--ei key value` for int
-  - `--ez key true|false` for boolean
+  - [x] `--es key value` for string
+  - [x] `--ei key value` for int
+  - [x] `--ez key true|false` for boolean
   - add other extra types only when needed
 - Use cases to validate:
   - maps/search: `geo:`, `https:`
@@ -189,10 +189,10 @@ The product boundary:
   - app-specific activity launch
   - Tasker/MacroDroid-style explicit broadcasts
 - Safety rules:
-  - catch `ActivityNotFoundException` and print a clean terminal error
-  - require `-a` for broadcasts
-  - prefer explicit package/component for broadcasts
-  - do not support arbitrary implicit `startService()` in phase 1
+  - [x] catch `ActivityNotFoundException` and print a clean terminal error
+  - [x] require `-a` for broadcasts
+  - [x] prefer explicit package/component for broadcasts
+  - [x] do not support arbitrary implicit `startService()` in phase 1
   - if services are ever added, require explicit component and a separate design pass
 - Alias examples:
   - `alias -add maps-home intent -view geo:0,0?q=home`
