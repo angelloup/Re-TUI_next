@@ -1271,6 +1271,10 @@ public class SuggestionsManager {
             suggestDirectory(info, suggestions, afterLastSpace, beforeLastSpace);
             return;
         }
+        if (isFileOpenCommand(beforeLastSpace)) {
+            suggestOpenableFile(info, suggestions, afterLastSpace, beforeLastSpace);
+            return;
+        }
 
         boolean noAfterLastSpace = afterLastSpace == null || afterLastSpace.length() == 0;
         boolean afterLastSpaceNotEndsWithSeparator = noAfterLastSpace || !afterLastSpace.endsWith(File.separator);
@@ -1337,6 +1341,46 @@ public class SuggestionsManager {
             return false;
         }
         return "cd".equalsIgnoreCase(beforeLastSpace.trim());
+    }
+
+    private boolean isFileOpenCommand(String beforeLastSpace) {
+        if (beforeLastSpace == null) {
+            return false;
+        }
+        String command = beforeLastSpace.trim().toLowerCase();
+        return "open".equals(command) || "share".equals(command);
+    }
+
+    private void suggestOpenableFile(MainPack info, List<Suggestion> suggestions, String afterLastSpace, String beforeLastSpace) {
+        boolean noAfterLastSpace = afterLastSpace == null || afterLastSpace.length() == 0;
+        if (noAfterLastSpace) {
+            suggestFilesOnlyInDir(null, suggestions, info.currentDirectory, beforeLastSpace);
+            return;
+        }
+
+        if (!afterLastSpace.contains(File.separator)) {
+            suggestFilesOnlyInDir(suggestions, info.currentDirectory, afterLastSpace, beforeLastSpace, null);
+            return;
+        }
+
+        if (afterLastSpace.endsWith(File.separator)) {
+            String base = afterLastSpace.substring(0, afterLastSpace.length() - 1);
+            FileManager.DirInfo dirInfo = FileManager.cd(info.currentDirectory, rmQuotes.matcher(base).replaceAll(Tuils.EMPTYSTRING));
+            suggestFilesOnlyInDir(afterLastSpace, suggestions, dirInfo.file, beforeLastSpace);
+            return;
+        }
+
+        String clean = rmQuotes.matcher(afterLastSpace).replaceAll(Tuils.EMPTYSTRING);
+        int index = clean.lastIndexOf(File.separator);
+        if (index < 0) {
+            suggestFilesOnlyInDir(suggestions, info.currentDirectory, clean, beforeLastSpace, null);
+            return;
+        }
+
+        FileManager.DirInfo dirInfo = FileManager.cd(info.currentDirectory, clean.substring(0, index));
+        String holder = afterLastSpace.substring(0, afterLastSpace.lastIndexOf(File.separator) + 1);
+        String leaf = clean.substring(index + 1);
+        suggestFilesOnlyInDir(suggestions, dirInfo.file, leaf, beforeLastSpace, holder);
     }
 
     private void suggestDirectory(MainPack info, List<Suggestion> suggestions, String afterLastSpace, String beforeLastSpace) {
@@ -1429,6 +1473,29 @@ public class SuggestionsManager {
         }
     }
 
+    private void suggestFilesOnlyInDir(List<Suggestion> suggestions, File dir, String afterLastSeparator, String beforeLastSpace, String afterLastSpaceWithoutALS) {
+        if (dir == null || !dir.isDirectory()) return;
+
+        if (afterLastSeparator == null || afterLastSeparator.length() == 0) {
+            suggestFilesOnlyInDir(null, suggestions, dir, beforeLastSpace);
+            return;
+        }
+
+        String[] files = dir.list((current, name) -> new File(current, name).isFile());
+        if (files == null) {
+            return;
+        }
+
+        String temp = rmQuotes.matcher(afterLastSeparator).replaceAll(Tuils.EMPTYSTRING);
+        int counter = quickCompare(temp, files, suggestions, beforeLastSpace, suggestionsPerCategory, false, Suggestion.TYPE_FILE, false);
+        if (suggestionsPerCategory - counter <= 0) return;
+
+        String[] matches = CompareStrings.topMatchesWithDeadline(temp, files, suggestionsPerCategory - counter, suggestionsDeadline, FILE_SPLITTERS, algInstance, alg);
+        for (String match : matches) {
+            suggestions.add(new Suggestion(beforeLastSpace, match, false, Suggestion.TYPE_FILE, afterLastSpaceWithoutALS));
+        }
+    }
+
     private int quickCompare(String s1, String[] ss, List<Suggestion> suggestions, String beforeLastSpace, int max, boolean exec, int type, Object tag) {
         if(s1.length() > quickCompare) return 0;
 
@@ -1506,6 +1573,25 @@ public class SuggestionsManager {
             }
             Arrays.sort(dirs);
             for (String s : dirs) {
+                suggestions.add(new Suggestion(beforeLastSpace, s, false, Suggestion.TYPE_FILE, afterLastSpaceHolder));
+            }
+        } catch (NullPointerException e) {
+            Tuils.log(e);
+        }
+    }
+
+    private void suggestFilesOnlyInDir(String afterLastSpaceHolder, List<Suggestion> suggestions, File dir, String beforeLastSpace) {
+        if (dir == null || !dir.isDirectory()) {
+            return;
+        }
+
+        try {
+            String[] files = dir.list((current, name) -> new File(current, name).isFile());
+            if (files == null) {
+                return;
+            }
+            Arrays.sort(files);
+            for (String s : files) {
                 suggestions.add(new Suggestion(beforeLastSpace, s, false, Suggestion.TYPE_FILE, afterLastSpaceHolder));
             }
         } catch (NullPointerException e) {

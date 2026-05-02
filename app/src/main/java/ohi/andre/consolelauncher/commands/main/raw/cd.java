@@ -6,6 +6,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import java.io.File;
 
+import ohi.andre.consolelauncher.MainManager;
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.UIManager;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
@@ -26,6 +27,9 @@ public class cd implements CommandAbstraction {
         }
 
         info.currentDirectory = folder;
+        if (MainManager.interactive != null) {
+            MainManager.interactive.addCommand("cd '" + folder.getAbsolutePath().replace("'", "'\\''") + "'");
+        }
         LocalBroadcastManager.getInstance(info.context.getApplicationContext())
                 .sendBroadcast(new Intent(UIManager.ACTION_UPDATE_HINT));
         return folder.getAbsolutePath();

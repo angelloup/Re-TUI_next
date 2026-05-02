@@ -545,7 +545,7 @@ public class MainManager {
                         if(Shell.SU.available()) LocalBroadcastManager.getInstance(mContext.getApplicationContext()).sendBroadcast(new Intent(UIManager.ACTION_ROOT));
                         interactive.addCommand("su");
 
-                    } else if(input.contains("cd ")) {
+                    } else if(trimmed.equalsIgnoreCase("cd") || trimmed.toLowerCase().startsWith("cd ")) {
                         interactive.addCommand(input, CD_CODE, result);
                     } else interactive.addCommand(input);
 
@@ -582,7 +582,14 @@ public class MainManager {
 
             String trimmed = input.trim();
             final Command command = CommandTuils.parse(trimmed, info);
-            if(command == null) return false;
+            if(command == null) {
+                List<String> parts = Tuils.splitArgs(trimmed);
+                if (!parts.isEmpty() && info.commandGroup.getCommandByName(parts.get(0)) != null) {
+                    Tuils.sendOutput(mContext, "Invalid command input: " + parts.get(0), TerminalManager.CATEGORY_OUTPUT);
+                    return true;
+                }
+                return false;
+            }
 
             // If it is a ParamCommand (like webhook) or has arguments, we definitely want to handle it here.
             // If it's just a command name (no args), it might conflict with an app.
