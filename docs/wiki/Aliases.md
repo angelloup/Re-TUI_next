@@ -60,6 +60,42 @@ Now:
 
 The `-s` scope means the alias appears where script aliases make sense, such as after `termux -run`.
 
+## Workflow Aliases
+
+Aliases can also chain multiple Re:T-UI commands. The default command separator is `;`.
+
+This makes aliases the official workflow layer for Re:T-UI. A workflow alias is not a separate recipe system; it is just an inspectable alias that expands into several normal commands.
+
+Examples:
+
+```text
+alias -add focus module -show timer; timer 25m; notifications -off
+```
+
+```text
+alias -add dev module -show server; termux -run status; apps -lsgp dev
+```
+
+```text
+alias -add morning module -show calendar; module -show notifications; wallpaper -auto
+```
+
+```text
+alias -add privacy notifications -off; apps -hide Instagram; apps -hide YouTube
+```
+
+```text
+alias -add commute module -show music; music -play; module -show notifications
+```
+
+Run one by typing its name:
+
+```text
+focus
+```
+
+Use `alias -ls` or `alias -file` to inspect what a workflow alias does before trusting it.
+
 ## Where Aliases Live
 
 Aliases are stored in the launcher alias file and can also be opened directly with:
@@ -108,3 +144,10 @@ Less useful aliases are the ones you invent once and never remember again.
 Aliases are also a natural place for future interactive flows, like confirmation prompts or protected commands.
 
 That is not the main user flow today, but aliases are already the right conceptual home for that kind of power-user behavior.
+
+Deferred alias polish:
+
+- better `alias -ls` formatting
+- `alias -show <name>`
+- `alias -run <name>` only if direct alias execution becomes unclear
+- warnings if an alias chain contains destructive commands

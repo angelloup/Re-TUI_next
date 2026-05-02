@@ -20,9 +20,12 @@ public final class ModuleManager {
 
     private static final String PREFS = "retui_modules";
     private static final String KEY_DOCK = "dock";
+    private static final String KEY_ACTIVE_MODULE = "active_module";
     private static final String KEY_SCRIPT_IDS = "script_ids";
     private static final String KEY_SCRIPT_PREFIX = "script_";
     private static final String KEY_SCRIPT_PATH_PREFIX = "script_path_";
+    private static final String KEY_SCRIPT_TITLE_PREFIX = "script_title_";
+    private static final String KEY_SCRIPT_SUGGESTIONS_PREFIX = "script_suggestions_";
     private static final List<String> BUILT_INS = Arrays.asList(MUSIC, NOTIFICATIONS, TIMER, CALENDAR);
 
     private ModuleManager() {}
@@ -69,6 +72,18 @@ public final class ModuleManager {
         setDock(context, new ArrayList<>(dock));
     }
 
+    public static void setActiveModule(Context context, String module) {
+        prefs(context).edit().putString(KEY_ACTIVE_MODULE, normalize(module)).apply();
+    }
+
+    public static String getActiveModule(Context context) {
+        return normalize(prefs(context).getString(KEY_ACTIVE_MODULE, ""));
+    }
+
+    public static List<ModuleSuggestion> getActiveSuggestions(Context context) {
+        return getSuggestionsForModule(context, getActiveModule(context));
+    }
+
     public static void hideFromDock(Context context, String module) {
         String id = normalize(module);
         List<String> dock = getDock(context);
@@ -92,12 +107,23 @@ public final class ModuleManager {
         if (TextUtils.isEmpty(id)) {
             return;
         }
+        ScriptPayload payload = parseScriptPayload(text);
         LinkedHashSet<String> ids = new LinkedHashSet<>(getScriptIds(context));
         ids.add(id);
-        prefs(context).edit()
+        SharedPreferences.Editor editor = prefs(context).edit()
                 .putStringSet(KEY_SCRIPT_IDS, ids)
-                .putString(KEY_SCRIPT_PREFIX + id, text == null ? "" : text)
-                .apply();
+                .putString(KEY_SCRIPT_PREFIX + id, payload.body);
+        if (TextUtils.isEmpty(payload.title)) {
+            editor.remove(KEY_SCRIPT_TITLE_PREFIX + id);
+        } else {
+            editor.putString(KEY_SCRIPT_TITLE_PREFIX + id, payload.title);
+        }
+        if (payload.suggestions.isEmpty()) {
+            editor.remove(KEY_SCRIPT_SUGGESTIONS_PREFIX + id);
+        } else {
+            editor.putString(KEY_SCRIPT_SUGGESTIONS_PREFIX + id, serializeSuggestions(payload.suggestions));
+        }
+        editor.apply();
     }
 
     public static void setScriptModule(Context context, String module, String path) {
@@ -111,6 +137,8 @@ public final class ModuleManager {
                 .putStringSet(KEY_SCRIPT_IDS, ids)
                 .putString(KEY_SCRIPT_PATH_PREFIX + id, normalizeScriptPath(path))
                 .putString(KEY_SCRIPT_PREFIX + id, "No module output yet. Run module -refresh " + id)
+                .remove(KEY_SCRIPT_TITLE_PREFIX + id)
+                .remove(KEY_SCRIPT_SUGGESTIONS_PREFIX + id)
                 .apply();
     }
 
@@ -128,12 +156,19 @@ public final class ModuleManager {
                 .putString(KEY_DOCK, TextUtils.join(",", dock))
                 .remove(KEY_SCRIPT_PREFIX + id)
                 .remove(KEY_SCRIPT_PATH_PREFIX + id)
+                .remove(KEY_SCRIPT_TITLE_PREFIX + id)
+                .remove(KEY_SCRIPT_SUGGESTIONS_PREFIX + id)
                 .apply();
     }
 
     public static String getScriptText(Context context, String module) {
         String id = normalize(module);
         return prefs(context).getString(KEY_SCRIPT_PREFIX + id, null);
+    }
+
+    public static String getScriptTitle(Context context, String module) {
+        String id = normalize(module);
+        return prefs(context).getString(KEY_SCRIPT_TITLE_PREFIX + id, "");
     }
 
     public static String getScriptPath(Context context, String module) {
@@ -162,6 +197,173 @@ public final class ModuleManager {
             return "NOTIFICATIONS";
         }
         return id.toUpperCase(Locale.US);
+    }
+
+    public static String displayTitle(Context context, String module) {
+        String id = normalize(module);
+        String title = getScriptTitle(context, id);
+        if (!TextUtils.isEmpty(title)) {
+            return title;
+        }
+        return displayName(id);
+    }
+
+    private static List<ModuleSuggestion> getSuggestionsForModule(Context context, String module) {
+        ArrayList<ModuleSuggestion> suggestions = new ArrayList<>();
+        String id = normalize(module);
+        if (TextUtils.isEmpty(id)) {
+            return suggestions;
+        }
+
+        if (TIMER.equals(id)) {
+            suggestions.add(ModuleSuggestion.command("+5m", "timer -add 5m"));
+            suggestions.add(ModuleSuggestion.command("+15m", "timer -add 15m"));
+            suggestions.add(ModuleSuggestion.command("25m", "timer 25m"));
+            suggestions.add(ModuleSuggestion.command("stop", "timer -stop"));
+            suggestions.add(ModuleSuggestion.command("status", "timer -status"));
+            suggestions.add(ModuleSuggestion.command("pomodoro", "pomodoro"));
+        } else if (MUSIC.equals(id)) {
+            suggestions.add(ModuleSuggestion.command("prev", "music -previous"));
+            suggestions.add(ModuleSuggestion.command("play", "music -play"));
+            suggestions.add(ModuleSuggestion.command("next", "music -next"));
+            suggestions.add(ModuleSuggestion.command("info", "music -info"));
+            suggestions.add(ModuleSuggestion.command("stop", "music -stop"));
+        } else if (NOTIFICATIONS.equals(id)) {
+            suggestions.add(ModuleSuggestion.command("access", "notifications -access"));
+            suggestions.add(ModuleSuggestion.command("on", "notifications -on"));
+            suggestions.add(ModuleSuggestion.command("off", "notifications -off"));
+            suggestions.add(ModuleSuggestion.command("filters", "notifications -file"));
+        } else if (CALENDAR.equals(id)) {
+            suggestions.add(ModuleSuggestion.command("today", "module -show calendar"));
+            suggestions.add(ModuleSuggestion.command("timer", "module -show timer"));
+        } else {
+            suggestions.addAll(getScriptSuggestions(context, id));
+        }
+
+        return suggestions;
+    }
+
+    public static final class ModuleSuggestion {
+        public static final String MODE_COMMAND = "command";
+        public static final String MODE_TERMUX_RUN = "termux-run";
+        public static final String MODE_CALLBACK = "callback";
+
+        public final String label;
+        public final String action;
+        public final String mode;
+
+        private ModuleSuggestion(String label, String action, String mode) {
+            this.label = label;
+            this.action = action;
+            this.mode = mode;
+        }
+
+        public static ModuleSuggestion command(String label, String command) {
+            return new ModuleSuggestion(label, command, MODE_COMMAND);
+        }
+    }
+
+    private static ScriptPayload parseScriptPayload(String text) {
+        ScriptPayload payload = new ScriptPayload();
+        if (text == null) {
+            return payload;
+        }
+
+        StringBuilder body = new StringBuilder();
+        for (String rawLine : text.split("\\r?\\n", -1)) {
+            String line = rawLine.trim();
+            if (line.startsWith("::title ")) {
+                payload.title = line.substring("::title ".length()).trim();
+            } else if (line.startsWith("::body ")) {
+                appendBodyLine(body, line.substring("::body ".length()).trim());
+            } else if (line.startsWith("::suggest ")) {
+                ModuleSuggestion suggestion = parseSuggestion(line.substring("::suggest ".length()).trim());
+                if (suggestion != null) {
+                    payload.suggestions.add(suggestion);
+                }
+            } else if (!line.startsWith("::")) {
+                appendBodyLine(body, rawLine);
+            }
+        }
+        payload.body = body.toString().trim();
+        return payload;
+    }
+
+    private static ModuleSuggestion parseSuggestion(String raw) {
+        if (TextUtils.isEmpty(raw)) {
+            return null;
+        }
+
+        String[] parts = raw.split("\\|", -1);
+        String label;
+        String mode;
+        String action;
+        if (parts.length >= 3) {
+            label = parts[0].trim();
+            mode = parts[1].trim().toLowerCase(Locale.US);
+            action = parts[2].trim();
+        } else if (parts.length == 2) {
+            label = parts[0].trim();
+            mode = ModuleSuggestion.MODE_COMMAND;
+            action = parts[1].trim();
+        } else {
+            label = raw.trim();
+            mode = ModuleSuggestion.MODE_COMMAND;
+            action = label;
+        }
+
+        if (TextUtils.isEmpty(label) || TextUtils.isEmpty(action)) {
+            return null;
+        }
+        return new ModuleSuggestion(label, action, normalizeMode(mode));
+    }
+
+    private static String normalizeMode(String mode) {
+        String normalized = mode == null ? "" : mode.trim().toLowerCase(Locale.US);
+        if (ModuleSuggestion.MODE_TERMUX_RUN.equals(normalized)) {
+            return ModuleSuggestion.MODE_TERMUX_RUN;
+        }
+        if (ModuleSuggestion.MODE_CALLBACK.equals(normalized)) {
+            return ModuleSuggestion.MODE_CALLBACK;
+        }
+        return ModuleSuggestion.MODE_COMMAND;
+    }
+
+    private static void appendBodyLine(StringBuilder body, String line) {
+        if (body.length() > 0) {
+            body.append('\n');
+        }
+        body.append(line);
+    }
+
+    private static String serializeSuggestions(List<ModuleSuggestion> suggestions) {
+        ArrayList<String> lines = new ArrayList<>();
+        for (ModuleSuggestion suggestion : suggestions) {
+            lines.add(suggestion.label + "\t" + suggestion.mode + "\t" + suggestion.action);
+        }
+        return TextUtils.join("\n", lines);
+    }
+
+    private static List<ModuleSuggestion> getScriptSuggestions(Context context, String module) {
+        ArrayList<ModuleSuggestion> suggestions = new ArrayList<>();
+        String raw = prefs(context).getString(KEY_SCRIPT_SUGGESTIONS_PREFIX + normalize(module), "");
+        if (TextUtils.isEmpty(raw)) {
+            return suggestions;
+        }
+
+        for (String line : raw.split("\\n")) {
+            String[] parts = line.split("\\t", 3);
+            if (parts.length == 3 && !TextUtils.isEmpty(parts[0]) && !TextUtils.isEmpty(parts[2])) {
+                suggestions.add(new ModuleSuggestion(parts[0], parts[2], normalizeMode(parts[1])));
+            }
+        }
+        return suggestions;
+    }
+
+    private static final class ScriptPayload {
+        String title = "";
+        String body = "";
+        final List<ModuleSuggestion> suggestions = new ArrayList<>();
     }
 
     private static List<String> parseList(String raw) {

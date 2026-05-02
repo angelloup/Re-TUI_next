@@ -29,8 +29,8 @@ android {
         applicationId "com.dvil.tui_renewed"
         minSdk 23
         targetSdk 36
-        versionCode 325
-        versionName "v6.16.1-STABLE"
+        versionCode 327
+        versionName "v6.16.3-STABLE"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -58,7 +58,21 @@ android {
                 serviceCredentialsFile = "/Users/mako/Downloads/t-ui-renewed-firebase-adminsdk-fbsvc-3da60ffd6f.json"
                 artifactType = "APK"
                 testers = "mekiranjayan@gmail.com"
-                releaseNotes = "v6.16.1-STABLE: Fixed time not showing in status container."
+                releaseNotes = """v6.16.3-STABLE (327)
+- Reworked first-run/help flow around a workstation quickstart.
+- Added wallpaper-auto first personalization suggestion for new setups.
+- Added explicit contacts workflow through contacts/cntcts suggestions and contextual call/details/edit actions.
+- Added active module suggestions for timer, music, notifications, calendar, and script-backed modules.
+- Added script module metadata: ::title, ::body, and command-mode ::suggest entries.
+- Fixed expanded output tray manual scrolling.
+- Modules now start closed by default so first-run suggestions stay visible.
+- Cleaner output terminal package events: installs, uninstalls, and updates print once per event.
+- Added behavior toggle `toggle_output_state` to persist expanded/minimized output tray state.
+- Added close buttons for music and notification modules.
+- Improved timer module chips: +5m/+15m start a timer when idle or extend the running timer.
+- Reworked app drawer group tabs into a compact bottom scroll strip.
+- Documented workflow aliases as the official recipe/chaining layer.
+- Added automation/chaining audit docs and kept callbacks narrow/token-gated."""
             }
         }
     }

@@ -89,9 +89,13 @@ public class AppsManager implements XMLPrefsElement {
     public List<Group> groups;
 
     private Pattern pp, pl;
-    private String appInstalledFormat, appUninstalledFormat;
+    private String appInstalledFormat, appUpdatedFormat, appUninstalledFormat;
     int appInstalledColor, appUninstalledColor;
 
+    private String lastInstalledPackage;
+    private long lastInstallTime;
+    private String lastUpdatedPackage;
+    private long lastUpdateTime;
     private String lastUninstalledPackage;
     private long lastUninstallTime;
 
@@ -122,10 +126,10 @@ public class AppsManager implements XMLPrefsElement {
             String action = intent.getAction();
             String data = intent.getData().getSchemeSpecificPart();
             if (action.equals(Intent.ACTION_PACKAGE_ADDED)) {
-                appInstalled(data);
+                appInstalled(data, intent.getBooleanExtra(Intent.EXTRA_REPLACING, false));
             }
             else {
-                appUninstalled(data);
+                appUninstalled(data, intent.getBooleanExtra(Intent.EXTRA_REPLACING, false));
             }
         }
     };
@@ -136,6 +140,7 @@ public class AppsManager implements XMLPrefsElement {
         this.context = context;
 
         appInstalledFormat = XMLPrefsManager.getBoolean(Ui.show_app_installed) ? XMLPrefsManager.get(Behavior.app_installed_format) : null;
+        appUpdatedFormat = XMLPrefsManager.getBoolean(Ui.show_app_installed) ? XMLPrefsManager.get(Behavior.app_updated_format) : null;
         appUninstalledFormat = XMLPrefsManager.getBoolean(Ui.show_app_uninstalled) ? XMLPrefsManager.get(Behavior.app_uninstalled_format) : null;
 
         if(appInstalledFormat != null || appUninstalledFormat != null) {
@@ -457,30 +462,46 @@ public class AppsManager implements XMLPrefsElement {
         }
     }
 
-    private void appInstalled(String packageName) {
+    private boolean shouldSuppressPackageEvent(String packageName, String lastPackage, long lastTime) {
+        return packageName.equals(lastPackage) && System.currentTimeMillis() - lastTime < 2000;
+    }
+
+    private String formatPackageEvent(String format, String packageName, PackageManager manager, PackageInfo packageInfo, List<LaunchInfo> infos) {
+        String cp = format;
+
+        cp = pp.matcher(cp).replaceAll(packageName);
+        if(packageInfo != null) {
+            CharSequence sequence = packageInfo.applicationInfo.loadLabel(manager);
+            if(sequence != null) cp = pl.matcher(cp).replaceAll(sequence.toString());
+        } else if(infos != null && infos.size() > 0) {
+            cp = pl.matcher(cp).replaceAll(infos.get(0).publicLabel);
+        } else {
+            int index = packageName.lastIndexOf(Tuils.DOT);
+            if(index == -1) cp = pl.matcher(cp).replaceAll(Tuils.EMPTYSTRING);
+            else {
+                cp = pl.matcher(cp).replaceAll(packageName.substring(index + 1));
+            }
+        }
+
+        return Tuils.patternNewline.matcher(cp).replaceAll(Tuils.NEWLINE);
+    }
+
+    private void appInstalled(String packageName, boolean replacing) {
         try {
             PackageManager manager = context.getPackageManager();
 
             PackageInfo packageInfo = manager.getPackageInfo(packageName, 0);
 
-            if(appInstalledFormat != null) {
-                String cp = appInstalledFormat;
-
-                cp = pp.matcher(cp).replaceAll(packageName);
-                if(packageInfo != null) {
-                    CharSequence sequence = packageInfo.applicationInfo.loadLabel(manager);
-                    if(sequence != null) cp = pl.matcher(cp).replaceAll(sequence.toString());
-                } else {
-                    int index = packageName.lastIndexOf(Tuils.DOT);
-                    if(index == -1) cp = pl.matcher(cp).replaceAll(Tuils.EMPTYSTRING);
-                    else {
-                        cp = pl.matcher(cp).replaceAll(packageName.substring(index + 1));
-                    }
+            if(replacing) {
+                if(appUpdatedFormat != null && !shouldSuppressPackageEvent(packageName, lastUpdatedPackage, lastUpdateTime)) {
+                    Tuils.sendOutput(appInstalledColor, context, formatPackageEvent(appUpdatedFormat, packageName, manager, packageInfo, null));
+                    lastUpdatedPackage = packageName;
+                    lastUpdateTime = System.currentTimeMillis();
                 }
-
-                cp = Tuils.patternNewline.matcher(cp).replaceAll(Tuils.NEWLINE);
-
-                Tuils.sendOutput(appInstalledColor, context, cp);
+            } else if(appInstalledFormat != null && !shouldSuppressPackageEvent(packageName, lastInstalledPackage, lastInstallTime)) {
+                Tuils.sendOutput(appInstalledColor, context, formatPackageEvent(appInstalledFormat, packageName, manager, packageInfo, null));
+                lastInstalledPackage = packageName;
+                lastInstallTime = System.currentTimeMillis();
             }
 
             Intent i = manager.getLaunchIntentForPackage(packageName);
@@ -495,10 +516,10 @@ public class AppsManager implements XMLPrefsElement {
         } catch (Exception e) {}
     }
 
-    private void appUninstalled(String packageName) {
+    private void appUninstalled(String packageName, boolean replacing) {
         if(appsHolder == null || context == null) return;
 
-        if (packageName.equals(lastUninstalledPackage) && System.currentTimeMillis() - lastUninstallTime < 2000) {
+        if (replacing || shouldSuppressPackageEvent(packageName, lastUninstalledPackage, lastUninstallTime)) {
             return;
         }
         lastUninstalledPackage = packageName;
@@ -507,21 +528,7 @@ public class AppsManager implements XMLPrefsElement {
         List<LaunchInfo> infos = AppUtils.findLaunchInfosWithPackage(packageName, appsHolder.getApps());
 
         if(appUninstalledFormat != null) {
-            String cp = appUninstalledFormat;
-
-            cp = pp.matcher(cp).replaceAll(packageName);
-            if(infos.size() > 0) {
-                cp = pl.matcher(cp).replaceAll(infos.get(0).publicLabel);
-            } else {
-                int index = packageName.lastIndexOf(Tuils.DOT);
-                if(index == -1) cp = pl.matcher(cp).replaceAll(Tuils.EMPTYSTRING);
-                else {
-                    cp = pl.matcher(cp).replaceAll(packageName.substring(index + 1));
-                }
-            }
-            cp = Tuils.patternNewline.matcher(cp).replaceAll(Tuils.NEWLINE);
-
-            Tuils.sendOutput(appUninstalledColor, context, cp);
+            Tuils.sendOutput(appUninstalledColor, context, formatPackageEvent(appUninstalledFormat, packageName, context.getPackageManager(), null, infos));
         }
 
         for(LaunchInfo i : infos) appsHolder.remove(i);

@@ -20,11 +20,24 @@ That means command-line organization and drawer organization are connected.
 
 Examples:
 
-- `app -mkgroup favourite`
-- `app -addtogroup favourite <app>`
-- `app -ls`
+- `apps -mkgp favourite`
+- `apps -addtogp favourite <app>`
+- `apps -ls`
 
 Those groups can then appear as left-side tabs in the drawer.
+
+## Launching vs Managing
+
+Typing an app name at the prompt is the fast path for launching.
+
+Use the `apps` command for management:
+
+- `apps -l <app>` for details
+- `apps -hide <app>` to keep it out of the drawer
+- `apps -show <app>` to restore it
+- `apps -st <app>` for Android app settings
+- `apps -ps <app>` for the Play Store page
+- `apps -addtogp <group> <app>` for deliberate grouping
 
 ## Alphabet Navigation
 

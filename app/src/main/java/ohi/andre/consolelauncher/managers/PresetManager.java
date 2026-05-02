@@ -1,13 +1,26 @@
 package ohi.andre.consolelauncher.managers;
 
+import org.w3c.dom.Document;
+
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 
+import javax.xml.parsers.DocumentBuilderFactory;
+
+import ohi.andre.consolelauncher.BuildConfig;
 import ohi.andre.consolelauncher.managers.settings.LauncherSettings;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave;
@@ -19,7 +32,14 @@ import ohi.andre.consolelauncher.tuils.Tuils;
 public final class PresetManager {
 
     private static final String PRESETS_FOLDER = "presets";
+    private static final String PRESET_PACKAGE_SUFFIX = ".retui-preset";
+    private static final String MANIFEST_FILE = "manifest.json";
+    private static final int MAX_ENTRY_BYTES = 256 * 1024;
     private static final String[] BUILT_IN_PRESETS = {"blue", "red", "green", "pink", "bw", "cyberpunk"};
+    private static final String[] PRESET_XML_FILES = {
+            XMLPrefsManager.XMLPrefsRoot.THEME.path,
+            XMLPrefsManager.XMLPrefsRoot.SUGGESTIONS.path
+    };
 
     private PresetManager() {}
 
@@ -28,11 +48,20 @@ public final class PresetManager {
     }
 
     public static List<String> listPresets() {
-        File[] files = getPresetsDir().listFiles(File::isDirectory);
+        File[] files = getPresetsDir().listFiles();
         List<String> presets = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
         if (files != null) {
             for (File file : files) {
-                presets.add(file.getName());
+                String name = null;
+                if (file.isDirectory()) {
+                    name = file.getName();
+                } else if (file.isFile() && file.getName().toLowerCase().endsWith(PRESET_PACKAGE_SUFFIX)) {
+                    name = file.getName().substring(0, file.getName().length() - PRESET_PACKAGE_SUFFIX.length());
+                }
+                if (name != null && seen.add(name.toLowerCase())) {
+                    presets.add(name);
+                }
             }
         }
         Collections.sort(presets, String.CASE_INSENSITIVE_ORDER);
@@ -76,8 +105,16 @@ public final class PresetManager {
     }
 
     public static void apply(String name) throws Exception {
-        String cleanName = cleanName(name);
+        String cleanName = cleanPresetPackageName(name);
         File presetFolder = new File(getPresetsDir(), cleanName);
+        if (!presetFolder.isDirectory()) {
+            File packageFile = packageFile(cleanName);
+            if (packageFile.isFile()) {
+                importPackage(cleanName);
+                presetFolder = new File(getPresetsDir(), cleanName);
+            }
+        }
+
         if (!presetFolder.isDirectory()) {
             if (applyBuiltIn(cleanName)) {
                 return;
@@ -98,6 +135,67 @@ public final class PresetManager {
         Tuils.copy(presetTheme, currentTheme);
         Tuils.copy(presetSuggestions, currentSuggestions);
         LauncherSettings.setAutoColorPick(false);
+    }
+
+    public static File exportPackage(String name) throws Exception {
+        String cleanName = cleanPresetPackageName(name);
+        File presetFolder = new File(getPresetsDir(), cleanName);
+        if (!presetFolder.isDirectory()) {
+            throw new IllegalArgumentException("Preset not found");
+        }
+
+        File presetTheme = new File(presetFolder, XMLPrefsManager.XMLPrefsRoot.THEME.path);
+        File presetSuggestions = new File(presetFolder, XMLPrefsManager.XMLPrefsRoot.SUGGESTIONS.path);
+        if (!presetTheme.isFile() || !presetSuggestions.isFile()) {
+            throw new IllegalArgumentException("Preset is incomplete");
+        }
+
+        File out = packageFile(cleanName);
+        ZipOutputStream zip = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(out, false)));
+        try {
+            addTextEntry(zip, MANIFEST_FILE, manifest(cleanName));
+            addFileEntry(zip, XMLPrefsManager.XMLPrefsRoot.THEME.path, presetTheme);
+            addFileEntry(zip, XMLPrefsManager.XMLPrefsRoot.SUGGESTIONS.path, presetSuggestions);
+        } finally {
+            zip.close();
+        }
+        return out;
+    }
+
+    public static void importPackage(String name) throws Exception {
+        String cleanName = cleanPresetPackageName(name);
+        File packageFile = packageFile(cleanName);
+        if (!packageFile.isFile()) {
+            throw new IllegalArgumentException("Preset package not found");
+        }
+
+        File tempFolder = new File(getPresetsDir(), "." + cleanName + ".importing");
+        if (tempFolder.exists()) {
+            Tuils.delete(tempFolder);
+        }
+        if (!tempFolder.mkdirs()) {
+            throw new IllegalStateException("Unable to create import folder");
+        }
+
+        try {
+            extractPackage(packageFile, tempFolder);
+            validatePresetFolder(tempFolder);
+
+            File presetFolder = new File(getPresetsDir(), cleanName);
+            if (!presetFolder.exists() && !presetFolder.mkdirs()) {
+                throw new IllegalStateException("Unable to create preset folder");
+            }
+
+            for (String fileName : PRESET_XML_FILES) {
+                File dest = new File(presetFolder, fileName);
+                if (dest.exists()) {
+                    Tuils.insertOld(dest);
+                }
+                Tuils.copy(new File(tempFolder, fileName), dest);
+            }
+        } finally {
+            Tuils.delete(tempFolder);
+        }
     }
 
     public static boolean applyBuiltIn(String name) {
@@ -236,6 +334,130 @@ public final class PresetManager {
             throw new IllegalArgumentException("Invalid preset name");
         }
         return cleanName;
+    }
+
+    private static String cleanPresetPackageName(String name) {
+        String cleanName = cleanName(name);
+        if (cleanName.toLowerCase().endsWith(PRESET_PACKAGE_SUFFIX)) {
+            cleanName = cleanName.substring(0, cleanName.length() - PRESET_PACKAGE_SUFFIX.length());
+        }
+        if (cleanName.length() == 0) {
+            throw new IllegalArgumentException("Invalid preset name");
+        }
+        return cleanName;
+    }
+
+    private static File packageFile(String cleanName) {
+        return new File(getPresetsDir(), cleanName + PRESET_PACKAGE_SUFFIX);
+    }
+
+    private static void addTextEntry(ZipOutputStream zip, String name, String text) throws Exception {
+        ZipEntry entry = new ZipEntry(name);
+        zip.putNextEntry(entry);
+        zip.write(text.getBytes("UTF-8"));
+        zip.closeEntry();
+    }
+
+    private static void addFileEntry(ZipOutputStream zip, String name, File file) throws Exception {
+        ZipEntry entry = new ZipEntry(name);
+        zip.putNextEntry(entry);
+        FileInputStream in = new FileInputStream(file);
+        byte[] buffer = new byte[4096];
+        try {
+            int read;
+            while ((read = in.read(buffer)) != -1) {
+                zip.write(buffer, 0, read);
+            }
+        } finally {
+            in.close();
+        }
+        zip.closeEntry();
+    }
+
+    private static String manifest(String name) {
+        return "{\n"
+                + "  \"type\": \"retui-preset\",\n"
+                + "  \"schema\": 1,\n"
+                + "  \"name\": \"" + jsonEscape(name) + "\",\n"
+                + "  \"appVersion\": \"" + jsonEscape(BuildConfig.VERSION_NAME) + "\"\n"
+                + "}\n";
+    }
+
+    private static String jsonEscape(String value) {
+        if (value == null) return "";
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+
+    private static void extractPackage(File packageFile, File tempFolder) throws Exception {
+        Set<String> required = new HashSet<>();
+        Collections.addAll(required, PRESET_XML_FILES);
+        boolean hasManifest = false;
+
+        ZipInputStream zip = new ZipInputStream(new BufferedInputStream(new FileInputStream(packageFile)));
+        byte[] buffer = new byte[4096];
+        try {
+            ZipEntry entry;
+            while ((entry = zip.getNextEntry()) != null) {
+                if (entry.isDirectory()) {
+                    continue;
+                }
+
+                String name = entry.getName();
+                if (name.contains("/") || name.contains("\\") || name.contains("..")) {
+                    throw new IllegalArgumentException("Unsafe preset package");
+                }
+
+                boolean allowedXml = required.contains(name);
+                if (!allowedXml && !MANIFEST_FILE.equals(name)) {
+                    throw new IllegalArgumentException("Unsupported preset package file: " + name);
+                }
+
+                File out = new File(tempFolder, name);
+                FileOutputStream stream = new FileOutputStream(out, false);
+                int total = 0;
+                try {
+                    int read;
+                    while ((read = zip.read(buffer)) != -1) {
+                        total += read;
+                        if (total > MAX_ENTRY_BYTES) {
+                            throw new IllegalArgumentException("Preset package file too large: " + name);
+                        }
+                        stream.write(buffer, 0, read);
+                    }
+                } finally {
+                    stream.close();
+                }
+
+                if (MANIFEST_FILE.equals(name)) {
+                    hasManifest = true;
+                } else {
+                    required.remove(name);
+                }
+            }
+        } finally {
+            zip.close();
+        }
+
+        if (!hasManifest || !required.isEmpty()) {
+            throw new IllegalArgumentException("Preset package is incomplete");
+        }
+    }
+
+    private static void validatePresetFolder(File folder) throws Exception {
+        validateXmlRoot(new File(folder, XMLPrefsManager.XMLPrefsRoot.THEME.path), XMLPrefsManager.XMLPrefsRoot.THEME.name());
+        validateXmlRoot(new File(folder, XMLPrefsManager.XMLPrefsRoot.SUGGESTIONS.path), XMLPrefsManager.XMLPrefsRoot.SUGGESTIONS.name());
+    }
+
+    private static void validateXmlRoot(File file, String expectedRoot) throws Exception {
+        if (!file.isFile() || file.length() > MAX_ENTRY_BYTES) {
+            throw new IllegalArgumentException("Preset package is incomplete");
+        }
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setExpandEntityReferences(false);
+        Document doc = factory.newDocumentBuilder().parse(file);
+        if (doc == null || doc.getDocumentElement() == null || !expectedRoot.equals(doc.getDocumentElement().getNodeName())) {
+            throw new IllegalArgumentException("Invalid preset XML: " + file.getName());
+        }
     }
 
     private static boolean containsIgnoreCase(List<String> list, String value) {

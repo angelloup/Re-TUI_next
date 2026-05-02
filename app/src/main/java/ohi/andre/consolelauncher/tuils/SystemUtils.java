@@ -89,14 +89,35 @@ public class SystemUtils {
     }
 
     public static double formatSize(long size, int unit) {
-        double d = size;
-        for (int i = 0; i < unit; i++) {
-            d /= 1024.0;
+        double bytes = size;
+        double result;
+
+        switch (unit) {
+            case TERA:
+                result = bytes / 1024.0 / 1024.0 / 1024.0 / 1024.0;
+                break;
+            case GIGA:
+                result = bytes / 1024.0 / 1024.0 / 1024.0;
+                break;
+            case MEGA:
+                result = bytes / 1024.0 / 1024.0;
+                break;
+            case KILO:
+                result = bytes / 1024.0;
+                break;
+            case BYTE:
+                result = bytes;
+                break;
+            default:
+                return -1;
         }
-        return round(d, 2);
+        return round(result, 2);
     }
 
     public static double percentage(double v, double total) {
+        if (total <= 0) {
+            return 0;
+        }
         return round(v * 100.0 / total, 2);
     }
 

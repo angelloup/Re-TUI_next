@@ -587,7 +587,7 @@ public enum Theme implements XMLPrefsSave {
             return "Legacy fallback color for terminal widgets";
         }
     },
-    music_widget_border_color {
+    dashed_border_color {
         @Override
         public String defaultValue() {
             return "#ffffffff";
@@ -595,7 +595,7 @@ public enum Theme implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "The border color of the music widget";
+            return "The color of dashed terminal borders";
         }
     },
     music_widget_text_color {
@@ -607,17 +607,6 @@ public enum Theme implements XMLPrefsSave {
         @Override
         public String info() {
             return "The text color of the music widget";
-        }
-    },
-    notification_widget_border_color {
-        @Override
-        public String defaultValue() {
-            return "#ffffffff";
-        }
-
-        @Override
-        public String info() {
-            return "The border color of the notification terminal";
         }
     },
     notification_widget_text_color {
@@ -640,6 +629,39 @@ public enum Theme implements XMLPrefsSave {
         @Override
         public String info() {
             return "The color of the music widget buttons border";
+        }
+    },
+    module_button_bg_color {
+        @Override
+        public String defaultValue() {
+            return "#00000000";
+        }
+
+        @Override
+        public String info() {
+            return "The background color of module buttons";
+        }
+    },
+    module_name_text_color {
+        @Override
+        public String defaultValue() {
+            return "#ffffffff";
+        }
+
+        @Override
+        public String info() {
+            return "The text color of module names";
+        }
+    },
+    module_button_border_color {
+        @Override
+        public String defaultValue() {
+            return "#ffffffff";
+        }
+
+        @Override
+        public String info() {
+            return "The border color of module buttons";
         }
     },
     window_terminal_bg {

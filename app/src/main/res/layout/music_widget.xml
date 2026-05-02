@@ -125,4 +125,18 @@
         android:textColor="#FFFFFF"
         android:textSize="14sp" />
 
+    <TextView
+        android:id="@+id/music_widget_close"
+        android:layout_width="48dp"
+        android:layout_height="34dp"
+        android:layout_alignEnd="@id/music_widget_border"
+        android:layout_alignTop="@id/music_widget_border"
+        android:layout_marginTop="-10dp"
+        android:background="@drawable/apps_drawer_header_border"
+        android:fontFamily="monospace"
+        android:gravity="center"
+        android:text="X"
+        android:textColor="#FFFFFF"
+        android:textSize="14sp" />
+
 </RelativeLayout>

@@ -607,6 +607,22 @@ public enum Behavior implements XMLPrefsSave {
             return XMLPrefsSave.TEXT;
         }
     },
+    toggle_output_state {
+        @Override
+        public String defaultValue() {
+            return "false";
+        }
+
+        @Override
+        public String info() {
+            return "If true, expanded/collapsed output terminal state is restored until the user changes it";
+        }
+
+        @Override
+        public String type() {
+            return XMLPrefsSave.BOOLEAN;
+        }
+    },
     alias_content_format {
         @Override
         public String defaultValue() {
@@ -670,6 +686,22 @@ public enum Behavior implements XMLPrefsSave {
         @Override
         public String info() {
             return "The format of the \"app installed\" message (%l = label, %p = package)";
+        }
+
+        @Override
+        public String type() {
+            return XMLPrefsSave.TEXT;
+        }
+    },
+    app_updated_format {
+        @Override
+        public String defaultValue() {
+            return "App updated: %p";
+        }
+
+        @Override
+        public String info() {
+            return "The format of the \"app updated\" message (%l = label, %p = package)";
         }
 
         @Override

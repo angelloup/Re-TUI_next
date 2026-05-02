@@ -49,7 +49,10 @@ public class timer implements CommandAbstraction {
                     return pack.context.getString(R.string.help_timer);
                 }
                 long duration = ClockManager.parseDurationMillis(split[1]);
-                return clockManager.addToTimer(duration);
+                if (clockManager.isTimerRunning()) {
+                    return clockManager.addToTimer(duration);
+                }
+                return clockManager.startTimer(duration);
             }
 
             return pack.context.getString(R.string.output_invalid_param) + " " + split[0];

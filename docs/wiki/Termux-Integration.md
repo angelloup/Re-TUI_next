@@ -114,6 +114,51 @@ printf '%s\n%s\n' "$STATUS" "$TIME"
 
 You can also update modules by callback. This is better for scripts that run on their own schedule.
 
+## Module Suggestions
+
+Re:T-UI modules are intended to become small workstation panels that can also offer contextual suggestions while they are active.
+
+The first contract should stay narrow and inspectable:
+
+- `body`: text rendered inside the module panel
+- `title`: short module label or status
+- `suggest`: suggestion chip text
+- `action`: what should happen when a suggestion is clicked
+- `mode`: how the action is dispatched
+
+Possible action modes:
+
+- `command`: Re:T-UI runs a normal command
+- `termux-run`: Re:T-UI dispatches a Termux script with arguments
+- `callback`: Re:T-UI sends a narrow callback-style action back through the existing bridge
+
+Current parser format:
+
+```text
+::title Timer
+::body 25:00 ready
+::suggest +5 minutes | command | timer -add 5m
+```
+
+For Termux-backed modules, the equivalent might be:
+
+```text
+::title Server
+::body prod-api ONLINE
+::suggest refresh | command | module -refresh server
+::suggest logs | command | termux -run logs
+```
+
+This is not arbitrary plugin execution. Re:T-UI should keep rendering and suggestion behavior under its control.
+
+Current implementation notes:
+
+- `::title` changes the module label.
+- `::body` adds a line to the rendered module body.
+- normal stdout lines also become module body text.
+- `::suggest label | command | command text` adds an active suggestion when that module is selected and the input is empty.
+- `termux-run` and `callback` are reserved contract modes, but suggestion clicks currently execute `command` mode only.
+
 ## Arguments
 
 Arguments after the script are passed through to Termux.

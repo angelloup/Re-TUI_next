@@ -36,10 +36,10 @@
             android:dividerHeight="0dp"
             android:fastScrollEnabled="false"
             android:listSelector="@android:color/transparent"
-            android:paddingStart="112dp"
+            android:paddingStart="20dp"
             android:paddingTop="14dp"
             android:paddingEnd="42dp"
-            android:paddingBottom="12dp"
+            android:paddingBottom="44dp"
             android:scrollbars="none" />
 
     </LinearLayout>
@@ -62,22 +62,28 @@
         android:textSize="14sp"
         android:fontFamily="monospace" />
 
-    <ScrollView
+    <HorizontalScrollView
         android:id="@+id/apps_group_tabs_scroll"
-        android:layout_width="84dp"
-        android:layout_height="wrap_content"
-        android:layout_alignTop="@id/apps_drawer_container"
+        android:layout_width="wrap_content"
+        android:layout_height="38dp"
+        android:layout_alignBottom="@id/apps_drawer_container"
         android:layout_alignStart="@id/apps_drawer_container"
-        android:layout_marginStart="-10dp"
-        android:layout_marginTop="18dp"
+        android:layout_toStartOf="@id/apps_drawer_footer"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginBottom="-10dp"
+        android:fillViewport="false"
         android:scrollbars="none">
 
         <LinearLayout
             android:id="@+id/apps_group_tabs"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical" />
-    </ScrollView>
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:paddingStart="0dp"
+            android:paddingEnd="0dp"
+            android:orientation="horizontal" />
+    </HorizontalScrollView>
 
     <LinearLayout
         android:id="@+id/apps_alpha_tabs_scroll"

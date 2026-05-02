@@ -577,6 +577,11 @@ public class SuggestionsManager {
             if (beforeLastSpace .length() == 0) {
                 comparator.noInput = true;
 
+                if (suggestActiveModule(suggestionList)) {
+                    Collections.sort(suggestionList, comparator);
+                    return suggestionList;
+                }
+
                 AppsManager.LaunchInfo[] apps = pack.appsManager.getSuggestedApps();
                 if (apps != null) {
                     for(int count = 0; count < apps.length && count < noInputCounts[Suggestion.TYPE_APP]; count++) {
@@ -588,6 +593,7 @@ public class SuggestionsManager {
                     }
                 }
 
+                suggestFirstPresetAction(suggestionList);
                 suggestCommand(pack, suggestionList, null);
 
                 if(showAliasDefault) suggestAlias(pack.aliasManager, suggestionList, lastWord);
@@ -597,6 +603,17 @@ public class SuggestionsManager {
 //            lastword == 0 && beforeLastSpace > 0
             else {
                 comparator.noInput = false;
+
+                if (isHelpQuickstart(beforeLastSpace)) {
+                    suggestHelpQuickstartActions(suggestionList);
+                    Collections.sort(suggestionList, comparator);
+                    return suggestionList;
+                }
+
+                if (suggestContactsFlow(pack, suggestionList, beforeLastSpace, lastWord)) {
+                    Collections.sort(suggestionList, comparator);
+                    return suggestionList;
+                }
 
 //                check if this is a command
                 Command cmd = null;
@@ -645,6 +662,11 @@ public class SuggestionsManager {
 
             if (beforeLastSpace .length() > 0) {
 //                lastword > 0 && beforeLastSpace  > 0
+                if (suggestContactsFlow(pack, suggestionList, beforeLastSpace, lastWord)) {
+                    Collections.sort(suggestionList, comparator);
+                    return suggestionList;
+                }
+
                 Command cmd = null;
                 try {
                     cmd = CommandTuils.parse(beforeLastSpace , pack);
@@ -684,6 +706,12 @@ public class SuggestionsManager {
 
 //                lastword > 0 && beforeLastSpace  = 0
             } else {
+                if (isHelpQuickstart(lastWord)) {
+                    suggestHelpQuickstartActions(suggestionList);
+                    Collections.sort(suggestionList, comparator);
+                    return suggestionList;
+                }
+
                 suggestCommand(pack, suggestionList, lastWord, beforeLastSpace );
                 suggestAlias(pack.aliasManager, suggestionList, lastWord);
                 suggestApp(pack, suggestionList, lastWord, Tuils.EMPTYSTRING);
@@ -699,6 +727,143 @@ public class SuggestionsManager {
     private boolean needsFileSuggestion(String cmd) {
         return cmd.equalsIgnoreCase("ls") || cmd.equalsIgnoreCase("cd") || cmd.equalsIgnoreCase("mv") || cmd.equalsIgnoreCase("cp") || cmd.equalsIgnoreCase("rm") || cmd.equalsIgnoreCase("cat");
     }
+
+    private boolean isHelpQuickstart(String value) {
+        return value != null && "help".equalsIgnoreCase(value.trim());
+    }
+
+    private void suggestHelpQuickstartActions(List<Suggestion> suggestions) {
+        suggestions.add(new Suggestion(null, "apps -l", true, Suggestion.TYPE_PERMANENT));
+        suggestions.add(new Suggestion(null, "alias -add", false, Suggestion.TYPE_PERMANENT));
+        suggestions.add(new Suggestion(null, "apps -hide", false, Suggestion.TYPE_PERMANENT));
+        suggestions.add(new Suggestion(null, "wallpaper -auto", true, Suggestion.TYPE_PERMANENT));
+        suggestions.add(new Suggestion(null, "preset -save", false, Suggestion.TYPE_PERMANENT));
+        suggestions.add(new Suggestion(null, "module -ls", true, Suggestion.TYPE_PERMANENT));
+    }
+
+    private void suggestFirstPresetAction(List<Suggestion> suggestions) {
+        try {
+            if (PresetManager.listPresets().isEmpty()) {
+                suggestions.add(new Suggestion(null, "wallpaper -auto", true, Suggestion.TYPE_COMMAND));
+            }
+        } catch (Exception e) {
+            Tuils.log(e);
+        }
+    }
+
+    private boolean suggestActiveModule(List<Suggestion> suggestions) {
+        List<ModuleManager.ModuleSuggestion> moduleSuggestions = ModuleManager.getActiveSuggestions(pack.context);
+        if (moduleSuggestions == null || moduleSuggestions.size() == 0) {
+            return false;
+        }
+
+        for (ModuleManager.ModuleSuggestion moduleSuggestion : moduleSuggestions) {
+            if (!ModuleManager.ModuleSuggestion.MODE_COMMAND.equals(moduleSuggestion.mode)) {
+                continue;
+            }
+            suggestions.add(new Suggestion(null, moduleSuggestion.label, true, Suggestion.TYPE_MODULE, moduleSuggestion.action));
+        }
+        return suggestions.size() > 0;
+    }
+
+    private boolean suggestContactsFlow(MainPack info, List<Suggestion> suggestions, String beforeLastSpace, String lastWord) {
+        String before = beforeLastSpace == null ? Tuils.EMPTYSTRING : beforeLastSpace.trim();
+        String last = lastWord == null ? Tuils.EMPTYSTRING : lastWord.trim();
+        if (before.length() == 0) {
+            return false;
+        }
+
+        String command = firstWord(before);
+        if (!isContactsCommand(command)) {
+            return false;
+        }
+
+        String selectedOrPartial = afterFirstWord(before);
+        if (selectedOrPartial.startsWith("-")) {
+            return false;
+        }
+
+        String query = selectedOrPartial;
+        if (last.length() > 0) {
+            query = query.length() == 0 ? last : query + Tuils.SPACE + last;
+        }
+
+        if (last.length() == 0 && selectedOrPartial.length() > 0) {
+            ContactManager.Contact contact = findExactContact(info.contacts.getContacts(), selectedOrPartial);
+            if (contact != null && addContactActions(suggestions, contact)) {
+                return true;
+            }
+        }
+
+        suggestContactsForQuery(info, suggestions, command, query);
+        return suggestions.size() > 0;
+    }
+
+    private String firstWord(String value) {
+        int space = value.indexOf(Tuils.SPACE);
+        return space == -1 ? value : value.substring(0, space);
+    }
+
+    private String afterFirstWord(String value) {
+        int space = value.indexOf(Tuils.SPACE);
+        return space == -1 ? Tuils.EMPTYSTRING : value.substring(space + 1).trim();
+    }
+
+    private boolean isContactsCommand(String value) {
+        return value != null && ("contacts".equalsIgnoreCase(value) || "cntcts".equalsIgnoreCase(value));
+    }
+
+    private void suggestContactsForQuery(MainPack info, List<Suggestion> suggestions, String command, String query) {
+        List<ContactManager.Contact> contacts = info.contacts.getContacts();
+        if (contacts == null || contacts.size() == 0) {
+            return;
+        }
+
+        String filter = query == null ? Tuils.EMPTYSTRING : query.trim();
+        String lower = filter.toLowerCase();
+        int max = Math.max(1, suggestionsPerCategory);
+        int added = 0;
+
+        for (ContactManager.Contact contact : contacts) {
+            if (added >= max) {
+                return;
+            }
+            if (lower.length() == 0 || contact.getLowercaseString().startsWith(lower)) {
+                suggestions.add(new Suggestion(command, contact.name, false, Suggestion.TYPE_CONTACT_ROOT, contact));
+                added++;
+            }
+        }
+
+        if (added >= max || lower.length() == 0) {
+            return;
+        }
+
+        ContactManager.Contact[] matches = CompareObjects.topMatchesWithDeadline(ContactManager.Contact.class, filter, contacts.size(), contacts, max - added, suggestionsDeadline, SPLITTERS, algInstance, alg);
+        for (ContactManager.Contact contact : matches) {
+            if (contact == null) {
+                break;
+            }
+            suggestions.add(new Suggestion(command, contact.name, false, Suggestion.TYPE_CONTACT_ROOT, contact));
+        }
+    }
+
+    private boolean addContactActions(List<Suggestion> suggestions, ContactManager.Contact contact) {
+        if (contact == null || contact.numbers == null || contact.numbers.size() == 0) {
+            return false;
+        }
+
+        int selected = contact.getSelectedNumber();
+        if (selected >= contact.numbers.size()) {
+            selected = 0;
+        }
+        String number = contact.numbers.get(selected);
+
+        suggestions.add(new Suggestion(null, "call " + number, true, Suggestion.TYPE_COMMAND));
+        suggestions.add(new Suggestion(null, "contacts -l " + number, true, Suggestion.TYPE_COMMAND));
+        suggestions.add(new Suggestion(null, "contacts -edit " + number, true, Suggestion.TYPE_COMMAND));
+        return true;
+    }
+
 
     private void suggestPermanentSuggestions(List<Suggestion> suggestions, PermanentSuggestionCommand cmd) {
         for(String s : cmd.permanentSuggestions()) {
@@ -1058,15 +1223,42 @@ public class SuggestionsManager {
 
     private void suggestSavedPresetNames(List<Suggestion> suggestions, String afterLastSpace, String beforeLastSpace) {
         boolean applyCommand = beforeLastSpace != null && beforeLastSpace.toLowerCase().contains(" -apply");
+        Set<String> suggested = new LinkedHashSet<>();
         for (String preset : PresetManager.listAllPresetNames()) {
-            if (afterLastSpace == null || afterLastSpace.length() == 0 || preset.toLowerCase().startsWith(afterLastSpace.toLowerCase())) {
-                suggestions.add(new Suggestion(beforeLastSpace, preset, applyCommand && clickToLaunch, Suggestion.TYPE_COMMAND));
+            String displayName = presetDisplayName(preset);
+            if (!suggested.add(displayName.toLowerCase())) {
+                continue;
+            }
+            if (afterLastSpace == null || afterLastSpace.length() == 0 || displayName.toLowerCase().startsWith(afterLastSpace.toLowerCase())) {
+                suggestions.add(new Suggestion(beforeLastSpace, displayName, applyCommand && clickToLaunch, Suggestion.TYPE_COMMAND));
             }
         }
     }
 
+    private String presetDisplayName(String preset) {
+        String suffix = ".retui-preset";
+        if (preset != null && preset.toLowerCase().endsWith(suffix)) {
+            return preset.substring(0, preset.length() - suffix.length());
+        }
+        return preset;
+    }
+
     private void suggestArgs(MainPack info, int type, List<Suggestion> suggestions, String beforeLastSpace ) {
         suggestArgs(info, type, suggestions, null, beforeLastSpace );
+    }
+
+    private ContactManager.Contact findExactContact(List<ContactManager.Contact> contacts, String selectedContactName) {
+        if (contacts == null || selectedContactName == null) {
+            return null;
+        }
+
+        String normalized = selectedContactName.trim();
+        for (ContactManager.Contact contact : contacts) {
+            if (contact.name.equalsIgnoreCase(normalized)) {
+                return contact;
+            }
+        }
+        return null;
     }
 
     private void suggestBoolean(List<Suggestion> suggestions, String beforeLastSpace ) {
@@ -1166,12 +1358,13 @@ public class SuggestionsManager {
     private int quickCompare(String s1, String[] ss, List<Suggestion> suggestions, String beforeLastSpace, int max, boolean exec, int type, Object tag) {
         if(s1.length() > quickCompare) return 0;
 
+        String lower = s1.toLowerCase();
         int counter = 0;
 
         for(int c = 0; c < ss.length; c++) {
             if(counter >= max) break;
 
-            if(s1.length() <= quickCompare && ss[c].toLowerCase().startsWith(s1)) {
+            if(s1.length() <= quickCompare && ss[c].toLowerCase().startsWith(lower)) {
                 suggestions.add(new Suggestion(beforeLastSpace, ss[c], exec, type, tag instanceof Boolean ? ((boolean) tag ? ss[c] : null) : tag));
 
                 ss[c] = Tuils.EMPTYSTRING;
@@ -1186,6 +1379,7 @@ public class SuggestionsManager {
     private int quickCompare(String s1, List<? extends StringableObject> ss, List<Suggestion> suggestions, String beforeLastSpace, int max, boolean exec, int type, Object tag) {
         if(s1.length() > quickCompare) return 0;
 
+        String lower = s1.toLowerCase();
         int counter = 0;
 
         Iterator<? extends StringableObject> it = ss.iterator();
@@ -1195,7 +1389,7 @@ public class SuggestionsManager {
 
             StringableObject o = it.next();
 
-            if(s1.length() <= quickCompare && o.getLowercaseString().startsWith(s1)) {
+            if(s1.length() <= quickCompare && o.getLowercaseString().startsWith(lower)) {
                 suggestions.add(new Suggestion(beforeLastSpace, o.getString(), exec, type, tag instanceof Boolean ? ((boolean) tag ? o : null) : tag));
 
                 it.remove();
@@ -1571,6 +1765,8 @@ public class SuggestionsManager {
         public static final int TYPE_PERMANENT = 15;
         public static final int TYPE_CONFIGFILE = 16;
         public static final int TYPE_WEBHOOK_HISTORY = 17;
+        public static final int TYPE_CONTACT_ROOT = 18;
+        public static final int TYPE_MODULE = 19;
 
         public String text, textBefore;
 
@@ -1602,7 +1798,9 @@ public class SuggestionsManager {
         }
 
         public String getText() {
-            if(type == Suggestion.TYPE_CONTACT) {
+            if(type == Suggestion.TYPE_CONTACT_ROOT) {
+                return textBefore == null || textBefore.length() == 0 ? text : textBefore + Tuils.SPACE + text;
+            } else if(type == Suggestion.TYPE_CONTACT) {
                 ContactManager.Contact c = (ContactManager.Contact) object;
 
                 if(c.numbers.size() <= c.getSelectedNumber()) c.setSelectedNumber(0);
@@ -1610,6 +1808,8 @@ public class SuggestionsManager {
                 return textBefore + Tuils.SPACE + c.numbers.get(c.getSelectedNumber());
             } else if(type == Suggestion.TYPE_PERMANENT) {
                 return text;
+            } else if(type == Suggestion.TYPE_MODULE) {
+                return object instanceof String ? (String) object : text;
             } else if(type == Suggestion.TYPE_FILE) {
                 String lastWord = object == null ? null : (String) object;
                 if(lastWord == null) {
@@ -1661,16 +1861,24 @@ public class SuggestionsManager {
             if(o1.type == o2.type) return 0;
 
             if(noInput) {
-                return noInputIndexes[o1.type] - noInputIndexes[o2.type];
+                return noInputRank(o1.type) - noInputRank(o2.type);
             } else {
-                if(o1.type < inputIndexes.length) {
-                    if(o2.type < inputIndexes.length) return inputIndexes[o1.type] - inputIndexes[o2.type];
-                    else return -1;
-                } else {
-                    if(o2.type < inputIndexes.length) return 1;
-                    else return 0;
-                }
+                return inputRank(o1.type) - inputRank(o2.type);
             }
+        }
+
+        private int noInputRank(int type) {
+            if(type >= 0 && type < noInputIndexes.length) {
+                return noInputIndexes[type];
+            }
+            return noInputIndexes.length;
+        }
+
+        private int inputRank(int type) {
+            if(type >= 0 && type < inputIndexes.length) {
+                return inputIndexes[type];
+            }
+            return inputIndexes.length;
         }
     }
 }

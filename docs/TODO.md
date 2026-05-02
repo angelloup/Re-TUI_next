@@ -2,6 +2,159 @@
 
 This is a working backlog for issues and user requests after the timer/pomodoro/widget-page branch was merged into `master`.
 
+Phone UAT checklist: `docs/TESTBOOK.md`.
+
+## Product Direction - Distraction-Free Workstation Surface
+
+Re:T-UI is a distraction-free Android workstation surface for people who prefer commands, local control, and composable workflows over visual launcher clutter.
+
+It should not chase casual launcher expectations. It should reward users who are willing to type `help`, read docs, configure aliases, and build their own phone workflow.
+
+### Rollout Phase 1 - Help, Identity, And First Wow
+
+- [x] Merge onboarding into `help`.
+- [x] Keep first-run lightweight. No guided tour, no casual-user wizard.
+- [x] No-arg `help` should suggest:
+  - launch an app
+  - create an alias
+  - hide an app
+  - apply a wallpaper-derived theme
+  - save the theme as a preset
+  - inspect/show modules
+- [x] Link help output and wiki docs to the relevant reference pages.
+- [x] Explore first-install `wallpaper -auto` as an immediate wow moment.
+  - Implemented as a blank-input suggestion while the user has no saved presets.
+  - Do not auto-run it; wallpaper-derived theming remains user-initiated.
+- [x] Defer starter presets. Wallpaper auto is the preferred first personalization path.
+
+### Rollout Phase 2 - Search And Suggestions 2.0
+
+- [x] Audit current fuzzy search across apps, commands, aliases, contacts, and settings.
+- [x] Define what Search 2.0 adds beyond current behavior before implementing new UI.
+- [x] Favor a result-first flow:
+  - typed intent surfaces relevant objects in suggestions
+  - selecting an object can reveal contextual actions
+- [x] Contact example:
+  - typing a name surfaces the person
+  - selecting the contact exposes call, contact details, and edit actions
+- [x] App example:
+  - selecting or long-selecting an app can expose open, hide, app info, group, or uninstall
+  - decision: keep root app suggestions launch-first
+  - app management stays under explicit `apps` commands: `apps -l`, `apps -hide`, `apps -st`, `apps -ps`, and group commands
+  - revisit long-press app actions later only if direct launch remains untouched
+- [x] Do not prioritize command history; aliases and toolbar up-arrow already cover frequent/recent command needs.
+
+### Rollout Phase 3 - Re:T-UI Native Modules
+
+- [x] Build on the current module system rather than replacing it.
+- [x] Keep built-in modules as Re:T-UI-owned terminal surfaces.
+- [x] Keep script-backed modules as the extensibility model.
+- [x] Design a module callback contract that can update:
+  - module body text
+  - module title/status
+  - suggestion entries
+  - optional action payloads
+- [x] When a module is active, allow its suggestions to temporarily own the suggestion row.
+  - First slice implemented for command-backed built-in modules.
+  - Suggestions appear only when input is empty.
+  - Normal typing still wins.
+- [x] For Termux-backed modules, define how suggestion clicks are sent back to the script or callback bridge.
+  - First implementation supports script-provided `command` suggestions.
+  - `termux-run` and `callback` modes remain parsed contract values, but are not executable suggestion modes yet.
+- [x] Avoid arbitrary Java/Kotlin plugin loading. Scripts plus controlled Re:T-UI primitives are the boundary.
+- Draft contract:
+  - body: text rendered inside the active module
+  - title: short module label/status line
+  - suggest: one or more suggestion chips owned by the active module
+  - action: command/script payload tied to a suggestion
+  - mode: how action is dispatched, such as `command`, `termux-run`, or `callback`
+- First design target:
+  - [x] active module can temporarily replace normal suggestions
+  - [x] inactive modules do not hijack suggestions
+  - [x] suggestion clicks are explicit and inspectable for command-mode built-ins
+  - no arbitrary code is loaded into Re:T-UI
+- Next implementation slice:
+  - [x] parse script module metadata lines from Termux stdout
+  - [x] cache script-provided suggestions with the module body
+  - [x] support `command` mode first
+  - design `termux-run` dispatch before enabling it
+
+### Rollout Phase 4 - Deliberate App Drawer
+
+- Keep app groups deliberate through the existing group command flow.
+- Do not make automatic grouping a headline feature.
+- Polish the drawer around terminal identity:
+  - terminal frame
+  - alphabet navigation
+  - user-created groups
+  - hidden apps respected
+  - wallpaper visible outside the drawer
+- Revisit drawer ergonomics for one-handed use.
+- [x] Move group tabs away from the top-left toward a bottom horizontal rail.
+- Keep group creation/editing in `apps` commands; drawer tabs only switch views.
+
+### Rollout Phase 5 - Workflow Aliases
+
+- [x] Confirm aliases already support command chaining through `multiple_cmd_separator` (`;` by default).
+- [x] Replace the proposed recipe system with workflow-alias documentation.
+- Do not add `recipe -ls`, `recipe -preview`, `recipe -apply`, or `recipe -undo`; that would duplicate aliases.
+- Treat aliases as the official inspectable workflow layer.
+- Document chained alias examples for:
+  - focus
+  - dev
+  - morning
+  - privacy
+  - commute
+- Leave these alias polish ideas for later:
+  - better `alias -ls` formatting
+  - `alias -show <name>`
+  - `alias -run <name>` only if direct alias execution becomes unclear
+  - warnings if an alias chain contains destructive commands
+
+### Rollout Phase 6 - Automation And Chaining
+
+- Alias chaining audit complete: aliases can already expand into multi-command chains.
+- [x] Audit existing automation surfaces before adding new primitives.
+- Existing surfaces:
+  - workflow aliases: manual multi-command chains through `;`
+  - Termux: `termux -run` and script-backed modules
+  - callbacks: token-gated `output`, `notify`, and `module_set`
+  - webhooks: saved POST templates with argument substitution
+  - shortcuts: Android app shortcut launch
+  - notifications/reply: notification filters, terminal notification toggle, bound reply apps
+  - clocks: timer, stopwatch, and pomodoro state broadcasts
+- Do not add another basic chaining feature.
+- Add new automation primitives only if they solve gaps aliases cannot express cleanly.
+- Real gaps to discuss later:
+  - conditions: run only if state matches
+  - confirmations: ask before sensitive commands
+  - scheduling: run command/alias at time or interval
+  - failure handling: stop or continue when one command in a chain fails
+  - external triggers: allow narrow trigger events without arbitrary external command execution
+- Security boundary:
+  - keep token-gated callbacks narrow
+  - do not expose arbitrary external command execution through callbacks
+  - prefer callbacks that update output/modules over callbacks that run commands
+
+### Rollout Phase 7 - Focus Profiles
+
+- Defer detailed design.
+- Decide later whether focus profiles are workflow aliases, settings snapshots, module layouts, app visibility filters, or a mix.
+- Avoid a complex profile manager unless it clearly reduces setup friction.
+- Keep profiles inspectable and editable.
+
+### Rollout Phase 8 - Trust, Distribution, And Community
+
+- Privacy-first positioning:
+  - local config
+  - no ads
+  - no tracking
+  - clear permissions
+- Keep Play Store stable and Firebase beta experimental.
+- Maintain this roadmap in `docs/TODO.md`.
+- Support community sharing for aliases, modules, workflow aliases, themes, and ASCII headers.
+- Add migration docs for Nova-style power users, Niagara/minimal launcher users, Termux users, and original T-UI users.
+
 ## Completed In v325
 
 - Brightness permission flow
@@ -110,7 +263,7 @@ This is a working backlog for issues and user requests after the timer/pomodoro/
 
 ## Phase 3 - Script Modules
 
-- Status: first implementation done on `codex/termux-integration`; pending phone UAT.
+- Status: first implementation done; pending phone UAT.
 - Add script-backed custom modules after built-in modules are stable.
 - Start with a strict text-output contract:
   - Termux runs the script.

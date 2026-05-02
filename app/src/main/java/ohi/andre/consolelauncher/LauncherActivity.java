@@ -439,7 +439,10 @@ public class LauncherActivity extends AppCompatActivity implements Reloadable {
         if (disposed) return;
         disposed = true;
 
-        if (main != null) main.dispose();
+        if (main != null) {
+            main.dispose();
+            main.destroy();
+        }
         if (ui != null) ui.dispose();
         if (privateIOReceiver != null)
             LocalBroadcastManager.getInstance(getApplicationContext()).unregisterReceiver(privateIOReceiver);

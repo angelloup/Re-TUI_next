@@ -24,7 +24,7 @@ public final class AppearanceSettings {
     }
 
     public static int musicWidgetBorderColor() {
-        return LauncherSettings.getColor(Theme.music_widget_border_color);
+        return dashedBorderColor();
     }
 
     public static int musicWidgetTextColor() {
@@ -32,7 +32,7 @@ public final class AppearanceSettings {
     }
 
     public static int notificationWidgetBorderColor() {
-        return LauncherSettings.getColor(Theme.notification_widget_border_color);
+        return dashedBorderColor();
     }
 
     public static int notificationWidgetTextColor() {
@@ -45,6 +45,22 @@ public final class AppearanceSettings {
 
     public static boolean dashedBorders() {
         return LauncherSettings.getBoolean(Ui.enable_dashed_border);
+    }
+
+    public static int dashedBorderColor() {
+        return LauncherSettings.getColor(Theme.dashed_border_color);
+    }
+
+    public static int moduleButtonBackgroundColor() {
+        return LauncherSettings.getColor(Theme.module_button_bg_color);
+    }
+
+    public static int moduleNameTextColor() {
+        return LauncherSettings.getColor(Theme.module_name_text_color);
+    }
+
+    public static int moduleButtonBorderColor() {
+        return LauncherSettings.getColor(Theme.module_button_border_color);
     }
 
     public static int dashLength() {

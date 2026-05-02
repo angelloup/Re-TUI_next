@@ -1,6 +1,6 @@
 # Getting Started
 
-This page is for first-time setup and basic orientation.
+This page is for orientation, not a guided tour. Re:T-UI is built for users who want a command-first Android workstation surface: quiet, local, configurable, and fast once your own aliases and modules are in place.
 
 ## First Launch
 
@@ -11,26 +11,22 @@ When Re:T-UI opens, you are dropped into a terminal-style launcher. You can:
 - use suggestions under the input field
 - open the settings hub with `themer` or `settings`
 
-## Recommended First Steps
+## Learn From Help
 
-1. Give the prompt your own identity:
-   `username <user> <device>`
+Type:
 
-2. Open the settings hub:
-   `themer`
+`help`
 
-3. Pick or confirm a font in:
-   `Appearance > Fonts`
+That prints the command list and the workstation quickstart. For details about one command, type:
 
-4. Choose your wallpaper flow:
-   - `wallpaper` for the normal wallpaper picker
-   - `wallpaper -live` for live wallpapers
+`help <command>`
 
-5. If you want Re:T-UI to derive colors from your wallpaper:
-   `wallpaper -auto`
+Examples:
 
-6. Save the result as a preset:
-   `preset -save <name>`
+- `help alias`
+- `help apps`
+- `help wallpaper`
+- `help module`
 
 ## Basic Navigation
 
@@ -60,10 +56,12 @@ Auto color derives colors from the current wallpaper, but it is separate from ma
 ## Good First Commands
 
 - `help`
-- `themer`
-- `preset -ls`
+- launch an app by typing its name
+- `alias -add ll apps -ls`
+- `apps -hide <app>`
 - `wallpaper -auto`
-- `notifications -access`
+- `preset -save <name>`
+- `module -ls`
 
 ## Tip
 

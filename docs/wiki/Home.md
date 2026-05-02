@@ -2,7 +2,7 @@
 
 Welcome to the Re:T-UI wiki.
 
-Re:T-UI is a modern continuation of the original T-UI launcher: command-first, deeply customizable, and designed to feel like a real terminal instead of a skin over stock Android.
+Re:T-UI is a modern continuation of the original T-UI launcher: command-first, deeply customizable, and designed to feel like a distraction-free Android workstation surface instead of a skin over stock Android.
 
 This wiki is organized like the original upstream docs, but rebuilt around the current Re:T-UI feature set.
 
@@ -16,6 +16,7 @@ This wiki is organized like the original upstream docs, but rebuilt around the c
 
 - [Command Reference](./Command-Reference.md)
 - [Aliases](./Aliases.md)
+- [Automation and Chaining](./Automation-and-Chaining.md)
 - [Migration Guide](./Migration-Guide.md)
 - [Preset Sharing](./Preset-Sharing.md)
 - [Termux Integration](./Termux-Integration.md)
@@ -29,6 +30,7 @@ This wiki is organized like the original upstream docs, but rebuilt around the c
 - [Music Visualizer](./Music-Visualizer.md)
 - [App Drawer](./App-Drawer.md)
 - [Termux Integration](./Termux-Integration.md)
+- [Automation and Chaining](./Automation-and-Chaining.md)
 
 ## Philosophy
 
@@ -38,6 +40,7 @@ UI surfaces like the app drawer and settings hub exist to make the launcher easi
 
 - typed commands first
 - visible config files for power users
+- local, inspectable workflows
 - strong theming
 - playful terminal aesthetics
 

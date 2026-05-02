@@ -217,12 +217,15 @@ public final class AutoColorManager {
             case weather_color:
             case unlock_counter_color:
             case music_widget_color:
-            case music_widget_border_color:
+            case dashed_border_color:
             case music_widget_text_color:
-            case notification_widget_border_color:
             case notification_widget_text_color:
             case music_widget_button_color:
+            case module_name_text_color:
+            case module_button_border_color:
                 return palette.accent;
+            case module_button_bg_color:
+                return ColorUtils.setAlphaComponent(palette.surface, 208);
             case output_color:
             case toolbar_color:
             case enter_color:

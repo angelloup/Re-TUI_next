@@ -133,6 +133,7 @@ public class UIManager implements OnTouchListener {
     public static final String NEXT_UNLOCK_CYCLE_RESTART = "nextUnlockRestart";
     public static final String UNLOCK_KEY = "unlockTimes";
     public static final String PREFS_NAME = "ui";
+    private static final String PREF_OUTPUT_TRAY_EXPANDED = "output_tray_expanded";
     public static final String ACTION_UPDATE_SUGGESTIONS = BuildConfig.APPLICATION_ID + ".ui_update_suggestions";
     public static final String ACTION_UPDATE_HINT = BuildConfig.APPLICATION_ID + ".ui_update_hint";
     public static String ACTION_ROOT = BuildConfig.APPLICATION_ID + ".ui_root";
@@ -260,7 +261,7 @@ public class UIManager implements OnTouchListener {
     private boolean keyboardVisible = false;
     private LinearLayout moduleDock;
     private final LinkedHashMap<String, TextView> moduleDockButtons = new LinkedHashMap<>();
-    private String activeModule = ModuleManager.NOTIFICATIONS;
+    private String activeModule = "";
     private Intent lastClockStateIntent;
     private Intent lastPomodoroStateIntent;
     private String lastMusicSong;
@@ -591,6 +592,7 @@ public class UIManager implements OnTouchListener {
             public void afterTextChanged(Editable s) {}
         });
         applyShadow(terminalView, outlineColors[OUTPUT_BGCOLOR_INDEX], shadowXOffset, shadowYOffset, shadowRadius);
+        restoreTerminalTrayState();
         styleTerminalTrayToggle();
         applyTerminalTrayState(false);
 
@@ -720,7 +722,25 @@ public class UIManager implements OnTouchListener {
 
     private void setTerminalTrayExpanded(boolean expanded) {
         terminalTrayExpanded = expanded;
+        saveTerminalTrayState();
         applyTerminalTrayState(true);
+    }
+
+    private void restoreTerminalTrayState() {
+        if (XMLPrefsManager.getBoolean(Behavior.toggle_output_state) && preferences != null) {
+            terminalTrayExpanded = preferences.getBoolean(PREF_OUTPUT_TRAY_EXPANDED, false);
+        } else {
+            terminalTrayExpanded = false;
+            if (preferences != null) {
+                preferences.edit().remove(PREF_OUTPUT_TRAY_EXPANDED).apply();
+            }
+        }
+    }
+
+    private void saveTerminalTrayState() {
+        if (XMLPrefsManager.getBoolean(Behavior.toggle_output_state) && preferences != null) {
+            preferences.edit().putBoolean(PREF_OUTPUT_TRAY_EXPANDED, terminalTrayExpanded).apply();
+        }
     }
 
     private void applyTerminalTrayState(boolean refocusInput) {
@@ -744,7 +764,7 @@ public class UIManager implements OnTouchListener {
         }
 
         updateTerminalTrayToggleText();
-        if (terminalTrayExpanded && mTerminalAdapter != null) {
+        if (terminalTrayExpanded && refocusInput && mTerminalAdapter != null) {
             mTerminalAdapter.scrollToEnd();
         }
         if (refocusInput && mTerminalAdapter != null) {
@@ -789,11 +809,11 @@ public class UIManager implements OnTouchListener {
         homeWidgetsContainer = homePage.findViewById(R.id.home_widgets_container);
         if (homeWidgetsContainer == null) return;
 
+        activeModule = "";
+        ModuleManager.setActiveModule(mContext, "");
+        homeWidgetsContainer.removeAllViews();
         rebuildModuleDock();
-        if (!ModuleManager.getDock(mContext).contains(activeModule)) {
-            activeModule = chooseDefaultModule();
-        }
-        showHomeModule(activeModule);
+        refreshSuggestionsForActiveModule();
     }
 
     private void rebuildModuleDock() {
@@ -836,11 +856,11 @@ public class UIManager implements OnTouchListener {
     }
 
     private void styleModuleDockButton(TextView button, boolean selected) {
-        int borderColor = AppearanceSettings.notificationWidgetBorderColor();
-        int textColor = AppearanceSettings.notificationWidgetTextColor();
+        int borderColor = AppearanceSettings.moduleButtonBorderColor();
+        int textColor = AppearanceSettings.moduleNameTextColor();
         int bg = selected
-                ? ColorUtils.setAlphaComponent(textColor, 80)
-                : ColorUtils.setAlphaComponent(AppearanceSettings.terminalWindowBackground(), 210);
+                ? ColorUtils.blendARGB(AppearanceSettings.moduleButtonBackgroundColor(), textColor, 0.25f)
+                : AppearanceSettings.moduleButtonBackgroundColor();
 
         GradientDrawable gd = new GradientDrawable();
         gd.setShape(GradientDrawable.RECTANGLE);
@@ -880,6 +900,7 @@ public class UIManager implements OnTouchListener {
         }
 
         activeModule = id;
+        ModuleManager.setActiveModule(mContext, id);
         updateModuleDockSelection();
         homeWidgetsContainer.removeAllViews();
 
@@ -895,12 +916,19 @@ public class UIManager implements OnTouchListener {
             String text = ModuleManager.getScriptText(mContext, id);
             showTextModule(id, TextUtils.isEmpty(text) ? "No module output yet." : text);
         }
+        refreshSuggestionsForActiveModule();
     }
 
     private void showMusicModule() {
         View musicWidget = LayoutInflater.from(mContext).inflate(R.layout.music_widget, homeWidgetsContainer, false);
         homeWidgetsContainer.addView(musicWidget);
         musicWidget.setVisibility(View.VISIBLE);
+        TextView close = musicWidget.findViewById(R.id.music_widget_close);
+        if (close != null) {
+            close.setOnClickListener(v -> closeHomeModule());
+            close.setTextColor(AppearanceSettings.moduleNameTextColor());
+            close.setTypeface(Tuils.getTypeface(mContext), Typeface.BOLD);
+        }
         styleMusicWidget(musicWidget);
         updateMusicModuleText(musicWidget);
     }
@@ -920,6 +948,12 @@ public class UIManager implements OnTouchListener {
         if (notificationLabel != null) {
             notificationLabel.setOnClickListener(v -> openNotificationShade());
         }
+        TextView close = notificationWidget.findViewById(R.id.notification_widget_close);
+        if (close != null) {
+            close.setOnClickListener(v -> closeHomeModule());
+            close.setTextColor(AppearanceSettings.moduleNameTextColor());
+            close.setTypeface(Tuils.getTypeface(mContext), Typeface.BOLD);
+        }
         styleNotificationWidget(notificationWidget);
         LocalBroadcastManager.getInstance(mContext.getApplicationContext()).sendBroadcast(new Intent(ACTION_REQUEST_NOTIFICATION_FEED));
     }
@@ -932,7 +966,7 @@ public class UIManager implements OnTouchListener {
         TextView body = moduleView.findViewById(R.id.module_text_body);
         TextView close = moduleView.findViewById(R.id.module_text_close);
         if (label != null) {
-            label.setText(ModuleManager.displayName(module));
+            label.setText(ModuleManager.displayTitle(mContext, module));
         }
         if (body != null) {
             body.setText(text);
@@ -941,7 +975,7 @@ public class UIManager implements OnTouchListener {
         }
         if (close != null) {
             close.setOnClickListener(v -> closeHomeModule());
-            close.setTextColor(AppearanceSettings.notificationWidgetTextColor());
+            close.setTextColor(AppearanceSettings.moduleNameTextColor());
             close.setTypeface(Tuils.getTypeface(mContext), Typeface.BOLD);
         }
 
@@ -950,14 +984,14 @@ public class UIManager implements OnTouchListener {
                 R.id.module_text_border,
                 R.id.module_text_label,
                 AppearanceSettings.notificationWidgetBorderColor(),
-                AppearanceSettings.notificationWidgetTextColor());
+                AppearanceSettings.moduleNameTextColor());
         styleModuleClose(close);
     }
 
     private void styleModuleClose(TextView close) {
         if (close == null) return;
-        int borderColor = AppearanceSettings.notificationWidgetBorderColor();
-        int bgColor = AppearanceSettings.terminalWindowBackground();
+        int borderColor = AppearanceSettings.moduleButtonBorderColor();
+        int bgColor = AppearanceSettings.moduleButtonBackgroundColor();
         GradientDrawable gd = new GradientDrawable();
         gd.setShape(GradientDrawable.RECTANGLE);
         gd.setColor(ColorUtils.setAlphaComponent(bgColor, 255));
@@ -971,10 +1005,19 @@ public class UIManager implements OnTouchListener {
 
     private void closeHomeModule() {
         activeModule = "";
+        ModuleManager.setActiveModule(mContext, "");
         if (homeWidgetsContainer != null) {
             homeWidgetsContainer.removeAllViews();
         }
         updateModuleDockSelection();
+        refreshSuggestionsForActiveModule();
+    }
+
+    private void refreshSuggestionsForActiveModule() {
+        if (suggestionsManager != null && mTerminalAdapter != null
+                && TextUtils.isEmpty(mTerminalAdapter.getInput())) {
+            suggestionsManager.requestSuggestion(Tuils.EMPTYSTRING);
+        }
     }
 
     private void refreshActiveModuleIfNeeded() {
@@ -1740,7 +1783,7 @@ public class UIManager implements OnTouchListener {
                     labelViews[count].setVerticalScrollBarEnabled(false);
                 }
 
-                applyBgRect(mContext, labelViews[count], bgRectColors[count], bgColors[count], margins[0], strokeWidth, cornerRadius, useDashed, XMLPrefsManager.getColor(Theme.input_color));
+                applyBgRect(mContext, labelViews[count], "#00000000", bgColors[count], margins[0], strokeWidth, cornerRadius, useDashed, AppearanceSettings.dashedBorderColor());
                 applyShadow(labelViews[count], outlineColors[count], shadowXOffset, shadowYOffset, shadowRadius);
             } else {
                 lViewsParent.removeView(labelViews[count]);
@@ -1901,6 +1944,7 @@ public class UIManager implements OnTouchListener {
     private void styleMusicWidget(View musicWidget) {
         if (musicWidget == null) return;
         ohi.andre.consolelauncher.tuils.TuiWidgetDecorator.decorateWidget(musicWidget, R.id.music_widget_border, R.id.music_widget_label);
+        styleModuleClose(musicWidget.findViewById(R.id.music_widget_close));
 
         TextView titleView = musicWidget.findViewById(R.id.music_song_title);
         TextView singerView = musicWidget.findViewById(R.id.music_singer);
@@ -2830,6 +2874,7 @@ public class UIManager implements OnTouchListener {
                 R.id.notification_widget_label,
                 AppearanceSettings.notificationWidgetBorderColor(),
                 AppearanceSettings.notificationWidgetTextColor());
+        styleModuleClose(notificationWidget.findViewById(R.id.notification_widget_close));
         applyNotificationWidgetSize(notificationWidget);
         renderNotificationRows(notificationWidget);
     }
@@ -3090,17 +3135,17 @@ public class UIManager implements OnTouchListener {
 
     private void addGroupTab(String label, String groupName, int drawerColor, int borderColor, int widgetBgColor, boolean isAll) {
         TextView tab = new TextView(mContext);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.bottomMargin = (int) Tuils.dpToPx(mContext, 6);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, (int) Tuils.dpToPx(mContext, 34));
+        lp.rightMargin = (int) Tuils.dpToPx(mContext, 6);
         tab.setLayoutParams(lp);
         tab.setGravity(Gravity.CENTER);
-        tab.setPadding((int) Tuils.dpToPx(mContext, 4), (int) Tuils.dpToPx(mContext, 8), (int) Tuils.dpToPx(mContext, 4), (int) Tuils.dpToPx(mContext, 8));
+        tab.setPadding((int) Tuils.dpToPx(mContext, 12), 0, (int) Tuils.dpToPx(mContext, 12), 0);
         tab.setText(label);
         tab.setMaxLines(1);
         tab.setEllipsize(TextUtils.TruncateAt.END);
-        tab.setTextSize(9);
+        tab.setTextSize(10);
         tab.setTypeface(Tuils.getTypeface(mContext), Typeface.BOLD);
-        tab.setMinHeight((int) Tuils.dpToPx(mContext, 40));
+        tab.setMinWidth((int) Tuils.dpToPx(mContext, 54));
 
         boolean selected = (isAll && selectedAppsDrawerGroup == null) || (groupName != null && groupName.equals(selectedAppsDrawerGroup));
         int selectedColor = getDrawerSelectionColor(drawerColor, widgetBgColor);

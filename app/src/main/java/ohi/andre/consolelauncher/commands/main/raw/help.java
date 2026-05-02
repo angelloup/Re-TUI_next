@@ -53,7 +53,10 @@ public class help implements CommandAbstraction {
         Tuils.addSeparator(toPrint, Tuils.TRIBLE_SPACE);
         Tuils.insertHeaders(toPrint, true);
 
-        return Tuils.toPlanString(toPrint, "");
+        return info.res.getString(R.string.help_workstation_quickstart)
+                + Tuils.NEWLINE
+                + Tuils.NEWLINE
+                + Tuils.toPlanString(toPrint, "");
     }
 
     @Override

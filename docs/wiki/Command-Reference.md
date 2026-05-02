@@ -135,8 +135,11 @@ Common commands:
 
 - `apps -ls`
 - `apps -lsh`
+- `apps -l <app>`
 - `apps -hide <app>`
 - `apps -show <app>`
+- `apps -st <app>`
+- `apps -ps <app>`
 - `apps -mkgp <group>`
 - `apps -rmgp <group>`
 - `apps -addtogp <group> <app>`
@@ -145,6 +148,8 @@ Common commands:
 
 Why this matters:
 
+- typing an app name at the prompt is for launching
+- app management is intentionally handled by explicit `apps` commands
 - hidden apps stay out of the drawer
 - groups feed the left-side app drawer tabs
 - the drawer is not just visual; it reflects command-level organization
@@ -188,6 +193,8 @@ Aliases are one of the best ways to make Re:T-UI feel personal without giving up
 
 ## Automation and Web
 
+See also: [Automation and Chaining](./Automation-and-Chaining.md).
+
 ### `termux`
 
 Open the Re:T-UI Termux console or dispatch a non-interactive Termux script.
@@ -218,6 +225,12 @@ Common commands:
 - `module -dock add notifications`
 - `module -dock remove music`
 - `module -add server termux:/data/data/com.termux/files/home/retui/server-health.sh`
+
+Design direction:
+
+- modules are Re:T-UI-owned terminal panels, not Android widgets
+- active modules may eventually provide their own suggestion chips
+- script modules should stay text/callback based, with no arbitrary code loaded into Re:T-UI
 - `module -refresh server`
 - `module -rm server`
 

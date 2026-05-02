@@ -59,7 +59,7 @@
     <string name="notification_low_api">Notifications are supported on Android 4.3+ only. Use \'config -set show_notifications false\' to disable this message</string>
 
     <!-- helps texts -->
-    <string name="firsthelp_text">First time with Re:T-UI?\n\ttutorial -> view the tutorial on GitHub\n\thelp     -> get a list of available commands</string>
+    <string name="firsthelp_text">First time with Re:T-UI?\n\thelp -> command list and workstation quickstart\n\ttutorial -> open the wiki</string>
     <string name="permissions_toast">You have to grant Storage permission</string>
     <string name="output_usedefapp">You can use \"apps -default_app\" instead</string>
 
@@ -71,7 +71,7 @@
 
     <!-- hints -->
     <string-array name="hints">
-        <item name="hint_tutorial">Did you read the tutorial? (\"$ tutorial\")</item>
+        <item name="hint_tutorial">Need the map? \"$ help\" shows the command list and workstation quickstart</item>
         <item name="hint_preset">Did you know that you can save and switch your current look? Have a look at the cmd \"$ preset\"</item>
         <item name="hint_preset2">Did you know? After \"$ wallpaper -auto\", you can lock in the result with \"$ preset -save mylook\"</item>
         <item name="hint_help">Doubts about a command? Use \"$ help cmdName\"</item>
@@ -88,8 +88,8 @@
 
 
     <string-array name="tutorial">
-        <item>Use the command \"help\" to get a list of available commands</item>
-        <item>If you want to get info about the behavior of a command, type \"help cmdName\"</item>
+        <item>Use \"help\" for the command list and workstation quickstart</item>
+        <item>If you want details for one command, type \"help cmdName\"</item>
         <item>Launch your apps typing their name</item>
         <item>You can call your contacts with the cmd \"call contactName\"</item>
         <item>Re:T-UI is highly customizable. Check \"config -ls\" or use the cmd \"config -tutorial\" to see what you can change</item>
@@ -259,6 +259,8 @@
     <string name="hint_wallpaper_auto_confirm">Yes/No</string>
     <string name="help_preset">-save [name] -> save the current theme.xml and suggestions.xml colors as a preset
         \n-apply [name] -> apply a saved or built-in preset and disable auto_color_pick
+        \n-export [name] -> create a shareable .retui-preset file in the presets folder
+        \n-import [name] -> unpack a .retui-preset file from the presets folder
         \n-ls -> list saved and built-in presets
     </string>
     <string name="help_alias">-add [aliasName] [alias content] -> add a home alias
@@ -324,6 +326,25 @@
     <string name="help_help">Print the available commands, or info about a command
         \n\nUsage:
         \n$ help [command]
+    </string>
+    <string name="help_workstation_quickstart">Re:T-UI workstation quickstart
+        \nThis launcher expects you to drive. Use commands first; UI surfaces are helpers.
+        \n
+        \nTry:
+        \n  app name              -> launch an app by name
+        \n  alias -add ll apps -ls -> create a reusable shortcut
+        \n  apps -hide appName    -> remove visual noise from the drawer
+        \n  wallpaper -auto       -> derive a theme from your current wallpaper
+        \n  preset -save mylook   -> save the result
+        \n  module -ls            -> inspect available terminal modules
+        \n
+        \nWiki:
+        \n  https://github.com/DvilSpawn/Re-TUI/wiki/Getting-Started
+        \n  https://github.com/DvilSpawn/Re-TUI/wiki/Command-Reference
+        \n  https://github.com/DvilSpawn/Re-TUI/wiki/Aliases
+        \n  https://github.com/DvilSpawn/Re-TUI/wiki/App-Drawer
+        \n  https://github.com/DvilSpawn/Re-TUI/wiki/Presets-and-Wallpaper-Auto-Color
+        \n  https://github.com/DvilSpawn/Re-TUI/wiki/Termux-Integration
     </string>
     <string name="help_htmlextract">Extract text from HTML pages
         \n-query [filter ID] [optional: format ID] [URL] -> parse the specified XPath entry with the specified URL
@@ -395,7 +416,7 @@
     <string name="help_tuinotes">-add [line] [text] -> add a new note at the specified line (the note will be appended if line is omitted)
         \n-rm [line] -> remove the note at the specified line
         \n-clear -> remove all the notes</string>
-    <string name="help_tutorial">Open the tutorial page on GitHub</string>
+    <string name="help_tutorial">Open the Re:T-UI wiki</string>
     <string name="help_uninstall">Uninstall an application
         \n\nUsage:
         \n$ uninstall [appName]

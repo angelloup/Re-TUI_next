@@ -1,6 +1,7 @@
 package ohi.andre.consolelauncher.commands.main.raw;
 
 import java.util.List;
+import java.io.File;
 
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
@@ -62,6 +63,44 @@ public class preset extends ParamCommand {
                 return new int[] {CommandAbstraction.PRESET_NAME};
             }
         },
+        export {
+            @Override
+            public String exec(ExecutePack pack) {
+                String name = pack.getString();
+                try {
+                    File file = PresetManager.exportPackage(name);
+                    return "Preset exported: " + file.getAbsolutePath();
+                } catch (IllegalArgumentException e) {
+                    return e.getMessage();
+                } catch (Exception e) {
+                    return pack.context.getString(R.string.output_error);
+                }
+            }
+
+            @Override
+            public int[] args() {
+                return new int[] {CommandAbstraction.PRESET_NAME};
+            }
+        },
+        import_ {
+            @Override
+            public String exec(ExecutePack pack) {
+                String name = pack.getString();
+                try {
+                    PresetManager.importPackage(name);
+                    return "Preset imported: " + name.trim().replace(".retui-preset", "");
+                } catch (IllegalArgumentException e) {
+                    return e.getMessage();
+                } catch (Exception e) {
+                    return pack.context.getString(R.string.output_error);
+                }
+            }
+
+            @Override
+            public int[] args() {
+                return new int[] {CommandAbstraction.PRESET_NAME};
+            }
+        },
         ls {
             @Override
             public String exec(ExecutePack pack) {
@@ -98,7 +137,7 @@ public class preset extends ParamCommand {
 
         @Override
         public String label() {
-            return Tuils.MINUS + name();
+            return Tuils.MINUS + name().replace("_", "");
         }
 
         @Override
