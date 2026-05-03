@@ -5,6 +5,7 @@ import android.app.Activity;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ResolveInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PermissionInfo;
@@ -43,18 +44,16 @@ public class TermuxBridgeManager {
     public static boolean termuxDeclaresRunCommandPermission(Context context) {
         try {
             PackageInfo info = context.getPackageManager().getPackageInfo(TERMUX_PACKAGE, PackageManager.GET_PERMISSIONS);
-            if (info.requestedPermissions == null) {
-                return false;
-            }
-
-            for (String permission : info.requestedPermissions) {
-                if (TERMUX_RUN_COMMAND_PERMISSION.equals(permission)) {
-                    return true;
+            if (info.permissions != null) {
+                for (PermissionInfo permission : info.permissions) {
+                    if (permission != null && TERMUX_RUN_COMMAND_PERMISSION.equals(permission.name)) {
+                        return true;
+                    }
                 }
             }
         } catch (Exception ignored) {
         }
-        return false;
+        return resolvesRunCommandService(context);
     }
 
     public static boolean hasRunCommandPermission(Context context) {
@@ -138,6 +137,17 @@ public class TermuxBridgeManager {
         } catch (Exception ignored) {
         }
         return null;
+    }
+
+    private static boolean resolvesRunCommandService(Context context) {
+        Intent intent = new Intent(TERMUX_RUN_COMMAND_ACTION);
+        intent.setClassName(TERMUX_PACKAGE, TERMUX_RUN_COMMAND_SERVICE);
+        try {
+            ResolveInfo info = context.getPackageManager().resolveService(intent, 0);
+            return info != null;
+        } catch (Exception ignored) {
+            return false;
+        }
     }
 
     public static class BridgeStatus {

@@ -332,7 +332,8 @@ Goal: make advanced file management a Termux power-user option while keeping the
   - `tbridge -dirs [path]`
   - `tbridge -files [path]`
 - [x] Route bridge results into the main output terminal rather than only the Termux console overlay.
-- [ ] Phone-test with both Play/F-Droid Termux if available.
+- [x] Phone-test with installed Termux 0.118.3.
+  - Fixed detection to check Termux's declared `RUN_COMMAND` permission/service rather than requested permissions.
 
 ### Termux Bridge Phase 2 - Backend Abstraction
 
