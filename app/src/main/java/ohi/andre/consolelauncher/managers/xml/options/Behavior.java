@@ -1445,6 +1445,22 @@ public enum Behavior implements XMLPrefsSave {
         public String type() {
             return XMLPrefsSave.BOOLEAN;
         }
+    },
+    file_backend {
+        @Override
+        public String defaultValue() {
+            return "auto";
+        }
+
+        @Override
+        public String info() {
+            return "File backend used by Re:T-UI file commands. Values: auto, native, termux, off";
+        }
+
+        @Override
+        public String type() {
+            return XMLPrefsSave.TEXT;
+        }
     };
 
     @Override

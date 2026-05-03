@@ -6,6 +6,7 @@ import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
 import ohi.andre.consolelauncher.commands.ExecutePack;
 import ohi.andre.consolelauncher.commands.main.MainPack;
+import ohi.andre.consolelauncher.managers.file.FileBackendManager;
 import ohi.andre.consolelauncher.managers.termux.TermuxBridgeManager;
 
 public class tbridge implements CommandAbstraction {
@@ -81,6 +82,7 @@ public class tbridge implements CommandAbstraction {
         builder.append("termux: ").append(status.termuxInstalled ? "installed" : "missing").append('\n');
         builder.append("RUN_COMMAND declared: ").append(status.runCommandDeclared ? "yes" : "no").append('\n');
         builder.append("RUN_COMMAND granted: ").append(status.runCommandGranted ? "yes" : "no").append('\n');
+        builder.append(FileBackendManager.statusLine(info.context)).append('\n');
         builder.append("current path: ").append(info.currentDirectory.getAbsolutePath()).append('\n');
         builder.append("probe: tbridge -probe");
         return builder.toString();

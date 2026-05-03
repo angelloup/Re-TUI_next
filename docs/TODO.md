@@ -337,12 +337,17 @@ Goal: make advanced file management a Termux power-user option while keeping the
 
 ### Termux Bridge Phase 2 - Backend Abstraction
 
+- [x] Add `file_backend` behavior setting:
+  - `auto`
+  - `native`
+  - `termux`
+  - `off`
+- [x] Add initial backend resolver/status helper.
+- [x] Surface active backend state in `tbridge -status`.
 - Add a `FileBackend` boundary:
   - native backend for GitHub/Firebase builds
   - Termux bridge backend for Play-safe advanced file mode
   - disabled/limited backend when neither is available
-- Add behavior setting:
-  - `file_backend = native | termux | auto | off`
 - Re:T-UI should continue owning:
   - cwd state
   - command grammar

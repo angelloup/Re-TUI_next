@@ -206,6 +206,8 @@
         \ntbridge -ls [path]
         \ntbridge -dirs [path]
         \ntbridge -files [path]
+        \n\nConfig:
+        \nconfig -set file_backend auto|native|termux|off
         \n\nThis bridge requires Termux, RUN_COMMAND permission, allow-external-apps=true, and termux-setup-storage for shared storage.
     </string>
     <string name="help_retuitoken">Manage the Re:T-UI callback token for Termux, Tasker, and future modules.
