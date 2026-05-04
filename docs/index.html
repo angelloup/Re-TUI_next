@@ -313,8 +313,20 @@
       font-family: "SFMono-Regular", Consolas, monospace;
     }
 
-    .command-grid,
-    .feature-grid,
+    .command-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 22px;
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 22px;
+    }
+
     .tile,
     .step {
       min-height: 132px;
@@ -324,6 +336,13 @@
       padding: 16px;
     }
 
+    .command-grid .tile {
+      display: grid;
+      align-content: start;
+      min-height: 154px;
+      padding: 18px;
+    }
+
     .tile code,
     .callout,
     .terminal-list {
@@ -331,8 +350,10 @@
     }
 
     .tile code {
+      display: inline-block;
       color: var(--accent-strong);
       font-size: 0.95rem;
+      overflow-wrap: anywhere;
     }
 
     .tile p,
@@ -417,6 +438,10 @@
 
       .command-grid,
       .feature-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .feature-grid {
         grid-template-columns: 1fr;
       }
 
@@ -470,6 +495,12 @@
 
       .split.customize-layout .terminal-list div {
         padding: 8px;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .command-grid {
+        grid-template-columns: 1fr;
       }
     }
 
