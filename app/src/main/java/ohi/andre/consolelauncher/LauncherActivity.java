@@ -164,7 +164,7 @@ public class LauncherActivity extends AppCompatActivity implements Reloadable {
         instance = this;
 
         // Special check for MANAGE_EXTERNAL_STORAGE (API 30+)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        if (shouldRequestAllFilesAccess()) {
             if (!android.os.Environment.isExternalStorageManager()) {
                 try {
                     Intent intent = new Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
@@ -211,11 +211,13 @@ public class LauncherActivity extends AppCompatActivity implements Reloadable {
         List<String> permissionsToRequest = new ArrayList<>();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-                if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                    permissionsToRequest.add(Manifest.permission.READ_EXTERNAL_STORAGE);
-                }
-                if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                    permissionsToRequest.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+                if (shouldRequestLegacyExternalStoragePermissions()) {
+                    if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                        permissionsToRequest.add(Manifest.permission.READ_EXTERNAL_STORAGE);
+                    }
+                    if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                        permissionsToRequest.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+                    }
                 }
             }
 
@@ -381,6 +383,18 @@ public class LauncherActivity extends AppCompatActivity implements Reloadable {
         ui.focusTerminal();
 
         System.gc();
+    }
+
+    private boolean shouldRequestAllFilesAccess() {
+        return !isPlayStoreBuild() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R;
+    }
+
+    private boolean shouldRequestLegacyExternalStoragePermissions() {
+        return !isPlayStoreBuild();
+    }
+
+    private boolean isPlayStoreBuild() {
+        return "playstore".equalsIgnoreCase(BuildConfig.FLAVOR);
     }
 
     private void installImePaddingHandler(View mainView) {

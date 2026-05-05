@@ -1375,9 +1375,19 @@ public class Tuils {
     public static void init(Context context) {
         Log.e("TUI-INIT", "Starting Tuils.init()");
         try {
-            // Priority: Internal Storage Root (Shared)
             File sharedRoot = Environment.getExternalStorageDirectory();
-            File newFolder = new File(sharedRoot, FileUtils.getForkFolderName());
+            File newFolder;
+            if (isPlayStoreBuild()) {
+                File appExternalRoot = context.getExternalFilesDir(null);
+                if (appExternalRoot == null) {
+                    appExternalRoot = context.getFilesDir();
+                }
+                newFolder = new File(appExternalRoot, FileUtils.getForkFolderName());
+                Log.e("TUI-INIT", "Play Store folder: " + newFolder.getAbsolutePath());
+            } else {
+                // Priority: Internal Storage Root (Shared)
+                newFolder = new File(sharedRoot, FileUtils.getForkFolderName());
+            }
             
             Log.e("TUI-INIT", "Target folder: " + newFolder.getAbsolutePath());
 
@@ -1427,6 +1437,10 @@ public class Tuils {
             Log.e("TUI-INIT", "Crash in Tuils.init", e);
             toFile(e);
         }
+    }
+
+    private static boolean isPlayStoreBuild() {
+        return "playstore".equalsIgnoreCase(BuildConfig.FLAVOR);
     }
 
     private static boolean isDirectoryEffectivelyEmpty(File dir) {
