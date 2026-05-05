@@ -1382,10 +1382,13 @@ public class Tuils {
                 if (appExternalRoot == null) {
                     appExternalRoot = context.getFilesDir();
                 }
+                // Play Store flavor does not request shared-storage permissions.
+                // Keep the folder name Linux/path friendly, but store it in app-owned
+                // external storage so normal File APIs can read/write reliably.
                 newFolder = new File(appExternalRoot, FileUtils.getForkFolderName());
-                Log.e("TUI-INIT", "Play Store folder: " + newFolder.getAbsolutePath());
+                Log.e("TUI-INIT", "Play Store app-owned folder: " + newFolder.getAbsolutePath());
             } else {
-                // Priority: Internal Storage Root (Shared)
+                // F-Droid/debug channel can own the shared user-facing root.
                 newFolder = new File(sharedRoot, FileUtils.getForkFolderName());
             }
             
