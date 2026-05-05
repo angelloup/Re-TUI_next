@@ -38,8 +38,6 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
-import com.google.firebase.crashlytics.FirebaseCrashlytics;
-
 import java.io.File;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -204,10 +202,6 @@ public class LauncherActivity extends AppCompatActivity implements Reloadable {
         }
 
         super.onCreate(savedInstanceState);
-
-        FirebaseCrashlytics crashlytics = FirebaseCrashlytics.getInstance();
-        crashlytics.setCrashlyticsCollectionEnabled(true);
-        crashlytics.log("LauncherActivity onCreate - Crashlytics initialized");
 
         overridePendingTransition(0, 0);
 
