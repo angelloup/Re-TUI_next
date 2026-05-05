@@ -22,6 +22,7 @@ import ohi.andre.consolelauncher.managers.WebhookManager;
 import ohi.andre.consolelauncher.managers.HistoryManager;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
 import ohi.andre.consolelauncher.managers.xml.options.Behavior;
+import ohi.andre.consolelauncher.tuils.Tuils;
 import ohi.andre.consolelauncher.tuils.interfaces.Redirectator;
 import ohi.andre.consolelauncher.tuils.libsuperuser.ShellHolder;
 import okhttp3.OkHttpClient;
@@ -77,7 +78,7 @@ public class MainPack extends ExecutePack {
                     ContactManager c, Redirectator redirectator, RssManager rssManager, OkHttpClient client, WebhookManager webhookManager, HistoryManager historyManager) {
         super(commandGroup);
 
-        this.currentDirectory = XMLPrefsManager.get(File.class, Behavior.home_path);
+        this.currentDirectory = resolveHomeDirectory(XMLPrefsManager.get(File.class, Behavior.home_path));
 
         this.rssManager = rssManager;
 
@@ -99,6 +100,16 @@ public class MainPack extends ExecutePack {
         this.contacts = c;
 
         this.redirectator = redirectator;
+    }
+
+    private File resolveHomeDirectory(File preferred) {
+        File fallback = Tuils.getFolder();
+        if (preferred == null) return fallback;
+        String path = preferred.getAbsolutePath();
+        boolean oldColonFolder = path.contains(File.separator + "Re:T-UI")
+                || path.endsWith(File.separator + "Re:T-UI");
+        if (oldColonFolder || !preferred.exists()) return fallback;
+        return preferred;
     }
 
     public void dispose() {

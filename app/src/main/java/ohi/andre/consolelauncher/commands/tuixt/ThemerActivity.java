@@ -1,9 +1,11 @@
 package ohi.andre.consolelauncher.commands.tuixt;
 
 import android.content.Intent;
+import android.content.ActivityNotFoundException;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Color;
+import android.net.Uri;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.util.Log;
@@ -28,6 +30,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import ohi.andre.consolelauncher.LauncherActivity;
+import ohi.andre.consolelauncher.managers.BackupManager;
 import ohi.andre.consolelauncher.managers.PresetManager;
 import ohi.andre.consolelauncher.managers.settings.MusicSettings;
 import ohi.andre.consolelauncher.managers.settings.LauncherSettings;
@@ -45,6 +48,8 @@ public class ThemerActivity extends AppCompatActivity {
     public static final String SECTION_PERSONALIZATION = "personalization";
     public static final String SECTION_INTEGRATIONS = "integrations";
     public static final String SECTION_SYSTEM = "system";
+    private static final int BACKUP_EXPORT_REQUEST = 201;
+    private static final int BACKUP_RESTORE_REQUEST = 202;
 
     private RecyclerView recyclerView;
     private TextView header;
@@ -163,6 +168,10 @@ public class ThemerActivity extends AppCompatActivity {
                             intent.putExtra(TuixtActivity.PATH, crashFile.getAbsolutePath());
                             startActivity(intent);
                         }
+                    } else if (fileName.equals("Backup")) {
+                        launchBackupPicker();
+                    } else if (fileName.equals("Restore")) {
+                        launchRestorePicker();
                     } else {
                         openConfigFile(fileName);
                     }
@@ -342,7 +351,7 @@ public class ThemerActivity extends AppCompatActivity {
         } else if (SECTION_INTEGRATIONS.equals(section)) {
             return Arrays.asList("Preferred Music App: " + getPreferredMusicAppSummary());
         } else if (SECTION_SYSTEM.equals(section)) {
-            return Arrays.asList("View Crash Log");
+            return Arrays.asList("Backup", "Restore", "View Crash Log");
         }
 
         return Arrays.asList(
@@ -391,6 +400,30 @@ public class ThemerActivity extends AppCompatActivity {
             startActivity(new Intent(android.app.WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER));
         } catch (Exception e) {
             Toast.makeText(this, "Live wallpaper picker is unavailable on this device.", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void launchBackupPicker() {
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("application/zip");
+        intent.putExtra(Intent.EXTRA_TITLE, BackupManager.defaultBackupName());
+        try {
+            startActivityForResult(intent, BACKUP_EXPORT_REQUEST);
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(this, "Backup picker is unavailable on this device.", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void launchRestorePicker() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("*/*");
+        intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[] {"application/zip", "application/octet-stream"});
+        try {
+            startActivityForResult(intent, BACKUP_RESTORE_REQUEST);
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(this, "Restore picker is unavailable on this device.", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -476,6 +509,51 @@ public class ThemerActivity extends AppCompatActivity {
                 LauncherActivity.instance.reload();
             }
             finish();
+        } else if (requestCode == BACKUP_EXPORT_REQUEST) {
+            handleBackupResult(resultCode, data);
+        } else if (requestCode == BACKUP_RESTORE_REQUEST) {
+            handleRestoreResult(resultCode, data);
+        }
+    }
+
+    private void handleBackupResult(int resultCode, Intent data) {
+        if (resultCode != RESULT_OK || data == null || data.getData() == null) {
+            Toast.makeText(this, "Backup cancelled.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        try {
+            BackupManager.exportBackup(this, data.getData());
+            Toast.makeText(this, "Backup exported.", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Toast.makeText(this, e.getMessage() == null ? "Backup failed." : e.getMessage(), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void handleRestoreResult(int resultCode, Intent data) {
+        if (resultCode != RESULT_OK || data == null || data.getData() == null) {
+            Toast.makeText(this, "Restore cancelled.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Uri uri = data.getData();
+        try {
+            int flags = data.getFlags() & Intent.FLAG_GRANT_READ_URI_PERMISSION;
+            getContentResolver().takePersistableUriPermission(uri, flags);
+        } catch (Exception ignored) {
+        }
+
+        try {
+            BackupManager.importBackup(this, uri);
+            Toast.makeText(this, "Backup restored. Reloading...", Toast.LENGTH_SHORT).show();
+            recyclerView.postDelayed(() -> {
+                if (LauncherActivity.instance != null) {
+                    LauncherActivity.instance.reload();
+                }
+                finish();
+            }, 500);
+        } catch (Exception e) {
+            Toast.makeText(this, e.getMessage() == null ? "Restore failed." : e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
 

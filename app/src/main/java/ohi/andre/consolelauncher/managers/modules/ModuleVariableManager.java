@@ -21,6 +21,7 @@ import ohi.andre.consolelauncher.managers.settings.AppearanceSettings;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
 import ohi.andre.consolelauncher.managers.xml.options.Theme;
 import ohi.andre.consolelauncher.tuils.NetUtils;
+import ohi.andre.consolelauncher.tuils.Tuils;
 
 public final class ModuleVariableManager {
 
@@ -37,8 +38,7 @@ public final class ModuleVariableManager {
 
     public static Materialized materialize(Context context, String module) {
         long now = System.currentTimeMillis();
-        File dir = new File(Environment.getExternalStorageDirectory(),
-                "Re-T-UI/.retui/module-vars/" + safeName(module));
+        File dir = new File(Tuils.getFolder(), ".retui/module-vars/" + safeName(module));
         if (!dir.exists()) {
             //noinspection ResultOfMethodCallIgnored
             dir.mkdirs();

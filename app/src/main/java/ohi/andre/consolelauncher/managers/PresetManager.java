@@ -1,5 +1,11 @@
 package ohi.andre.consolelauncher.managers;
 
+import android.content.Context;
+import android.database.Cursor;
+import android.net.Uri;
+import android.provider.DocumentsContract;
+import android.provider.OpenableColumns;
+
 import org.w3c.dom.Document;
 
 import java.io.BufferedInputStream;
@@ -7,6 +13,8 @@ import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -168,6 +176,89 @@ public final class PresetManager {
         if (!packageFile.isFile()) {
             throw new IllegalArgumentException("Preset package not found");
         }
+        importPackageFile(cleanName, packageFile);
+    }
+
+    public static String importPackage(Context context, Uri uri) throws Exception {
+        if (context == null || uri == null) {
+            throw new IllegalArgumentException("Preset package is required");
+        }
+
+        String displayName = displayName(context, uri);
+        String cleanName = cleanPresetPackageName(displayName);
+        File packageFile = packageFile(cleanName);
+        copyUriToFile(context, uri, packageFile);
+        importPackageFile(cleanName, packageFile);
+        return cleanName;
+    }
+
+    public static String importFolder(Context context, Uri treeUri) throws Exception {
+        if (context == null || treeUri == null) {
+            throw new IllegalArgumentException("Preset folder is required");
+        }
+
+        String cleanName = cleanName(treeName(treeUri));
+        File tempFolder = new File(getPresetsDir(), "." + cleanName + ".importing");
+        if (tempFolder.exists()) {
+            Tuils.delete(tempFolder);
+        }
+        if (!tempFolder.mkdirs()) {
+            throw new IllegalStateException("Unable to create import folder");
+        }
+
+        try {
+            Map<String, Uri> children = folderChildren(context, treeUri);
+            for (String fileName : PRESET_XML_FILES) {
+                Uri child = children.get(fileName.toLowerCase());
+                if (child == null) {
+                    throw new IllegalArgumentException("Preset folder is incomplete");
+                }
+                copyUriToFile(context, child, new File(tempFolder, fileName));
+            }
+            validatePresetFolder(tempFolder);
+
+            File presetFolder = new File(getPresetsDir(), cleanName);
+            if (!presetFolder.exists() && !presetFolder.mkdirs()) {
+                throw new IllegalStateException("Unable to create preset folder");
+            }
+
+            for (String fileName : PRESET_XML_FILES) {
+                File dest = new File(presetFolder, fileName);
+                if (dest.exists()) {
+                    Tuils.insertOld(dest);
+                }
+                Tuils.copy(new File(tempFolder, fileName), dest);
+            }
+            return cleanName;
+        } finally {
+            Tuils.delete(tempFolder);
+        }
+    }
+
+    public static void exportPackage(Context context, File packageFile, Uri uri) throws Exception {
+        if (context == null || packageFile == null || uri == null || !packageFile.isFile()) {
+            throw new IllegalArgumentException("Preset package not found");
+        }
+
+        InputStream in = new BufferedInputStream(new FileInputStream(packageFile));
+        OutputStream out = new BufferedOutputStream(context.getContentResolver().openOutputStream(uri, "w"));
+        if (out == null) {
+            in.close();
+            throw new IllegalArgumentException("Unable to open export destination");
+        }
+        try {
+            copyStream(in, out);
+        } finally {
+            in.close();
+            out.close();
+        }
+    }
+
+    public static String packageFileName(File packageFile) {
+        return packageFile == null ? "preset" + PRESET_PACKAGE_SUFFIX : packageFile.getName();
+    }
+
+    private static void importPackageFile(String cleanName, File packageFile) throws Exception {
 
         File tempFolder = new File(getPresetsDir(), "." + cleanName + ".importing");
         if (tempFolder.exists()) {
@@ -196,6 +287,107 @@ public final class PresetManager {
         } finally {
             Tuils.delete(tempFolder);
         }
+    }
+
+    private static String displayName(Context context, Uri uri) {
+        String name = null;
+        Cursor cursor = null;
+        try {
+            cursor = context.getContentResolver().query(uri, null, null, null, null);
+            if (cursor != null && cursor.moveToFirst()) {
+                int index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                if (index >= 0) {
+                    name = cursor.getString(index);
+                }
+            }
+        } catch (Exception ignored) {
+        } finally {
+            if (cursor != null) cursor.close();
+        }
+
+        if (name == null || name.trim().length() == 0) {
+            String path = uri.getLastPathSegment();
+            name = path == null ? "imported-preset" : new File(path).getName();
+        }
+        return name;
+    }
+
+    private static String treeName(Uri treeUri) {
+        String id = DocumentsContract.getTreeDocumentId(treeUri);
+        if (id == null || id.trim().length() == 0) {
+            return "imported-preset";
+        }
+        int slash = id.lastIndexOf('/');
+        int colon = id.lastIndexOf(':');
+        int cut = Math.max(slash, colon);
+        return cut >= 0 && cut < id.length() - 1 ? id.substring(cut + 1) : id;
+    }
+
+    private static Map<String, Uri> folderChildren(Context context, Uri treeUri) throws Exception {
+        Map<String, Uri> children = new HashMap<>();
+        Uri childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(
+                treeUri,
+                DocumentsContract.getTreeDocumentId(treeUri)
+        );
+        Cursor cursor = null;
+        try {
+            cursor = context.getContentResolver().query(
+                    childrenUri,
+                    new String[] {
+                            DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                            DocumentsContract.Document.COLUMN_DISPLAY_NAME
+                    },
+                    null,
+                    null,
+                    null
+            );
+            if (cursor == null) {
+                throw new IllegalArgumentException("Unable to read preset folder");
+            }
+            while (cursor.moveToNext()) {
+                String documentId = cursor.getString(0);
+                String name = cursor.getString(1);
+                if (documentId != null && name != null) {
+                    children.put(name.toLowerCase(), DocumentsContract.buildDocumentUriUsingTree(treeUri, documentId));
+                }
+            }
+        } finally {
+            if (cursor != null) cursor.close();
+        }
+        return children;
+    }
+
+    private static void copyUriToFile(Context context, Uri uri, File file) throws Exception {
+        File parent = file.getParentFile();
+        if (parent != null && !parent.exists() && !parent.mkdirs()) {
+            throw new IllegalStateException("Unable to create preset folder");
+        }
+
+        InputStream in = new BufferedInputStream(context.getContentResolver().openInputStream(uri));
+        if (in == null) {
+            throw new IllegalArgumentException("Unable to open preset package");
+        }
+        OutputStream out = new BufferedOutputStream(new FileOutputStream(file, false));
+        try {
+            copyStream(in, out);
+        } finally {
+            in.close();
+            out.close();
+        }
+    }
+
+    private static void copyStream(InputStream in, OutputStream out) throws Exception {
+        byte[] buffer = new byte[4096];
+        int read;
+        int total = 0;
+        while ((read = in.read(buffer)) != -1) {
+            total += read;
+            if (total > MAX_ENTRY_BYTES * PRESET_XML_FILES.length + 64 * 1024) {
+                throw new IllegalArgumentException("Preset package file too large");
+            }
+            out.write(buffer, 0, read);
+        }
+        out.flush();
     }
 
     public static boolean applyBuiltIn(String name) {
