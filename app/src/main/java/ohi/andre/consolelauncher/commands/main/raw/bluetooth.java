@@ -3,8 +3,10 @@ package ohi.andre.consolelauncher.commands.main.raw;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.provider.Settings;
 
 import androidx.core.content.ContextCompat;
 
@@ -23,6 +25,11 @@ public class bluetooth implements CommandAbstraction {
         BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
 
         if(adapter == null) return info.context.getString(R.string.output_bluetooth_unavailable);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            info.context.startActivity(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS));
+            return "Opening Bluetooth settings. Android no longer allows third-party launchers to toggle Bluetooth directly.";
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if (ContextCompat.checkSelfPermission(info.context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {

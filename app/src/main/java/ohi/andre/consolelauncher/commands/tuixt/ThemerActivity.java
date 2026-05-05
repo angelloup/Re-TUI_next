@@ -164,9 +164,7 @@ public class ThemerActivity extends AppCompatActivity {
                             startActivity(intent);
                         }
                     } else {
-                        Intent intent = new Intent(ThemerActivity.this, TuixtActivity.class);
-                        intent.putExtra(TuixtActivity.PATH, new File(Tuils.getFolder(), fileName).getAbsolutePath());
-                        startActivityForResult(intent, LauncherActivity.TUIXT_REQUEST);
+                        openConfigFile(fileName);
                     }
                 });
             }
@@ -372,6 +370,12 @@ public class ThemerActivity extends AppCompatActivity {
             return;
         }
         super.onBackPressed();
+    }
+
+    private void openConfigFile(String fileName) {
+        Intent intent = new Intent(ThemerActivity.this, TuixtActivity.class);
+        intent.putExtra(TuixtActivity.PATH, new File(Tuils.getFolder(), fileName).getAbsolutePath());
+        startActivityForResult(intent, LauncherActivity.TUIXT_REQUEST);
     }
 
     private void launchWallpaperPicker() {

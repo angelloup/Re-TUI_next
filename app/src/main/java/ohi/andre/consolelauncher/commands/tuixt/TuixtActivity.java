@@ -25,6 +25,7 @@ import java.util.List;
 import ohi.andre.consolelauncher.managers.settings.LauncherSettings;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave;
+import ohi.andre.consolelauncher.managers.xml.options.Behavior;
 public class TuixtActivity extends Activity {
 
     public static final String PATH = "path";
@@ -147,6 +148,7 @@ public class TuixtActivity extends Activity {
 
         if (xmlRoot != null) {
             originalItems = new ArrayList<>(xmlRoot.enums);
+            originalItems.remove(Behavior.toggle_output_state);
             adapter = new TuixtAdapter(originalItems, file);
             recyclerView.setAdapter(adapter);
 

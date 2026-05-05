@@ -17,6 +17,10 @@ public final class ModuleManager {
     public static final String NOTIFICATIONS = "notifications";
     public static final String TIMER = "timer";
     public static final String CALENDAR = "calendar";
+    public static final String EVENTS = "events";
+    public static final String REMINDER = "reminder";
+    public static final String SOURCE_LAUNCHER_PREFIX = "launcher:";
+    public static final String SOURCE_TERMUX_PREFIX = "termux:";
 
     private static final String PREFS = "retui_modules";
     private static final String KEY_DOCK = "dock";
@@ -26,7 +30,7 @@ public final class ModuleManager {
     private static final String KEY_SCRIPT_PATH_PREFIX = "script_path_";
     private static final String KEY_SCRIPT_TITLE_PREFIX = "script_title_";
     private static final String KEY_SCRIPT_SUGGESTIONS_PREFIX = "script_suggestions_";
-    private static final List<String> BUILT_INS = Arrays.asList(MUSIC, NOTIFICATIONS, TIMER, CALENDAR);
+    private static final List<String> BUILT_INS = Arrays.asList(MUSIC, NOTIFICATIONS, TIMER, CALENDAR, REMINDER);
 
     private ModuleManager() {}
 
@@ -135,7 +139,7 @@ public final class ModuleManager {
         ids.add(id);
         prefs(context).edit()
                 .putStringSet(KEY_SCRIPT_IDS, ids)
-                .putString(KEY_SCRIPT_PATH_PREFIX + id, normalizeScriptPath(path))
+                .putString(KEY_SCRIPT_PATH_PREFIX + id, normalizeModuleSource(path))
                 .putString(KEY_SCRIPT_PREFIX + id, "No module output yet. Run module -refresh " + id)
                 .remove(KEY_SCRIPT_TITLE_PREFIX + id)
                 .remove(KEY_SCRIPT_SUGGESTIONS_PREFIX + id)
@@ -176,6 +180,25 @@ public final class ModuleManager {
         return prefs(context).getString(KEY_SCRIPT_PATH_PREFIX + id, "");
     }
 
+    public static String getModuleSource(Context context, String module) {
+        return getScriptPath(context, module);
+    }
+
+    public static boolean isLauncherSource(String source) {
+        return source != null && source.trim().toLowerCase(Locale.US).startsWith(SOURCE_LAUNCHER_PREFIX);
+    }
+
+    public static boolean isTermuxSource(String source) {
+        return !TextUtils.isEmpty(source) && !isLauncherSource(source);
+    }
+
+    public static String launcherProvider(String source) {
+        if (!isLauncherSource(source)) {
+            return "";
+        }
+        return source.trim().substring(SOURCE_LAUNCHER_PREFIX.length()).trim().toLowerCase(Locale.US);
+    }
+
     public static String normalize(String value) {
         if (value == null) {
             return "";
@@ -188,6 +211,12 @@ public final class ModuleManager {
         if ("cal".equals(id)) {
             return CALENDAR;
         }
+        if ("event".equals(id) || "next_event".equals(id) || "upcoming".equals(id) || "upcomingevents".equals(id)) {
+            return EVENTS;
+        }
+        if ("reminders".equals(id)) {
+            return REMINDER;
+        }
         return id;
     }
 
@@ -195,6 +224,9 @@ public final class ModuleManager {
         String id = normalize(module);
         if (NOTIFICATIONS.equals(id)) {
             return "NOTIFICATIONS";
+        }
+        if (EVENTS.equals(id)) {
+            return "EVENTS";
         }
         return id.toUpperCase(Locale.US);
     }
@@ -229,13 +261,29 @@ public final class ModuleManager {
             suggestions.add(ModuleSuggestion.command("info", "music -info"));
             suggestions.add(ModuleSuggestion.command("stop", "music -stop"));
         } else if (NOTIFICATIONS.equals(id)) {
+            if (ModulePromptManager.isActive(context)) {
+                suggestions.addAll(ModulePromptManager.getSuggestions(context));
+                return suggestions;
+            }
+            suggestions.add(ModuleSuggestion.command("prev", "notifications -prev"));
+            suggestions.add(ModuleSuggestion.command("next", "notifications -next"));
+            suggestions.add(ModuleSuggestion.command("reply", "notifications -reply"));
+            suggestions.add(ModuleSuggestion.command("open", "notifications -open"));
             suggestions.add(ModuleSuggestion.command("access", "notifications -access"));
-            suggestions.add(ModuleSuggestion.command("on", "notifications -on"));
-            suggestions.add(ModuleSuggestion.command("off", "notifications -off"));
+            suggestions.add(ModuleSuggestion.command("rules", "notifications -ls"));
             suggestions.add(ModuleSuggestion.command("filters", "notifications -file"));
         } else if (CALENDAR.equals(id)) {
             suggestions.add(ModuleSuggestion.command("today", "module -show calendar"));
             suggestions.add(ModuleSuggestion.command("timer", "module -show timer"));
+        } else if (REMINDER.equals(id)) {
+            if (ModulePromptManager.isActive(context)) {
+                suggestions.addAll(ModulePromptManager.getSuggestions(context));
+            } else {
+                suggestions.add(ModuleSuggestion.command("-add", "module -prompt reminder add"));
+                suggestions.add(ModuleSuggestion.command("-edit", "module -prompt reminder edit"));
+                suggestions.add(ModuleSuggestion.command("-rm", "module -prompt reminder remove"));
+                suggestions.add(ModuleSuggestion.command("-ls", "module -show reminder"));
+            }
         } else {
             suggestions.addAll(getScriptSuggestions(context, id));
         }
@@ -377,10 +425,14 @@ public final class ModuleManager {
         return out;
     }
 
-    private static String normalizeScriptPath(String path) {
+    private static String normalizeModuleSource(String path) {
         String trimmed = path == null ? "" : path.trim();
-        if (trimmed.toLowerCase(Locale.US).startsWith("termux:")) {
-            return trimmed.substring("termux:".length()).trim();
+        String lower = trimmed.toLowerCase(Locale.US);
+        if (lower.startsWith(SOURCE_TERMUX_PREFIX)) {
+            return trimmed.substring(SOURCE_TERMUX_PREFIX.length()).trim();
+        }
+        if (lower.startsWith(SOURCE_LAUNCHER_PREFIX)) {
+            return SOURCE_LAUNCHER_PREFIX + trimmed.substring(SOURCE_LAUNCHER_PREFIX.length()).trim().toLowerCase(Locale.US);
         }
         return trimmed;
     }

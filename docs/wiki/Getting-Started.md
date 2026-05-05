@@ -9,7 +9,8 @@ When Re:T-UI opens, you are dropped into a terminal-style launcher. You can:
 - type commands directly
 - launch apps by name
 - use suggestions under the input field
-- open the settings hub with `themer` or `settings`
+- open the settings hub with `settings`
+- open the companion file console with `files`
 
 ## Learn From Help
 
@@ -30,10 +31,11 @@ Examples:
 
 ## Basic Navigation
 
-- `themer` opens the settings hub
-- `settings -theme` jumps to appearance-related settings
-- `settings -music` opens music settings
-- `settings -notifications` opens behavior settings, including notification-related XML
+- `settings` opens the settings hub.
+- `files` opens Re:T-UI Files.
+- `module -ls` lists built-in and script-backed modules.
+- `termux -setup` prints the Termux setup checklist.
+- `tbridge -doctor` checks the Termux bridge used by scripts and modules.
 
 ## Important Concepts
 
@@ -62,6 +64,7 @@ Auto color derives colors from the current wallpaper, but it is separate from ma
 - `wallpaper -auto`
 - `preset -save <name>`
 - `module -ls`
+- `files`
 
 ## Tip
 

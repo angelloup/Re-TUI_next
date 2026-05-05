@@ -10,6 +10,7 @@ import ohi.andre.consolelauncher.commands.ExecutePack;
 import ohi.andre.consolelauncher.commands.main.MainPack;
 import ohi.andre.consolelauncher.commands.main.specific.APICommand;
 import ohi.andre.consolelauncher.commands.main.specific.ParamCommand;
+import ohi.andre.consolelauncher.managers.notifications.NotificationService;
 import ohi.andre.consolelauncher.managers.notifications.reply.ReplyManager;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
@@ -48,6 +49,7 @@ public class reply extends ParamCommand implements APICommand {
             public String exec(ExecutePack pack) {
                 String output = ReplyManager.bind(pack.getLaunchInfo().componentName.getPackageName());
                 LocalBroadcastManager.getInstance(pack.context).sendBroadcast(new Intent(ReplyManager.ACTION_UPDATE));
+                NotificationService.requestReload(pack.context);
                 return output;
             }
         },
@@ -76,6 +78,7 @@ public class reply extends ParamCommand implements APICommand {
             public String exec(ExecutePack pack) {
                 String output = ReplyManager.unbind(pack.getLaunchInfo().componentName.getPackageName());
                 LocalBroadcastManager.getInstance(pack.context).sendBroadcast(new Intent(ReplyManager.ACTION_UPDATE));
+                NotificationService.requestReload(pack.context);
 
                 if(output != null && output.length() == 0) return pack.context.getString(R.string.reply_app_not_found) + pack.getLaunchInfo().componentName.getPackageName();
                 return output;

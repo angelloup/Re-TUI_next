@@ -70,4 +70,34 @@ public final class AppearanceSettings {
     public static int dashGap() {
         return LauncherSettings.getInt(Ui.dashed_border_gap_length);
     }
+
+    public static int moduleCornerRadius() {
+        return clampRadius(LauncherSettings.getInt(Ui.module_corner_radius));
+    }
+
+    public static int outputCornerRadius() {
+        return clampRadius(LauncherSettings.getInt(Ui.output_corner_radius));
+    }
+
+    public static int headerCornerRadius() {
+        return clampRadius(LauncherSettings.getInt(Ui.header_corner_radius));
+    }
+
+    public static int moduleHeaderTextSize() {
+        return clampTextSize(LauncherSettings.getInt(Ui.module_header_text_size));
+    }
+
+    public static int outputHeaderTextSize() {
+        return clampTextSize(LauncherSettings.getInt(Ui.output_header_text_size));
+    }
+
+    private static int clampRadius(int radius) {
+        if (radius < 0) return 0;
+        return Math.min(radius, 48);
+    }
+
+    private static int clampTextSize(int size) {
+        if (size < 8) return 8;
+        return Math.min(size, 32);
+    }
 }

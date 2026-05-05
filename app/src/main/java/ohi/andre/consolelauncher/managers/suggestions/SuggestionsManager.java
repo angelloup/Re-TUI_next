@@ -370,6 +370,11 @@ public class SuggestionsManager {
         boolean execOnClick = suggestion.exec;
 
         String text = suggestion.getText();
+        if (suggestion.type == SuggestionsManager.Suggestion.TYPE_MODULE && execOnClick) {
+            mTerminalAdapter.executeQuietly(text, suggestion.object);
+            return;
+        }
+
         String input = mTerminalAdapter.getInput();
 
         if(suggestion.type == SuggestionsManager.Suggestion.TYPE_PERMANENT) {

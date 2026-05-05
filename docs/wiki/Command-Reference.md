@@ -28,11 +28,11 @@ Refresh launcher-managed data such as apps, aliases, music, and contacts.
 
 ## Settings and Theming
 
-### `themer`
+### `settings`
 
 Open the Re:T-UI terminal-style settings hub.
 
-Best entry point for:
+Use this for:
 
 - appearance
 - behavior
@@ -40,17 +40,11 @@ Best entry point for:
 - fonts
 - presets
 
-### `settings`
-
-Open the settings hub, or jump straight to a section.
-
-Examples:
+Example:
 
 - `settings`
-- `settings -appearance`
-- `settings -behavior`
-- `settings -integrations`
-- `settings -system`
+
+`themer` remains as a hidden compatibility alias, but `settings` is the user-facing entry point.
 
 ### `wallpaper`
 
@@ -112,18 +106,30 @@ Most important forms:
 - `notifications -exc <app>`
 - `notifications -add_filter <id> <pattern>`
 - `notifications -rm_filter <id>`
+- `notifications -prev`
+- `notifications -next`
+- `notifications -open`
+- `notifications -reply`
 - `notifications -file`
 
 Notes:
 
 - `notifications -on` and `notifications -off` control the notification terminal widget.
 - `terminal_notifications` in `notifications.xml` controls printing into the output terminal.
+- `notifications -prev` and `notifications -next` page through the selected notification module item.
+- `notifications -reply` starts a native prompt and replies to the selected notification when Android exposes a reply action.
 
 ### `reply`
 
 Reply to supported notifications.
 
 Useful if you want Re:T-UI to stay terminal-first for simple message responses.
+
+Common commands:
+
+- `reply -bind <app or package>`
+- `reply -ls`
+- `reply -to <app or package> <text>`
 
 ## Apps and App Drawer
 
@@ -214,27 +220,63 @@ Script aliases use the `-s` alias scope:
 
 Use this for scripts that print output and exit. Open Termux directly for interactive shells, editors, SSH sessions, and REPLs.
 
+### `tbridge`
+
+Inspect and set up the Termux bridge used by scripts, modules, callbacks, and automation.
+
+Common commands:
+
+- `tbridge -status`
+- `tbridge -doctor`
+- `tbridge -setup`
+- `tbridge -probe`
+
+TBridge is not the file browser. Use `files` for interactive file navigation, or `ls` / `open` / `share` with `file_backend=termux` for bridge-backed quick file actions.
+
 ### `module`
 
-Show built-in modules and script-backed custom modules.
+Show and manage built-in modules and script-backed custom modules.
+
+Built-in modules:
+
+- `music`
+- `notifications`
+- `timer`
+- `calendar`
+- `reminder`
 
 Common commands:
 
 - `module -ls`
 - `module -show music`
+- `module -show reminder`
+- `module -prompt reminder add`
+- `module -prompt reminder edit`
+- `module -prompt reminder remove`
 - `module -dock add notifications`
 - `module -dock remove music`
 - `module -add server termux:/data/data/com.termux/files/home/retui/server-health.sh`
+- `module -refresh server`
+- `module -rm server`
+- `module -hide music`
+- `module -dock add server`
+- `module -dock remove music`
+- `module -close`
+
+The reminder module is the first native conversational module. It asks for text, date, time, and confirmation through the normal terminal input surface, then schedules an Android notification.
 
 Design direction:
 
 - modules are Re:T-UI-owned terminal panels, not Android widgets
-- active modules may eventually provide their own suggestion chips
+- active modules can provide suggestion chips when input is empty
 - script modules should stay text/callback based, with no arbitrary code loaded into Re:T-UI
-- `module -refresh server`
-- `module -rm server`
+- future module sessions will let modules ask users for values step by step
 
 Script modules use Termux for execution and render text back inside a Re:T-UI module window. `module -rm` removes only Re:T-UI's registry entry; it does not delete the Termux script.
+
+See also: [Modules](./Modules.md).
+
+TBridge is no longer positioned as the file manager backend. Use `files` for file navigation.
 
 ### `webhook`
 
@@ -255,6 +297,19 @@ Useful for quick tests when you do not need a saved webhook.
 
 ## Files and Direct Config
 
+### `files`
+
+Open Re:T-UI Files, the companion terminal-style file console.
+
+Examples:
+
+- `files`
+- `files open notes.txt`
+
+Use the Files app for file navigation, opening, sharing, and future text/config editing. The launcher passes theme, font, and margin values so the app can visually match Re:T-UI.
+
+See also: [Re:T-UI Files](./ReTUI-Files.md).
+
 ### `config`
 
 Directly inspect or change configuration values.
@@ -270,9 +325,9 @@ This is the old-school power-user path.
 
 ### `tuixt`
 
-Open the launcher text editor.
+Legacy launcher text-editor infrastructure.
 
-Useful when you want to edit text files from inside Re:T-UI.
+It is kept for internal compatibility, but it is no longer the recommended file-editing surface and should not appear as a general Android file editor. Future text/config editing belongs in Re:T-UI Files.
 
 ## Inspection and Troubleshooting
 
@@ -294,6 +349,7 @@ If you only memorize a handful of commands, make it these:
 
 - `themer`
 - `settings`
+- `files`
 - `wallpaper -auto`
 - `preset -save <name>`
 - `preset -apply <name>`
@@ -301,6 +357,7 @@ If you only memorize a handful of commands, make it these:
 - `alias -add -s <name> <script_path>`
 - `notifications -access`
 - `termux -setup`
+- `tbridge -doctor`
 - `apps -ls`
 - `restart`
 - `debug -settings`

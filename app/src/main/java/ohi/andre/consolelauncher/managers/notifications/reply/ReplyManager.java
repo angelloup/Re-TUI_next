@@ -12,6 +12,8 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.service.notification.StatusBarNotification;
+import android.util.Log;
+import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import org.w3c.dom.Document;
@@ -106,6 +108,8 @@ public class ReplyManager implements XMLPrefsElement {
                     if(intent.getAction().equals(ACTION)) {
                         String app = intent.getStringExtra(ID);
                         String what = intent.getStringExtra(WHAT);
+                        Log.i("RetuiReplyDebug", "ReplyManager ACTION received id=" + app
+                                + " hasText=" + (what != null));
 
                         int id;
                         try {
@@ -113,6 +117,7 @@ public class ReplyManager implements XMLPrefsElement {
                         } catch (Exception e) {
                             BoundApp bapp = findApp(app);
                             if(bapp == null) {
+                                Log.w("RetuiReplyDebug", "ReplyManager app not bound pkg=" + app);
                                 Tuils.sendOutput(context, context.getString(R.string.reply_app_not_found) + Tuils.SPACE + app);
                                 return;
                             }
@@ -124,9 +129,14 @@ public class ReplyManager implements XMLPrefsElement {
                             check(id);
                         } else {
                             if(id == -1) return;
+                            Log.i("RetuiReplyDebug", "ReplyManager dispatching reply appId=" + id
+                                    + " text=" + what);
                             replyTo(ReplyManager.this.context, id, what);
                         }
                     } else if(intent.getAction().equals(ACTION_UPDATE)) {
+                        if(notificationWears != null) {
+                            notificationWears.clear();
+                        }
                         load(false);
                     } else if(intent.getAction().equals(ACTION_LS)) {
                         ls(context);
@@ -254,8 +264,15 @@ public class ReplyManager implements XMLPrefsElement {
         }
 
         NotificationWear wear = findNotificationWear(applicationId);
-        if(wear != null) replyTo(context, wear, what);
-        else Tuils.sendOutput(context, R.string.reply_notification_not_found);
+        if(wear != null) {
+            Log.i("RetuiReplyDebug", "ReplyManager found notification wear appId=" + applicationId
+                    + " remoteInputCount=" + (wear.remoteInputs == null ? 0 : wear.remoteInputs.length)
+                    + " actionTitle=" + wear.actionTitle);
+            replyTo(context, wear, what);
+        } else {
+            Log.w("RetuiReplyDebug", "ReplyManager no notification wear appId=" + applicationId);
+            Tuils.sendOutput(context, R.string.reply_notification_not_found);
+        }
     }
 
     @TargetApi(Build.VERSION_CODES.KITKAT_WATCH)
@@ -263,6 +280,10 @@ public class ReplyManager implements XMLPrefsElement {
         RemoteInput[] remoteInputs = notificationWear.remoteInputs;
 
         Bundle localBundle = notificationWear.bundle;
+        Log.i("RetuiReplyDebug", "ReplyManager sending to PrivateIO id=" + notificationWear.id
+                + " app=" + (notificationWear.app == null ? "null" : notificationWear.app.packageName)
+                + " actionTitle=" + notificationWear.actionTitle
+                + " remoteInputCount=" + (remoteInputs == null ? 0 : remoteInputs.length));
 
         Intent i = new Intent(PrivateIOReceiver.ACTION_REPLY);
         i.putExtra(PrivateIOReceiver.BUNDLE, localBundle);
@@ -270,30 +291,134 @@ public class ReplyManager implements XMLPrefsElement {
         i.putExtra(PrivateIOReceiver.TEXT, what);
         i.putExtra(PrivateIOReceiver.PENDING_INTENT, notificationWear.pendingIntent);
         i.putExtra(PrivateIOReceiver.ID, notificationWear.id);
-        i.putExtra(PrivateIOReceiver.CURRENT_ID, PrivateIOReceiver.currentId);
 
         LocalBroadcastManager.getInstance(context.getApplicationContext()).sendBroadcast(i);
     }
 
     @TargetApi(Build.VERSION_CODES.KITKAT_WATCH)
     private NotificationWear extractWearNotification(StatusBarNotification statusBarNotification) {
-        NotificationWear notificationWear = new NotificationWear();
+        if(statusBarNotification == null || statusBarNotification.getNotification() == null) {
+            return null;
+        }
 
-        Notification.WearableExtender wearableExtender = new Notification.WearableExtender(statusBarNotification.getNotification());
-        for(Notification.Action action : wearableExtender.getActions()) {
-            RemoteInput[] rs = action.getRemoteInputs();
-            if(rs != null && rs.length > 0) {
-                notificationWear.remoteInputs = rs;
-//                Actually I assume that there's only one action
-                notificationWear.pendingIntent = action.actionIntent;
-                break;
+        NotificationWear notificationWear = null;
+        Notification notification = statusBarNotification.getNotification();
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH && notification.actions != null) {
+            for(int i = 0; i < notification.actions.length; i++) {
+                Notification.Action action = notification.actions[i];
+                if(action == null) continue;
+                notificationWear = betterReplyAction(notificationWear, action);
+
+                NotificationCompat.Action compatAction = NotificationCompat.getAction(notification, i);
+                notificationWear = betterReplyAction(notificationWear, compatAction);
             }
         }
 
-        notificationWear.bundle = statusBarNotification.getNotification().extras;
+        Notification.WearableExtender wearableExtender = new Notification.WearableExtender(notification);
+        for(Notification.Action action : wearableExtender.getActions()) {
+            if(action == null) continue;
+            notificationWear = betterReplyAction(notificationWear, action);
+        }
+
+        if(notificationWear == null || notificationWear.pendingIntent == null || notificationWear.remoteInputs == null || notificationWear.remoteInputs.length == 0) {
+            Log.i("RetuiReplyDebug", "no reply action captured pkg=" + statusBarNotification.getPackageName()
+                    + " actionCount=" + (notification.actions == null ? 0 : notification.actions.length)
+                    + " wearableActionCount=" + wearableExtender.getActions().size()
+                    + " hasWearableExtras=" + notification.extras.containsKey("android.wearable.EXTENSIONS"));
+            return null;
+        }
+
+        notificationWear.bundle = notification.extras;
         notificationWear.id = statusBarNotification.getId();
+        Log.i("RetuiReplyDebug", "captured reply action pkg=" + statusBarNotification.getPackageName()
+                + " id=" + notificationWear.id
+                + " title=" + notificationWear.actionTitle
+                + " semantic=" + notificationWear.semanticAction
+                + " remoteInputCount=" + notificationWear.remoteInputs.length);
 
         return notificationWear;
+    }
+
+    @TargetApi(Build.VERSION_CODES.KITKAT_WATCH)
+    private NotificationWear betterReplyAction(NotificationWear current, Notification.Action action) {
+        if(action == null || action.actionIntent == null) return current;
+        RemoteInput[] remoteInputs = action.getRemoteInputs();
+        if(remoteInputs == null || remoteInputs.length == 0) return current;
+
+        NotificationWear candidate = new NotificationWear();
+        candidate.remoteInputs = remoteInputs;
+        candidate.pendingIntent = action.actionIntent;
+        candidate.actionTitle = action.title;
+        candidate.semanticAction = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P ? action.getSemanticAction() : 0;
+
+        if(current == null || replyActionScore(candidate) > replyActionScore(current)) {
+            return candidate;
+        }
+        return current;
+    }
+
+    private NotificationWear betterReplyAction(NotificationWear current, NotificationCompat.Action action) {
+        if(action == null || action.getActionIntent() == null) return current;
+        androidx.core.app.RemoteInput[] compatRemoteInputs = action.getRemoteInputs();
+        if(compatRemoteInputs == null || compatRemoteInputs.length == 0) return current;
+
+        RemoteInput[] remoteInputs = toPlatformRemoteInputs(compatRemoteInputs);
+        if(remoteInputs == null || remoteInputs.length == 0) return current;
+
+        NotificationWear candidate = new NotificationWear();
+        candidate.remoteInputs = remoteInputs;
+        candidate.pendingIntent = action.getActionIntent();
+        candidate.actionTitle = action.getTitle();
+        candidate.semanticAction = action.getSemanticAction();
+
+        if(current == null || replyActionScore(candidate) > replyActionScore(current)) {
+            return candidate;
+        }
+        return current;
+    }
+
+    private RemoteInput[] toPlatformRemoteInputs(androidx.core.app.RemoteInput[] compatRemoteInputs) {
+        if(compatRemoteInputs == null || compatRemoteInputs.length == 0) return null;
+
+        RemoteInput[] out = new RemoteInput[compatRemoteInputs.length];
+        for(int i = 0; i < compatRemoteInputs.length; i++) {
+            androidx.core.app.RemoteInput compat = compatRemoteInputs[i];
+            if(compat == null || compat.getResultKey() == null) continue;
+
+            RemoteInput.Builder builder = new RemoteInput.Builder(compat.getResultKey())
+                    .setLabel(compat.getLabel())
+                    .setChoices(compat.getChoices())
+                    .setAllowFreeFormInput(compat.getAllowFreeFormInput())
+                    .addExtras(compat.getExtras());
+
+            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && compat.getAllowedDataTypes() != null) {
+                for(String dataType : compat.getAllowedDataTypes()) {
+                    builder.setAllowDataType(dataType, true);
+                }
+            }
+
+            out[i] = builder.build();
+        }
+        return out;
+    }
+
+    private int replyActionScore(NotificationWear wear) {
+        int score = 0;
+        String title = wear.actionTitle == null ? "" : wear.actionTitle.toString().toLowerCase();
+
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
+                && wear.semanticAction == Notification.Action.SEMANTIC_ACTION_REPLY) {
+            score += 100;
+        }
+        if(title.contains("reply") || title.contains("respond") || title.contains("message")) {
+            score += 50;
+        }
+        if(title.contains("mark") || title.contains("read") || title.contains("archive")
+                || title.contains("delete") || title.contains("mute")) {
+            score -= 50;
+        }
+        return score;
     }
 
     private BoundApp findApp(int applicationId) {
@@ -309,7 +434,7 @@ public class ReplyManager implements XMLPrefsElement {
     private BoundApp findApp(String pkg) {
         if(boundApps != null) {
             for(BoundApp a : boundApps) {
-                if(a.packageName.equals(pkg)) return a;
+                if(a.packageName.equals(pkg) || a.label.equalsIgnoreCase(pkg)) return a;
             }
         }
 
@@ -383,6 +508,16 @@ public class ReplyManager implements XMLPrefsElement {
         }
 
         Tuils.sendOutput(context, wear.text);
+    }
+
+    public boolean canReplyTo(String pkg) {
+        if(!enabled || pkg == null) return false;
+
+        BoundApp app = findApp(pkg);
+        if(app == null) return false;
+
+        NotificationWear wear = findNotificationWear(app);
+        return wear != null && wear.pendingIntent != null && wear.remoteInputs != null && wear.remoteInputs.length > 0;
     }
 
     public static String bind(String pkg) {

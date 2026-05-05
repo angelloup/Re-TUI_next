@@ -20,6 +20,8 @@ This wiki is organized like the original upstream docs, but rebuilt around the c
 - [Migration Guide](./Migration-Guide.md)
 - [Preset Sharing](./Preset-Sharing.md)
 - [Termux Integration](./Termux-Integration.md)
+- [Modules](./Modules.md)
+- [Re:T-UI Files](./ReTUI-Files.md)
 - [FAQ and Troubleshooting](./FAQ-and-Troubleshooting.md)
 - [Support and Release Channels](./Support-and-Release-Channels.md)
 
@@ -29,6 +31,8 @@ This wiki is organized like the original upstream docs, but rebuilt around the c
 - [Notifications](./Notifications.md)
 - [Music Visualizer](./Music-Visualizer.md)
 - [App Drawer](./App-Drawer.md)
+- [Modules](./Modules.md)
+- [Re:T-UI Files](./ReTUI-Files.md)
 - [Termux Integration](./Termux-Integration.md)
 - [Automation and Chaining](./Automation-and-Chaining.md)
 
@@ -48,6 +52,8 @@ UI surfaces like the app drawer and settings hub exist to make the launcher easi
 
 - `themer`
 - `settings`
+- `files`
+- `module -ls`
 - `preset -save <name>`
 - `preset -apply <name>`
 - `wallpaper`
@@ -55,6 +61,7 @@ UI surfaces like the app drawer and settings hub exist to make the launcher easi
 - `wallpaper -auto`
 - `notifications`
 - `termux -setup`
+- `tbridge -doctor`
 
 ## Notes
 

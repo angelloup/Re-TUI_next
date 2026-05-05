@@ -16,6 +16,8 @@ public class NotificationWear {
     public RemoteInput[] remoteInputs;
     public Bundle bundle;
     public int id;
+    public CharSequence actionTitle;
+    public int semanticAction;
 
     public CharSequence text;
 

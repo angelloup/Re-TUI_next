@@ -59,8 +59,6 @@ public class config extends ParamCommand {
                             .putLong(UIManager.NEXT_UNLOCK_CYCLE_RESTART, 0)
                             .putInt(UIManager.UNLOCK_KEY, 0)
                             .apply();
-                } else if(save == Notifications.show_notifications) {
-                    ((Reloadable) pack.context).reload();
                 }
 
                 return null;

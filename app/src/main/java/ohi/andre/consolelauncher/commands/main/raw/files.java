@@ -46,6 +46,11 @@ public class files implements CommandAbstraction {
         intent.putExtra("top_margin", 18);
         intent.putExtra("input_font_size", XMLPrefsManager.getInt(Ui.input_output_size));
         intent.putExtra("display_margin_mm", XMLPrefsManager.get(Ui.display_margin_mm));
+        intent.putExtra("module_corner_radius", AppearanceSettings.moduleCornerRadius());
+        intent.putExtra("header_corner_radius", AppearanceSettings.headerCornerRadius());
+        intent.putExtra("output_corner_radius", AppearanceSettings.outputCornerRadius());
+        intent.putExtra("module_header_text_size", AppearanceSettings.moduleHeaderTextSize());
+        intent.putExtra("output_header_text_size", AppearanceSettings.outputHeaderTextSize());
 
         Tuils.getTypeface(info.context);
         if (Tuils.fontPath != null && Tuils.fontPath.startsWith("/")) {

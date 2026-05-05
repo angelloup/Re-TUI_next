@@ -13,6 +13,7 @@ import androidx.core.app.RemoteInput;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
+import android.util.Log;
 
 import ohi.andre.consolelauncher.BuildConfig;
 import ohi.andre.consolelauncher.MainManager;
@@ -63,8 +64,11 @@ public class PrivateIOReceiver extends BroadcastReceiver {
     public void onReceive(Context context, Intent intent) {
 //        to avoid double onReceive calls
         int cId = intent.getIntExtra(CURRENT_ID, -1);
-        if(cId != -1 && cId != currentId) return;
-        currentId++;
+        boolean isReplyAction = intent.getAction() != null && intent.getAction().equals(ACTION_REPLY);
+        if(!isReplyAction) {
+            if(cId != -1 && cId != currentId) return;
+            currentId++;
+        }
 
         Bundle remoteInput = RemoteInput.getResultsFromIntent(intent);
         if(remoteInput == null || remoteInput.size() == 0) {
@@ -123,16 +127,26 @@ public class PrivateIOReceiver extends BroadcastReceiver {
                 }
 
                 Intent localIntent = new Intent();
-                localIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                localIntent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
 
+                Bundle results = new Bundle();
                 for(android.app.RemoteInput remoteIn : rms) {
-                    b.putCharSequence(remoteIn.getResultKey(), text);
+                    results.putCharSequence(remoteIn.getResultKey(), text);
                 }
 
-                android.app.RemoteInput.addResultsToIntent(rms, localIntent, b);
+                android.app.RemoteInput.addResultsToIntent(rms, localIntent, results);
+                if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    android.app.RemoteInput.setResultsSource(localIntent, android.app.RemoteInput.SOURCE_FREE_FORM_INPUT);
+                }
                 try {
-                    pi.send(context.getApplicationContext(), id, localIntent);
+                    Log.i("RetuiReplyDebug", "sending reply pendingIntent=" + pi
+                            + " text=" + text
+                            + " remoteInputCount=" + rms.length
+                            + " resultKeys=" + results.keySet());
+                    pi.send(context.getApplicationContext(), 0, localIntent);
+                    Log.i("RetuiReplyDebug", "pendingIntent send completed");
                 } catch (PendingIntent.CanceledException e) {
+                    Log.e("RetuiReplyDebug", "pendingIntent send failed", e);
                     Tuils.sendOutput(Color.RED, context, e.toString());
                     Tuils.log(e);
                 }

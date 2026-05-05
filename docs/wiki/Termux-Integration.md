@@ -4,6 +4,8 @@ Re:T-UI can dispatch non-interactive Termux scripts from its own terminal surfac
 
 This is not a full embedded Termux shell. Termux remains the real shell. Re:T-UI sends script runs to Termux and prints returned output when Termux provides it.
 
+TBridge is the Termux capability bridge for scripts, modules, callbacks, and automation diagnostics. Re:T-UI Files owns file navigation.
+
 ## Commands
 
 - `termux`
@@ -11,6 +13,13 @@ This is not a full embedded Termux shell. Termux remains the real shell. Re:T-UI
 - `termux -setup`
 - `termux -open`
 - `termux -run <script_path> [args...]`
+
+TBridge diagnostics:
+
+- `tbridge -status`
+- `tbridge -doctor`
+- `tbridge -setup`
+- `tbridge -probe`
 
 Inside the Termux console, you can also type:
 
@@ -101,6 +110,21 @@ module -rm server
 
 For simple modules, printing text to stdout is enough. Re:T-UI will use stdout as the module body after `module -refresh`.
 
+Re:T-UI can also resolve launcher-owned `%RETUI_*` variables before the script reaches Termux. This lets a normal editable Termux script consume safe launcher data without giving Termux broad Android-provider access.
+
+Read-only module variables:
+
+- `%RETUI_CALENDAR_UPCOMING_MONTH`
+- `%RETUI_BATTERY_JSON`
+- `%RETUI_NETWORK_JSON`
+- `%RETUI_BRIGHTNESS_JSON`
+- `%RETUI_THEME_JSON`
+- `%RETUI_UI_JSON`
+- `%RETUI_STORAGE_JSON`
+- `%RETUI_NOW`
+
+Most variables resolve to file paths under shared storage. Read them with `cat`, `awk`, `sed`, or any normal shell tool.
+
 Example:
 
 ```sh
@@ -112,7 +136,46 @@ TIME="$(date)"
 printf '%s\n%s\n' "$STATUS" "$TIME"
 ```
 
+Upcoming-events example:
+
+```sh
+#!/data/data/com.termux/files/usr/bin/sh
+
+echo "::title Events"
+
+EVENTS_FILE="%RETUI_CALENDAR_UPCOMING_MONTH"
+if [ ! -s "$EVENTS_FILE" ]; then
+  echo "::body No upcoming events this month."
+else
+  while IFS='	' read -r date time title location; do
+    [ -n "$time" ] && echo "::body $date $time - $title" || echo "::body $date - $title"
+  done < "$EVENTS_FILE"
+fi
+
+echo "::suggest refresh | command | module -refresh events"
+echo "::suggest access | command | events -access"
+```
+
 You can also update modules by callback. This is better for scripts that run on their own schedule.
+
+## TBridge Role
+
+Use TBridge for:
+
+- Termux health checks
+- RUN_COMMAND permission diagnostics
+- script runtime support
+- script-module refreshes
+- callback/token tests
+- future helper installation
+
+Do not use TBridge as the primary file manager. Use:
+
+```text
+files
+```
+
+The older `tbridge -ls`, `tbridge -dirs`, and `tbridge -files` entry points are retired from the public command surface. If you want bridge-backed quick file actions, use `ls`, `open`, or `share` with `file_backend=termux`; if you want browsing, use `files`.
 
 ## Module Suggestions
 
@@ -158,6 +221,38 @@ Current implementation notes:
 - normal stdout lines also become module body text.
 - `::suggest label | command | command text` adds an active suggestion when that module is selected and the input is empty.
 - `termux-run` and `callback` are reserved contract modes, but suggestion clicks currently execute `command` mode only.
+
+## Native Module Prompt Sessions
+
+Modules can ask for values from the user when they own a native prompt session.
+
+Example:
+
+```text
+module -prompt reminder add
+> What do you want to be reminded about?
+$ dental appointment
+
+> What date?
+$ 10/05/2026
+
+> What time?
+$ 11:30PM
+
+> Confirm?
+[save] [edit] [cancel]
+```
+
+The first shipped prompt session is the built-in reminder module. It stores reminders locally and schedules native Android notifications from Re:T-UI.
+
+The first prompt types are:
+
+- `text`
+- `date`
+- `time`
+- `confirm`
+
+Scripts should request Android reminders/alarms through Re:T-UI. Re:T-UI should own notification channels, alarm scheduling, and tones for reliability.
 
 ## Arguments
 

@@ -14,6 +14,7 @@ import ohi.andre.consolelauncher.UIManager;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
 import ohi.andre.consolelauncher.commands.ExecutePack;
 import ohi.andre.consolelauncher.managers.modules.ModuleManager;
+import ohi.andre.consolelauncher.managers.modules.ModulePromptManager;
 
 public class module implements CommandAbstraction {
 
@@ -43,6 +44,29 @@ public class module implements CommandAbstraction {
             return "Module closed.";
         }
 
+        if ("-prompt".equals(option)) {
+            if (parts.length < 3) return pack.context.getString(R.string.help_module);
+            String module = ModuleManager.normalize(parts[1]);
+            String action = parts[2].toLowerCase();
+            if (!ModuleManager.REMINDER.equals(module)) {
+                return "No native prompt session for module: " + module;
+            }
+            send(pack, "show", ModuleManager.REMINDER);
+            if ("add".equals(action) || "-add".equals(action)) {
+                ModulePromptManager.startReminderAdd(pack.context);
+                return "Reminder prompt started.";
+            }
+            if ("edit".equals(action) || "-edit".equals(action)) {
+                ModulePromptManager.startReminderEdit(pack.context);
+                return "Reminder edit prompt started.";
+            }
+            if ("remove".equals(action) || "rm".equals(action) || "-rm".equals(action)) {
+                ModulePromptManager.startReminderRemove(pack.context);
+                return "Reminder remove prompt started.";
+            }
+            return pack.context.getString(R.string.output_invalid_param) + " " + parts[2];
+        }
+
         if ("-hide".equals(option)) {
             if (parts.length < 2) return pack.context.getString(R.string.help_module);
             ModuleManager.hideFromDock(pack.context, parts[1]);
@@ -58,8 +82,11 @@ public class module implements CommandAbstraction {
             ModuleManager.setScriptModule(pack.context, module, path);
             ModuleManager.addToDock(pack.context, Arrays.asList(module));
             send(pack, "rebuild", null);
+            if (ModuleManager.isLauncherSource(ModuleManager.getModuleSource(pack.context, module))) {
+                send(pack, "refresh", module);
+            }
             return "Module added: " + module
-                    + "\nScript: " + ModuleManager.getScriptPath(pack.context, module)
+                    + "\nSource: " + ModuleManager.getModuleSource(pack.context, module)
                     + "\nRun module -refresh " + module + " to update it.";
         }
 
@@ -69,8 +96,8 @@ public class module implements CommandAbstraction {
             if (!ModuleManager.isKnown(pack.context, module)) {
                 return "Unknown module: " + parts[1];
             }
-            if (TextUtils.isEmpty(ModuleManager.getScriptPath(pack.context, module))) {
-                return "Module has no Termux script: " + module;
+            if (TextUtils.isEmpty(ModuleManager.getModuleSource(pack.context, module))) {
+                return "Module has no source: " + module;
             }
             send(pack, "refresh", module);
             return "Module refresh dispatched: " + module;
@@ -119,7 +146,7 @@ public class module implements CommandAbstraction {
     private String listModules(ExecutePack pack) {
         return "Modules: " + TextUtils.join(", ", ModuleManager.listAll(pack.context))
                 + "\nDock: " + TextUtils.join(", ", ModuleManager.getDock(pack.context))
-                + "\nUse module -add [name] termux:/path/script.sh, module -refresh [name], module -show [name], module -hide [name], module -dock add [name], module -dock remove [name], module -rm [name], module -close.";
+                + "\nUse module -add [name] termux:/path/script.sh, module -refresh [name], module -show [name], events -access, module -prompt reminder add|edit|remove, module -hide [name], module -dock add [name], module -dock remove [name], module -rm [name], module -close.";
     }
 
     private void send(ExecutePack pack, String command, String module) {

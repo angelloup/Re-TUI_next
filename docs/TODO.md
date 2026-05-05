@@ -78,6 +78,14 @@ It should not chase casual launcher expectations. It should reward users who are
   - [x] cache script-provided suggestions with the module body
   - [x] support `command` mode first
   - design `termux-run` dispatch before enabling it
+- Native prompt session slice:
+  - [x] Add a first native module prompt loop.
+  - [x] Let active module prompts intercept the normal input line until saved or cancelled.
+  - [x] Ship the reminder module as the first conversational module.
+  - [x] Support reminder add, edit, remove, and list flows.
+  - [x] Schedule reminders through native Android notifications instead of Termux.
+  - [ ] Generalize the prompt engine for third-party script modules after reminder UAT.
+  - [ ] Decide whether script modules can request prompt sessions through a safe metadata contract.
 
 ### Rollout Phase 4 - Deliberate App Drawer
 
@@ -224,9 +232,9 @@ Goal: make Re:T-UI a real workstation file surface, not just a launcher that can
 
 Distribution assumption:
 
-- Re:T-UI will prioritize GitHub/Firebase/community distribution over Play Store constraints.
-- `MANAGE_EXTERNAL_STORAGE` is acceptable for this route because file navigation becomes a core product capability.
-- The Play Store can be revisited later only if a separate restricted flavor is worth maintaining.
+- Re:T-UI will keep a Play Store-safe launcher surface.
+- Re:T-UI Files and Termux own the heavier file/scripting workflows.
+- The Play Store flavor removes `MANAGE_EXTERNAL_STORAGE`; GitHub/Firebase builds may keep broader compatibility where appropriate.
 
 Product boundary:
 
@@ -327,7 +335,7 @@ Goal: make advanced file management a Termux power-user option while keeping the
   - current Re:T-UI path
 - [x] Add `tbridge -setup` with exact user setup steps.
 - [x] Add `tbridge -probe` to run a lightweight Termux environment probe.
-- [x] Add Termux-backed listing probes:
+- [x] Added Termux-backed listing probes, then retired them from the public command surface:
   - `tbridge -ls [path]`
   - `tbridge -dirs [path]`
   - `tbridge -files [path]`
@@ -378,7 +386,7 @@ Goal: make advanced file management a Termux power-user option while keeping the
 
 ### Termux Bridge Phase 5 - Play Store Flavor
 
-- Remove `MANAGE_EXTERNAL_STORAGE` from the Play Store flavor.
+- [x] Remove `MANAGE_EXTERNAL_STORAGE` from the Play Store flavor.
 - Remove startup all-files permission gating from the Play Store flavor.
 - Keep `tbridge` available in the Play Store flavor as an optional power-user integration.
 - Present missing bridge setup as terminal output, not an onboarding modal.
@@ -688,6 +696,83 @@ Goal: make advanced file management a Termux power-user option while keeping the
   - Current widget/module tabs use an opaque surface mask to hide the parent border line.
   - Research found Material `TextInputLayout` has a similar outlined floating-label cutout behavior, but it is text-field-specific and not a good visual fit for Re-TUI.
   - Preferred future approach: build a small custom terminal border view/drawable that draws the border in segments and skips the tab rectangle.
+
+## Next Module Roadmap - Interactive Terminal Tools
+
+- Position modules as small terminal instruments, not passive widgets.
+- Add module inspection:
+  - `module -inspect <name>`
+  - show type, path, dock state, active state, last refresh time, last exit code, stderr summary, cached suggestions, refresh policy.
+- Add module logs:
+  - `module -logs <name>`
+  - `module -logs <name> -clear`
+  - keep last stdout, stderr, exit code, and timestamp for script-backed modules.
+- Add refresh controls:
+  - `module -refresh-all`
+  - `module -refresh-dock`
+  - `module -interval <name> 60s|5m|off`
+- Extend script metadata carefully:
+  - `::status ok|warn|error|idle`
+  - `::badge <text>`
+  - `::refresh 60s`
+  - keep `::title`, `::body`, and `::suggest`.
+- Make parsed suggestion modes real:
+  - `command`: run a normal Re:T-UI command.
+  - `termux-run`: dispatch a Termux script through TBridge.
+  - `callback`: send a narrow callback-style action through the bridge.
+- Add module prompt sessions:
+  - modules can ask for values step by step while they temporarily own the input loop.
+  - first prompt types: `text`, `date`, `time`, `choice`, `confirm`.
+  - example flow: reminder add -> ask title -> ask date -> ask time -> confirm -> schedule.
+  - while a prompt session is active, normal launcher commands should not steal the input unless user cancels.
+- Add native reminder support as the first real prompt-backed module:
+  - `reminder -add`
+  - `reminder -edit <id>`
+  - `reminder -rm <id>`
+  - schedule Android notification/alarm natively; scripts should request scheduling, not own Android alarm reliability.
+- Add module templates:
+  - `module -new server`
+  - `module -new reminder`
+  - `module -new webhook`
+  - write starter Termux scripts into a known Termux folder.
+- Add module profiles:
+  - `module -profile save work`
+  - `module -profile apply work`
+  - save/restore dock layouts for different workstation contexts.
+
+## Next TBridge Roadmap - Termux Runtime Bridge
+
+- Reposition TBridge away from file navigation. Re:T-UI Files owns file management.
+- Position TBridge as:
+  - Termux health diagnostics
+  - script runtime
+  - script-module transport
+  - callback/token diagnostics
+  - automation helper installer
+- Keep and clarify:
+  - `tbridge -status`
+  - `tbridge -doctor`
+  - `tbridge -setup`
+  - `tbridge -probe`
+- Retire TBridge file listing commands from the public command surface:
+  - `tbridge -ls`
+  - `tbridge -dirs`
+  - `tbridge -files`
+  - use `files` for browsing and `ls/open/share` with `file_backend=termux` for quick bridge-backed actions.
+- Add helper installer later:
+  - `tbridge -install-helper`
+  - install a small `retui` helper into Termux.
+  - helper examples:
+    - `retui output "Backup complete"`
+    - `retui notify "Build complete"`
+    - `retui module set server "ONLINE"`
+    - `retui module refresh server`
+- Add diagnostics:
+  - `tbridge -token`
+  - `tbridge -test`
+  - `tbridge -test-callback`
+  - `tbridge -test-module <name>`
+- Make TBridge the execution path for future module `termux-run` suggestions and prompt-backed script modules.
   - Estimate: roughly 1 focused day for one reusable custom view/drawable, plus another pass to wire and test it across music, notifications, output tray, app drawer, settings, and Termux.
   - Keep the mask approach for now unless transparent tab backgrounds become a real user pain point.
 

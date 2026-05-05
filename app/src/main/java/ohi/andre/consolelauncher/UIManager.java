@@ -53,6 +53,7 @@ import android.view.View;
 import android.view.View.OnTouchListener;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
+import android.view.ViewConfiguration;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
@@ -63,6 +64,9 @@ import ohi.andre.consolelauncher.managers.ClockManager;
 import ohi.andre.consolelauncher.managers.FileManager;
 import ohi.andre.consolelauncher.managers.music.MusicService;
 import ohi.andre.consolelauncher.managers.modules.ModuleManager;
+import ohi.andre.consolelauncher.managers.modules.ModuleVariableManager;
+import ohi.andre.consolelauncher.managers.modules.ReminderManager;
+import ohi.andre.consolelauncher.managers.modules.UpcomingEventsManager;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -72,6 +76,7 @@ import java.util.Map;
 import android.widget.HorizontalScrollView;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.RelativeLayout;
@@ -97,7 +102,9 @@ import ohi.andre.consolelauncher.managers.TerminalManager;
 import ohi.andre.consolelauncher.managers.TimeManager;
 import ohi.andre.consolelauncher.managers.TuiLocationManager;
 import ohi.andre.consolelauncher.managers.file.FileBackendManager;
+import ohi.andre.consolelauncher.managers.modules.ModulePromptManager;
 import ohi.andre.consolelauncher.managers.notifications.NotificationService;
+import ohi.andre.consolelauncher.managers.notifications.reply.ReplyManager;
 import ohi.andre.consolelauncher.managers.settings.AppearanceSettings;
 import ohi.andre.consolelauncher.managers.settings.MusicSettings;
 import ohi.andre.consolelauncher.managers.settings.NotificationSettings;
@@ -139,6 +146,14 @@ public class UIManager implements OnTouchListener {
     public static final String UNLOCK_KEY = "unlockTimes";
     public static final String PREFS_NAME = "ui";
     private static final String PREF_OUTPUT_TRAY_EXPANDED = "output_tray_expanded";
+    private static final String CLOCK_EDGE_LEFT = "left";
+    private static final String CLOCK_EDGE_RIGHT = "right";
+    private static final String CLOCK_EDGE_TOP = "top";
+    private static final String CLOCK_EDGE_BOTTOM = "bottom";
+    private static final String PREF_TIMER_BADGE_EDGE = "timer_badge_edge";
+    private static final String PREF_TIMER_BADGE_FRACTION = "timer_badge_fraction";
+    private static final String PREF_STOPWATCH_BADGE_EDGE = "stopwatch_badge_edge";
+    private static final String PREF_STOPWATCH_BADGE_FRACTION = "stopwatch_badge_fraction";
     public static final String ACTION_UPDATE_SUGGESTIONS = BuildConfig.APPLICATION_ID + ".ui_update_suggestions";
     public static final String ACTION_UPDATE_HINT = BuildConfig.APPLICATION_ID + ".ui_update_hint";
     public static String ACTION_ROOT = BuildConfig.APPLICATION_ID + ".ui_root";
@@ -233,10 +248,14 @@ public class UIManager implements OnTouchListener {
     private final LinkedHashMap<String, Integer> appsDrawerAlphaPositions = new LinkedHashMap<>();
     private final LinkedHashMap<String, TextView> appsDrawerAlphaViews = new LinkedHashMap<>();
     private final ArrayList<NotificationService.Notification> currentOverlayNotifications = new ArrayList<>();
+    private int currentNotificationIndex = 0;
+    private String notificationReplyFocusKey = null;
     private final StringBuilder termuxBuffer = new StringBuilder();
     private boolean notificationCompactForKeyboard = false;
     private boolean timerTabVisible = false;
     private boolean stopwatchTabVisible = false;
+    private boolean timerTabDockReady = false;
+    private boolean stopwatchTabDockReady = false;
     private boolean pomodoroOverlayVisible = false;
     public boolean isPomodoroOverlayVisible() {
         return pomodoroOverlayVisible;
@@ -281,6 +300,9 @@ public class UIManager implements OnTouchListener {
     private View terminalOutputBorder;
     private TextView terminalTrayToggle;
     private boolean terminalTrayExpanded = false;
+    private static final String OUTPUT_TRAY_MODE_NATIVE = "native";
+    private static final String OUTPUT_TRAY_MODE_AUTO = "auto";
+    private static final String OUTPUT_TRAY_MODE_TOGGLED = "toggled";
     private boolean keyboardVisible = false;
     private LinearLayout moduleDock;
     private final LinkedHashMap<String, TextView> moduleDockButtons = new LinkedHashMap<>();
@@ -598,7 +620,7 @@ public class UIManager implements OnTouchListener {
         terminalView.setOnTouchListener(this);
         ((View) terminalView.getParent().getParent()).setOnTouchListener(this);
 
-        applyBgRect(mContext, terminalOutputBorder, bgRectColors[OUTPUT_BGCOLOR_INDEX], bgColors[OUTPUT_BGCOLOR_INDEX], margins[OUTPUT_MARGINS_INDEX], strokeWidth, cornerRadius, useDashed, XMLPrefsManager.getColor(Theme.output_color));
+        applyBgRect(mContext, terminalOutputBorder, bgRectColors[OUTPUT_BGCOLOR_INDEX], bgColors[OUTPUT_BGCOLOR_INDEX], margins[OUTPUT_MARGINS_INDEX], strokeWidth, (int) Tuils.dpToPx(mContext, AppearanceSettings.outputCornerRadius()), useDashed, XMLPrefsManager.getColor(Theme.output_color));
         terminalView.setBackgroundColor(Color.TRANSPARENT);
         terminalView.addTextChangedListener(new TextWatcher() {
             @Override
@@ -606,7 +628,7 @@ public class UIManager implements OnTouchListener {
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                if (!terminalTrayExpanded && terminalContainer != null) {
+                if (terminalContainer != null) {
                     terminalContainer.post(() -> applyTerminalTrayState(false));
                 }
             }
@@ -723,11 +745,13 @@ public class UIManager implements OnTouchListener {
         int outputColor = AppearanceSettings.notificationWidgetTextColor();
         terminalTrayToggle.setTextColor(outputColor);
         terminalTrayToggle.setTypeface(Tuils.getTypeface(mContext), Typeface.BOLD);
+        terminalTrayToggle.setTextSize(AppearanceSettings.outputHeaderTextSize());
         try {
             GradientDrawable gd = (GradientDrawable) androidx.core.content.res.ResourcesCompat.getDrawable(
                     mContext.getResources(), R.drawable.apps_drawer_header_border, null);
             if (gd != null) {
                 gd = (GradientDrawable) gd.mutate();
+                gd.setCornerRadius(Tuils.dpToPx(mContext, AppearanceSettings.headerCornerRadius()));
                 if (AppearanceSettings.dashedBorders()) {
                     gd.setStroke((int) Tuils.dpToPx(mContext, 1.5f), outputColor,
                             Tuils.dpToPx(mContext, AppearanceSettings.dashLength()),
@@ -739,19 +763,28 @@ public class UIManager implements OnTouchListener {
                 terminalTrayToggle.setBackground(gd);
             }
         } catch (Exception ignored) {}
-        terminalTrayToggle.setOnClickListener(v -> setTerminalTrayExpanded(!terminalTrayExpanded));
+        terminalTrayToggle.setOnClickListener(v -> {
+            if (isOutputTrayToggledMode()) {
+                setTerminalTrayExpanded(!terminalTrayExpanded);
+            }
+        });
         updateTerminalTrayToggleText();
     }
 
     private void setTerminalTrayExpanded(boolean expanded) {
+        if (!isOutputTrayToggledMode()) {
+            return;
+        }
         terminalTrayExpanded = expanded;
         saveTerminalTrayState();
         applyTerminalTrayState(true);
     }
 
     private void restoreTerminalTrayState() {
-        if (XMLPrefsManager.getBoolean(Behavior.toggle_output_state) && preferences != null) {
+        if (isOutputTrayToggledMode() && preferences != null) {
             terminalTrayExpanded = preferences.getBoolean(PREF_OUTPUT_TRAY_EXPANDED, false);
+        } else if (isOutputTrayAutoMode()) {
+            terminalTrayExpanded = TextUtils.isEmpty(activeModule);
         } else {
             terminalTrayExpanded = false;
             if (preferences != null) {
@@ -761,7 +794,7 @@ public class UIManager implements OnTouchListener {
     }
 
     private void saveTerminalTrayState() {
-        if (XMLPrefsManager.getBoolean(Behavior.toggle_output_state) && preferences != null) {
+        if (isOutputTrayToggledMode() && preferences != null) {
             preferences.edit().putBoolean(PREF_OUTPUT_TRAY_EXPANDED, terminalTrayExpanded).apply();
         }
     }
@@ -780,7 +813,15 @@ public class UIManager implements OnTouchListener {
         }
 
         ViewGroup.LayoutParams params = terminalContainer.getLayoutParams();
-        int targetHeight = terminalTrayExpanded ? expandedHeight : collapsedHeight;
+        int targetHeight;
+        if (isOutputTrayNativeMode()) {
+            targetHeight = calculateNativeTerminalTrayHeight(expandedHeight);
+        } else if (isOutputTrayAutoMode()) {
+            terminalTrayExpanded = TextUtils.isEmpty(activeModule);
+            targetHeight = terminalTrayExpanded ? expandedHeight : collapsedHeight;
+        } else {
+            targetHeight = terminalTrayExpanded ? expandedHeight : collapsedHeight;
+        }
         if (params != null && params.height != targetHeight) {
             params.height = targetHeight;
             terminalContainer.setLayoutParams(params);
@@ -797,13 +838,62 @@ public class UIManager implements OnTouchListener {
 
     private void updateTerminalTrayToggleText() {
         if (terminalTrayToggle != null) {
-            terminalTrayToggle.setText(terminalTrayExpanded ? "OUTPUT v" : "OUTPUT ^");
+            if (isOutputTrayNativeMode()) {
+                terminalTrayToggle.setText("OUTPUT");
+            } else if (isOutputTrayAutoMode()) {
+                terminalTrayToggle.setText(terminalTrayExpanded ? "OUTPUT AUTO v" : "OUTPUT AUTO ^");
+            } else {
+                terminalTrayToggle.setText(terminalTrayExpanded ? "OUTPUT v" : "OUTPUT ^");
+            }
         }
+    }
+
+    private boolean isOutputTrayNativeMode() {
+        return OUTPUT_TRAY_MODE_NATIVE.equals(outputTrayMode());
+    }
+
+    private boolean isOutputTrayAutoMode() {
+        return OUTPUT_TRAY_MODE_AUTO.equals(outputTrayMode());
+    }
+
+    private boolean isOutputTrayToggledMode() {
+        return OUTPUT_TRAY_MODE_TOGGLED.equals(outputTrayMode());
+    }
+
+    private String outputTrayMode() {
+        String mode = XMLPrefsManager.get(Behavior.output_tray_mode);
+        if (mode != null) {
+            mode = mode.trim().toLowerCase(java.util.Locale.US);
+        }
+        if (OUTPUT_TRAY_MODE_AUTO.equals(mode)
+                || OUTPUT_TRAY_MODE_TOGGLED.equals(mode)
+                || OUTPUT_TRAY_MODE_NATIVE.equals(mode)) {
+            return mode;
+        }
+        if (XMLPrefsManager.getBoolean(Behavior.toggle_output_state)) {
+            return OUTPUT_TRAY_MODE_TOGGLED;
+        }
+        return OUTPUT_TRAY_MODE_NATIVE;
     }
 
     private int calculateCollapsedTerminalTrayHeight() {
         int minHeight = UIUtils.dpToPx(mContext, 66);
         int maxHeight = UIUtils.dpToPx(mContext, keyboardVisible ? 96 : 132);
+        if (terminalView == null || TextUtils.isEmpty(terminalView.getText())) {
+            return minHeight;
+        }
+
+        int lineCount = Math.max(1, terminalView.getLineCount());
+        if (lineCount <= 0) {
+            lineCount = terminalView.getText().toString().split("\\n", -1).length;
+        }
+        int contentHeight = (lineCount * Math.max(terminalView.getLineHeight(), UIUtils.dpToPx(mContext, 18)))
+                + UIUtils.dpToPx(mContext, 38);
+        return Math.max(minHeight, Math.min(maxHeight, contentHeight));
+    }
+
+    private int calculateNativeTerminalTrayHeight(int maxHeight) {
+        int minHeight = UIUtils.dpToPx(mContext, 66);
         if (terminalView == null || TextUtils.isEmpty(terminalView.getText())) {
             return minHeight;
         }
@@ -887,6 +977,7 @@ public class UIManager implements OnTouchListener {
 
         GradientDrawable gd = new GradientDrawable();
         gd.setShape(GradientDrawable.RECTANGLE);
+        gd.setCornerRadius(Tuils.dpToPx(mContext, AppearanceSettings.moduleCornerRadius()));
         gd.setColor(bg);
         if (AppearanceSettings.dashedBorders()) {
             gd.setStroke((int) Tuils.dpToPx(mContext, 1.2f), borderColor,
@@ -925,6 +1016,7 @@ public class UIManager implements OnTouchListener {
         activeModule = id;
         ModuleManager.setActiveModule(mContext, id);
         updateModuleDockSelection();
+        applyTerminalTrayState(false);
         homeWidgetsContainer.removeAllViews();
 
         if (ModuleManager.MUSIC.equals(id)) {
@@ -935,6 +1027,8 @@ public class UIManager implements OnTouchListener {
             showTextModule(ModuleManager.TIMER, buildTimerModuleText());
         } else if (ModuleManager.CALENDAR.equals(id)) {
             showTextModule(ModuleManager.CALENDAR, buildCalendarModuleText());
+        } else if (ModuleManager.REMINDER.equals(id)) {
+            showTextModule(ModuleManager.REMINDER, buildReminderModuleText());
         } else {
             String text = ModuleManager.getScriptText(mContext, id);
             showTextModule(id, TextUtils.isEmpty(text) ? "No module output yet." : text);
@@ -951,6 +1045,7 @@ public class UIManager implements OnTouchListener {
             close.setOnClickListener(v -> closeHomeModule());
             close.setTextColor(AppearanceSettings.moduleNameTextColor());
             close.setTypeface(Tuils.getTypeface(mContext), Typeface.BOLD);
+            close.setTextSize(AppearanceSettings.moduleHeaderTextSize());
         }
         styleMusicWidget(musicWidget);
         updateMusicModuleText(musicWidget);
@@ -962,20 +1057,29 @@ public class UIManager implements OnTouchListener {
         notificationWidget.setVisibility(View.VISIBLE);
         notificationWidget.setClickable(true);
         notificationWidget.setFocusable(true);
-        notificationWidget.setOnClickListener(v -> openNotificationShade());
         View notificationBorder = notificationWidget.findViewById(R.id.notification_widget_border);
-        if (notificationBorder != null) {
-            notificationBorder.setOnClickListener(v -> openNotificationShade());
-        }
         View notificationLabel = notificationWidget.findViewById(R.id.notification_widget_label);
         if (notificationLabel != null) {
             notificationLabel.setOnClickListener(v -> openNotificationShade());
+        }
+        TextView prev = notificationWidget.findViewById(R.id.notification_widget_prev);
+        if (prev != null) {
+            prev.setOnClickListener(v -> previousNotificationPage());
+            prev.setTextColor(AppearanceSettings.moduleNameTextColor());
+            prev.setTypeface(Tuils.getTypeface(mContext), Typeface.BOLD);
+        }
+        TextView next = notificationWidget.findViewById(R.id.notification_widget_next);
+        if (next != null) {
+            next.setOnClickListener(v -> nextNotificationPage());
+            next.setTextColor(AppearanceSettings.moduleNameTextColor());
+            next.setTypeface(Tuils.getTypeface(mContext), Typeface.BOLD);
         }
         TextView close = notificationWidget.findViewById(R.id.notification_widget_close);
         if (close != null) {
             close.setOnClickListener(v -> closeHomeModule());
             close.setTextColor(AppearanceSettings.moduleNameTextColor());
             close.setTypeface(Tuils.getTypeface(mContext), Typeface.BOLD);
+            close.setTextSize(AppearanceSettings.moduleHeaderTextSize());
         }
         styleNotificationWidget(notificationWidget);
         LocalBroadcastManager.getInstance(mContext.getApplicationContext()).sendBroadcast(new Intent(ACTION_REQUEST_NOTIFICATION_FEED));
@@ -1000,6 +1104,7 @@ public class UIManager implements OnTouchListener {
             close.setOnClickListener(v -> closeHomeModule());
             close.setTextColor(AppearanceSettings.moduleNameTextColor());
             close.setTypeface(Tuils.getTypeface(mContext), Typeface.BOLD);
+            close.setTextSize(AppearanceSettings.moduleHeaderTextSize());
         }
 
         ohi.andre.consolelauncher.tuils.TuiWidgetDecorator.decorateWidget(
@@ -1017,6 +1122,7 @@ public class UIManager implements OnTouchListener {
         int bgColor = AppearanceSettings.moduleButtonBackgroundColor();
         GradientDrawable gd = new GradientDrawable();
         gd.setShape(GradientDrawable.RECTANGLE);
+        gd.setCornerRadius(Tuils.dpToPx(mContext, AppearanceSettings.headerCornerRadius()));
         gd.setColor(ColorUtils.setAlphaComponent(bgColor, 255));
         if (AppearanceSettings.dashedBorders()) {
             gd.setStroke((int) Tuils.dpToPx(mContext, 1.5f), borderColor,
@@ -1024,6 +1130,7 @@ public class UIManager implements OnTouchListener {
                     Tuils.dpToPx(mContext, AppearanceSettings.dashGap()));
         }
         close.setBackground(gd);
+        close.setTextSize(AppearanceSettings.moduleHeaderTextSize());
     }
 
     private void closeHomeModule() {
@@ -1033,6 +1140,7 @@ public class UIManager implements OnTouchListener {
             homeWidgetsContainer.removeAllViews();
         }
         updateModuleDockSelection();
+        applyTerminalTrayState(false);
         refreshSuggestionsForActiveModule();
     }
 
@@ -1046,6 +1154,8 @@ public class UIManager implements OnTouchListener {
     private void refreshActiveModuleIfNeeded() {
         if (ModuleManager.TIMER.equals(activeModule)) {
             showHomeModule(ModuleManager.TIMER);
+        } else if (ModuleManager.REMINDER.equals(activeModule)) {
+            showHomeModule(ModuleManager.REMINDER);
         }
     }
 
@@ -1086,6 +1196,10 @@ public class UIManager implements OnTouchListener {
         }
         out.append("Commands: timer, stopwatch, pomodoro");
         return out.toString();
+    }
+
+    private String buildReminderModuleText() {
+        return ReminderManager.formatList(mContext) + "\nCommands: -add, -edit, -rm";
     }
 
     private String buildCalendarModuleText() {
@@ -1146,12 +1260,35 @@ public class UIManager implements OnTouchListener {
 
     private void refreshScriptModule(String module) {
         String id = ModuleManager.normalize(module);
-        String path = ModuleManager.getScriptPath(mContext, id);
-        if (TextUtils.isEmpty(path)) {
-            Tuils.sendOutput(mContext, "Module has no Termux script: " + id);
+        String source = ModuleManager.getModuleSource(mContext, id);
+        if (TextUtils.isEmpty(source)) {
+            Tuils.sendOutput(mContext, "Module has no source: " + id);
             return;
         }
-        runTermuxScript(path, new ArrayList<>(), id, false);
+        if (ModuleManager.isLauncherSource(source)) {
+            refreshLauncherModule(id, source);
+            return;
+        }
+        runTermuxScript(source, new ArrayList<>(), id, false);
+    }
+
+    private void refreshLauncherModule(String module, String source) {
+        String provider = ModuleManager.launcherProvider(source);
+        String payload;
+        if (ModuleManager.EVENTS.equals(provider)) {
+            payload = UpcomingEventsManager.formatModulePayload(mContext);
+        } else {
+            Tuils.sendOutput(mContext, "Unknown launcher module source: " + source);
+            return;
+        }
+
+        String id = ModuleManager.normalize(module);
+        ModuleManager.setScriptText(mContext, id, payload);
+        if (id.equals(activeModule)) {
+            showHomeModule(id);
+        }
+        rebuildModuleDock();
+        Tuils.sendOutput(mContext, "Module refreshed: " + id);
     }
 
     private void setupTermuxConsole(ViewGroup rootView) {
@@ -1503,6 +1640,7 @@ public class UIManager implements OnTouchListener {
                     if (borderView != null) {
                         GradientDrawable gd = new GradientDrawable();
                         gd.setShape(GradientDrawable.RECTANGLE);
+                        gd.setCornerRadius(UIUtils.dpToPx(mContext, AppearanceSettings.moduleCornerRadius()));
                         if (AppearanceSettings.dashedBorders()) {
                             gd.setStroke((int) UIUtils.dpToPx(mContext, 1.5f), widgetBorderColor,
                                     UIUtils.dpToPx(mContext, AppearanceSettings.dashLength()),
@@ -1519,6 +1657,7 @@ public class UIManager implements OnTouchListener {
                             GradientDrawable gd = (GradientDrawable) androidx.core.content.res.ResourcesCompat.getDrawable(
                                     mContext.getResources(), R.drawable.apps_drawer_header_border, null).mutate();
                             if (gd != null) {
+                                gd.setCornerRadius(UIUtils.dpToPx(mContext, AppearanceSettings.headerCornerRadius()));
                                 if (AppearanceSettings.dashedBorders()) {
                                     gd.setStroke((int) UIUtils.dpToPx(mContext, 1.5f), widgetBorderColor,
                                             UIUtils.dpToPx(mContext, AppearanceSettings.dashLength()),
@@ -1880,7 +2019,7 @@ public class UIManager implements OnTouchListener {
                     labelViews[count].setVerticalScrollBarEnabled(false);
                 }
 
-                applyBgRect(mContext, labelViews[count], "#00000000", bgColors[count], margins[0], strokeWidth, cornerRadius, useDashed, AppearanceSettings.dashedBorderColor());
+                applyBgRect(mContext, labelViews[count], "#00000000", bgColors[count], margins[0], strokeWidth, (int) Tuils.dpToPx(mContext, AppearanceSettings.moduleCornerRadius()), useDashed, AppearanceSettings.dashedBorderColor());
                 applyShadow(labelViews[count], outlineColors[count], shadowXOffset, shadowYOffset, shadowRadius);
             } else {
                 lViewsParent.removeView(labelViews[count]);
@@ -2076,6 +2215,7 @@ public class UIManager implements OnTouchListener {
                 
                 GradientDrawable gd = new GradientDrawable();
                 gd.setShape(GradientDrawable.RECTANGLE);
+                gd.setCornerRadius(Tuils.dpToPx(mContext, AppearanceSettings.moduleCornerRadius()));
                 if (useDashed) {
                     gd.setStroke((int) Tuils.dpToPx(mContext, 1.2f), buttonColor,
                             Tuils.dpToPx(mContext, AppearanceSettings.dashLength() / 2),
@@ -2166,6 +2306,7 @@ public class UIManager implements OnTouchListener {
         if (termuxWindowBorder != null) {
             GradientDrawable border = new GradientDrawable();
             border.setShape(GradientDrawable.RECTANGLE);
+            border.setCornerRadius(Tuils.dpToPx(mContext, AppearanceSettings.outputCornerRadius()));
             border.setColor(bgColor);
             if (AppearanceSettings.dashedBorders()) {
                 border.setStroke((int) Tuils.dpToPx(mContext, 1.5f), borderColor,
@@ -2177,12 +2318,14 @@ public class UIManager implements OnTouchListener {
 
         if (termuxWindowLabel != null) {
             termuxWindowLabel.setTypeface(Tuils.getTypeface(mContext), Typeface.BOLD);
+            termuxWindowLabel.setTextSize(AppearanceSettings.outputHeaderTextSize());
             termuxWindowLabel.setTextColor(textColor);
             termuxWindowLabel.setBackground(termuxLabelBackground(labelBg, borderColor));
         }
 
         if (termuxClose != null) {
             termuxClose.setTypeface(Tuils.getTypeface(mContext), Typeface.BOLD);
+            termuxClose.setTextSize(AppearanceSettings.outputHeaderTextSize());
             termuxClose.setTextColor(textColor);
             termuxClose.setBackground(termuxLabelBackground(labelBg, borderColor));
         }
@@ -2207,6 +2350,7 @@ public class UIManager implements OnTouchListener {
         if (termuxInputGroup != null) {
             GradientDrawable inputBg = new GradientDrawable();
             inputBg.setShape(GradientDrawable.RECTANGLE);
+            inputBg.setCornerRadius(Tuils.dpToPx(mContext, AppearanceSettings.outputCornerRadius()));
             inputBg.setColor(ColorUtils.blendARGB(bgColor, Color.BLACK, 0.16f));
             if (AppearanceSettings.dashedBorders()) {
                 inputBg.setStroke((int) Tuils.dpToPx(mContext, 1.2f), ColorUtils.setAlphaComponent(borderColor, 180),
@@ -2228,6 +2372,7 @@ public class UIManager implements OnTouchListener {
     private GradientDrawable termuxLabelBackground(int fill, int stroke) {
         GradientDrawable bg = new GradientDrawable();
         bg.setShape(GradientDrawable.RECTANGLE);
+        bg.setCornerRadius(Tuils.dpToPx(mContext, AppearanceSettings.headerCornerRadius()));
         bg.setColor(fill);
         if (AppearanceSettings.dashedBorders()) {
             bg.setStroke((int) Tuils.dpToPx(mContext, 1.5f), stroke,
@@ -2261,6 +2406,7 @@ public class UIManager implements OnTouchListener {
         if (fileWindowBorder != null) {
             GradientDrawable border = new GradientDrawable();
             border.setShape(GradientDrawable.RECTANGLE);
+            border.setCornerRadius(Tuils.dpToPx(mContext, AppearanceSettings.outputCornerRadius()));
             border.setColor(bgColor);
             if (AppearanceSettings.dashedBorders()) {
                 border.setStroke((int) Tuils.dpToPx(mContext, 1.5f), borderColor,
@@ -2272,11 +2418,13 @@ public class UIManager implements OnTouchListener {
 
         if (fileWindowLabel != null) {
             fileWindowLabel.setTypeface(Tuils.getTypeface(mContext), Typeface.BOLD);
+            fileWindowLabel.setTextSize(AppearanceSettings.outputHeaderTextSize());
             fileWindowLabel.setTextColor(textColor);
             fileWindowLabel.setBackground(termuxLabelBackground(labelBg, borderColor));
         }
         if (fileClose != null) {
             fileClose.setTypeface(Tuils.getTypeface(mContext), Typeface.BOLD);
+            fileClose.setTextSize(AppearanceSettings.outputHeaderTextSize());
             fileClose.setTextColor(textColor);
             fileClose.setBackground(termuxLabelBackground(labelBg, borderColor));
         }
@@ -2301,6 +2449,7 @@ public class UIManager implements OnTouchListener {
         if (fileInputGroup != null) {
             GradientDrawable inputBg = new GradientDrawable();
             inputBg.setShape(GradientDrawable.RECTANGLE);
+            inputBg.setCornerRadius(Tuils.dpToPx(mContext, AppearanceSettings.outputCornerRadius()));
             inputBg.setColor(ColorUtils.blendARGB(bgColor, Color.BLACK, 0.16f));
             if (AppearanceSettings.dashedBorders()) {
                 inputBg.setStroke((int) Tuils.dpToPx(mContext, 1.2f), ColorUtils.setAlphaComponent(borderColor, 180),
@@ -2719,13 +2868,25 @@ public class UIManager implements OnTouchListener {
             return false;
         }
 
+        String dispatchPath = path;
+        ArrayList<String> dispatchArgs = new ArrayList<>(args);
+        if (!TextUtils.isEmpty(module)) {
+            ModuleVariableManager.Materialized materialized = ModuleVariableManager.materialize(mContext, module);
+            dispatchPath = TermuxBridgeManager.TERMUX_SH;
+            dispatchArgs.clear();
+            dispatchArgs.add("-c");
+            dispatchArgs.add(buildModuleRuntimeCommand(path, module, materialized));
+            dispatchArgs.add("retui-module");
+            dispatchArgs.addAll(args);
+        }
+
         Intent intent = new Intent(TERMUX_RUN_COMMAND_ACTION);
         intent.setClassName(TERMUX_PACKAGE, TERMUX_RUN_COMMAND_SERVICE);
-        intent.putExtra(TERMUX_RUN_COMMAND_PATH, path);
+        intent.putExtra(TERMUX_RUN_COMMAND_PATH, dispatchPath);
         intent.putExtra(TERMUX_RUN_COMMAND_BACKGROUND, true);
         intent.putExtra(TERMUX_RUN_COMMAND_PENDING_INTENT, createTermuxResultPendingIntent(path, module));
-        if (!args.isEmpty()) {
-            intent.putExtra(TERMUX_RUN_COMMAND_ARGUMENTS, args.toArray(new String[0]));
+        if (!dispatchArgs.isEmpty()) {
+            intent.putExtra(TERMUX_RUN_COMMAND_ARGUMENTS, dispatchArgs.toArray(new String[0]));
         }
 
         try {
@@ -2752,6 +2913,42 @@ public class UIManager implements OnTouchListener {
             reportTermuxDispatch("Open Termux once, then retry from this console.", echoToConsole);
         }
         return false;
+    }
+
+    private String buildModuleRuntimeCommand(String path, String module, ModuleVariableManager.Materialized materialized) {
+        String runtimeDir = TermuxBridgeManager.TERMUX_HOME + "/.retui/runtime";
+        String runtimePath = runtimeDir + "/" + ModuleManager.normalize(module) + ".sh";
+        StringBuilder command = new StringBuilder();
+        command.append("mkdir -p ").append(shellQuote(runtimeDir)).append(" && ");
+        command.append("cp ").append(shellQuote(path)).append(" ").append(shellQuote(runtimePath));
+        for (Map.Entry<String, String> entry : materialized.asMap().entrySet()) {
+            command.append(" && sed -i ")
+                    .append(shellQuote("s|" + entry.getKey() + "|" + entry.getValue().replace("|", "\\|") + "|g"))
+                    .append(" ")
+                    .append(shellQuote(runtimePath));
+        }
+        command.append(" && chmod +x ").append(shellQuote(runtimePath));
+        for (Map.Entry<String, String> entry : materialized.asMap().entrySet()) {
+            if (entry.getKey().startsWith("%RETUI_") && entry.getKey().endsWith("_JSON")
+                    || ModuleVariableManager.TOKEN_CALENDAR_UPCOMING_MONTH.equals(entry.getKey())) {
+                String name = entry.getKey().substring(1);
+                command.append(" && export ")
+                        .append(name)
+                        .append("=")
+                        .append(shellQuote(entry.getValue()));
+            }
+        }
+        command.append(" && export RETUI_NOW=")
+                .append(shellQuote(materialized.asMap().get(ModuleVariableManager.TOKEN_NOW)));
+        command.append(" && exec ").append(shellQuote(runtimePath)).append(" \"$@\"");
+        return command.toString();
+    }
+
+    private String shellQuote(String value) {
+        if (value == null) {
+            return "''";
+        }
+        return "'" + value.replace("'", "'\"'\"'") + "'";
     }
 
     private void reportTermuxDispatch(String message, boolean echoToConsole) {
@@ -3087,6 +3284,144 @@ public class UIManager implements OnTouchListener {
         tab.setOnClickListener(listener);
     }
 
+    private void makeClockTabDockable(TextView tab, String edgeKey, String fractionKey, String defaultEdge, float defaultFraction) {
+        if (tab == null) {
+            return;
+        }
+
+        final int touchSlop = ViewConfiguration.get(mContext).getScaledTouchSlop();
+        final float[] downRawX = new float[1];
+        final float[] downRawY = new float[1];
+        final float[] startX = new float[1];
+        final float[] startY = new float[1];
+        final boolean[] dragging = new boolean[1];
+
+        tab.setOnTouchListener((view, event) -> {
+            View parent = (View) view.getParent();
+            if (parent == null || parent.getWidth() <= 0 || parent.getHeight() <= 0) {
+                return false;
+            }
+
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    downRawX[0] = event.getRawX();
+                    downRawY[0] = event.getRawY();
+                    startX[0] = view.getX();
+                    startY[0] = view.getY();
+                    dragging[0] = false;
+                    view.getParent().requestDisallowInterceptTouchEvent(true);
+                    return true;
+                case MotionEvent.ACTION_MOVE:
+                    float dx = event.getRawX() - downRawX[0];
+                    float dy = event.getRawY() - downRawY[0];
+                    if (!dragging[0] && Math.hypot(dx, dy) > touchSlop) {
+                        dragging[0] = true;
+                    }
+                    if (dragging[0]) {
+                        setClockTabPosition(view, startX[0] + dx, startY[0] + dy, parent);
+                    }
+                    return true;
+                case MotionEvent.ACTION_CANCEL:
+                    view.getParent().requestDisallowInterceptTouchEvent(false);
+                    return true;
+                case MotionEvent.ACTION_UP:
+                    view.getParent().requestDisallowInterceptTouchEvent(false);
+                    if (dragging[0]) {
+                        snapClockTabToNearestEdge(view, parent, edgeKey, fractionKey);
+                    } else {
+                        view.performClick();
+                    }
+                    return true;
+                default:
+                    return true;
+            }
+        });
+
+        tab.post(() -> applyClockTabDock(tab, edgeKey, fractionKey, defaultEdge, defaultFraction));
+    }
+
+    private void applyClockTabDock(View view, String edgeKey, String fractionKey, String defaultEdge, float defaultFraction) {
+        View parent = (View) view.getParent();
+        if (parent == null || parent.getWidth() <= 0 || parent.getHeight() <= 0 || view.getWidth() <= 0 || view.getHeight() <= 0) {
+            view.post(() -> applyClockTabDock(view, edgeKey, fractionKey, defaultEdge, defaultFraction));
+            return;
+        }
+
+        String edge = preferences != null ? preferences.getString(edgeKey, defaultEdge) : defaultEdge;
+        float fraction = preferences != null ? preferences.getFloat(fractionKey, defaultFraction) : defaultFraction;
+        fraction = Math.max(0f, Math.min(1f, fraction));
+
+        int margin = (int) Tuils.dpToPx(mContext, 6);
+        float maxX = Math.max(margin, parent.getWidth() - view.getWidth() - margin);
+        float maxY = Math.max(margin, parent.getHeight() - view.getHeight() - margin);
+        float x;
+        float y;
+
+        if (CLOCK_EDGE_LEFT.equals(edge)) {
+            x = margin;
+            y = margin + fraction * Math.max(0, maxY - margin);
+        } else if (CLOCK_EDGE_TOP.equals(edge)) {
+            x = margin + fraction * Math.max(0, maxX - margin);
+            y = margin;
+        } else if (CLOCK_EDGE_BOTTOM.equals(edge)) {
+            x = margin + fraction * Math.max(0, maxX - margin);
+            y = maxY;
+        } else {
+            x = maxX;
+            y = margin + fraction * Math.max(0, maxY - margin);
+        }
+
+        setClockTabPosition(view, x, y, parent);
+    }
+
+    private void setClockTabPosition(View view, float x, float y, View parent) {
+        int margin = (int) Tuils.dpToPx(mContext, 6);
+        float maxX = Math.max(margin, parent.getWidth() - view.getWidth() - margin);
+        float maxY = Math.max(margin, parent.getHeight() - view.getHeight() - margin);
+        view.setX(Math.max(margin, Math.min(x, maxX)));
+        view.setY(Math.max(margin, Math.min(y, maxY)));
+    }
+
+    private void snapClockTabToNearestEdge(View view, View parent, String edgeKey, String fractionKey) {
+        int margin = (int) Tuils.dpToPx(mContext, 6);
+        float leftDistance = view.getX();
+        float topDistance = view.getY();
+        float rightDistance = parent.getWidth() - (view.getX() + view.getWidth());
+        float bottomDistance = parent.getHeight() - (view.getY() + view.getHeight());
+
+        String edge = CLOCK_EDGE_LEFT;
+        float nearest = leftDistance;
+        if (rightDistance < nearest) {
+            nearest = rightDistance;
+            edge = CLOCK_EDGE_RIGHT;
+        }
+        if (topDistance < nearest) {
+            nearest = topDistance;
+            edge = CLOCK_EDGE_TOP;
+        }
+        if (bottomDistance < nearest) {
+            edge = CLOCK_EDGE_BOTTOM;
+        }
+
+        float maxX = Math.max(margin, parent.getWidth() - view.getWidth() - margin);
+        float maxY = Math.max(margin, parent.getHeight() - view.getHeight() - margin);
+        float fraction;
+        if (CLOCK_EDGE_TOP.equals(edge) || CLOCK_EDGE_BOTTOM.equals(edge)) {
+            fraction = (view.getX() - margin) / Math.max(1f, maxX - margin);
+        } else {
+            fraction = (view.getY() - margin) / Math.max(1f, maxY - margin);
+        }
+        fraction = Math.max(0f, Math.min(1f, fraction));
+
+        if (preferences != null) {
+            preferences.edit()
+                    .putString(edgeKey, edge)
+                    .putFloat(fractionKey, fraction)
+                    .apply();
+        }
+        applyClockTabDock(view, edgeKey, fractionKey, edge, fraction);
+    }
+
     private void updateClockOverlay(Intent intent) {
         TextView timerTab = mRootView.findViewById(R.id.timer_tab);
         TextView stopwatchTab = mRootView.findViewById(R.id.stopwatch_tab);
@@ -3107,6 +3442,10 @@ public class UIManager implements OnTouchListener {
         if (timerRunning) {
             timerTab.setVisibility(View.VISIBLE);
             timerTab.setText(ClockManager.formatDuration(timerRemaining));
+            if (!timerTabDockReady) {
+                makeClockTabDockable(timerTab, PREF_TIMER_BADGE_EDGE, PREF_TIMER_BADGE_FRACTION, CLOCK_EDGE_RIGHT, 0.45f);
+                timerTabDockReady = true;
+            }
         } else {
             timerTab.setVisibility(View.GONE);
         }
@@ -3114,6 +3453,10 @@ public class UIManager implements OnTouchListener {
         if (stopwatchRunning) {
             stopwatchTab.setVisibility(View.VISIBLE);
             stopwatchTab.setText(ClockManager.formatDuration(stopwatchElapsed));
+            if (!stopwatchTabDockReady) {
+                makeClockTabDockable(stopwatchTab, PREF_STOPWATCH_BADGE_EDGE, PREF_STOPWATCH_BADGE_FRACTION, CLOCK_EDGE_RIGHT, 0.55f);
+                stopwatchTabDockReady = true;
+            }
         } else {
             stopwatchTab.setVisibility(View.GONE);
         }
@@ -3138,6 +3481,10 @@ public class UIManager implements OnTouchListener {
             ((ViewGroup) mRootView).removeView(overlay);
             pomodoroOverlayVisible = false;
             mRootView.findViewById(R.id.main_container).setVisibility(View.VISIBLE);
+            View terminalTray = mRootView.findViewById(R.id.terminal_tray_container);
+            if (terminalTray != null) {
+                terminalTray.setVisibility(View.VISIBLE);
+            }
             if (message != null) {
                 Tuils.sendOutput(mContext, message);
             }
@@ -3147,6 +3494,12 @@ public class UIManager implements OnTouchListener {
         pomodoroOverlayVisible = true;
         closeKeyboard();
         mRootView.findViewById(R.id.main_container).setVisibility(View.GONE);
+        View terminalTray = mRootView.findViewById(R.id.terminal_tray_container);
+        if (terminalTray != null) {
+            terminalTray.setVisibility(View.GONE);
+        }
+        overlay.bringToFront();
+        overlay.setElevation(Tuils.dpToPx(mContext, 128));
 
         TextView title = overlay.findViewById(R.id.pomodoro_title);
         TextView countdown = overlay.findViewById(R.id.pomodoro_countdown);
@@ -3299,19 +3652,29 @@ public class UIManager implements OnTouchListener {
                 AppearanceSettings.notificationWidgetBorderColor(),
                 AppearanceSettings.notificationWidgetTextColor());
         styleModuleClose(notificationWidget.findViewById(R.id.notification_widget_close));
+        styleNotificationPagerButton(notificationWidget.findViewById(R.id.notification_widget_prev));
+        styleNotificationPagerButton(notificationWidget.findViewById(R.id.notification_widget_next));
         applyNotificationWidgetSize(notificationWidget);
         renderNotificationRows(notificationWidget);
     }
 
     private void updateNotificationWidget(View rootView, List<NotificationService.Notification> notifications) {
+        String previousFocusKey = notificationReplyFocusKey;
+        if (ModulePromptManager.isNotificationReplyActive(mContext) && TextUtils.isEmpty(previousFocusKey)) {
+            NotificationService.Notification selected = currentNotification();
+            previousFocusKey = notificationKey(selected);
+        }
+
         currentOverlayNotifications.clear();
         if (notifications != null) {
             currentOverlayNotifications.addAll(notifications);
         }
+        preserveNotificationReplyFocus(previousFocusKey);
+        clampNotificationIndex();
 
         View notificationWidget = rootView.findViewById(R.id.notification_widget);
         if (notificationWidget != null) {
-            boolean visible = ModuleManager.NOTIFICATIONS.equals(activeModule) || !currentOverlayNotifications.isEmpty();
+            boolean visible = ModuleManager.NOTIFICATIONS.equals(activeModule);
             notificationWidget.setVisibility(visible ? View.VISIBLE : View.GONE);
             if (visible) {
                 styleNotificationWidget(notificationWidget);
@@ -3335,33 +3698,46 @@ public class UIManager implements OnTouchListener {
         if (maxRows == 0) {
             TextView row = buildNotificationRow("No notifications.", widgetTextColor, widgetBorderColor);
             rows.addView(row);
+            updateNotificationPagerButtons(notificationWidget);
             if (scrollView != null) {
                 scrollView.post(() -> scrollView.scrollTo(0, 0));
             }
             return;
         }
-        for (int i = 0; i < maxRows; i++) {
-            NotificationService.Notification notification = currentOverlayNotifications.get(i);
-            TextView row = buildNotificationRow(buildNotificationLine(notification), widgetTextColor, widgetBorderColor);
-
-            if (notification.pendingIntent != null) {
-                row.setClickable(true);
-                row.setFocusable(true);
-                row.setOnClickListener(v -> {
-                    try {
-                        notification.pendingIntent.send();
-                    } catch (PendingIntent.CanceledException e) {
-                        Tuils.sendOutput(Color.RED, mContext, e.toString());
-                    }
-                });
-            }
-
+        if (ModuleManager.NOTIFICATIONS.equals(activeModule)) {
+            clampNotificationIndex();
+            NotificationService.Notification notification = currentOverlayNotifications.get(currentNotificationIndex);
+            TextView row = buildNotificationDetailRow(notification, widgetTextColor, widgetBorderColor);
+            wireNotificationOpen(row, notification);
             rows.addView(row);
+        } else {
+            for (int i = 0; i < maxRows; i++) {
+                NotificationService.Notification notification = currentOverlayNotifications.get(i);
+                TextView row = buildNotificationRow(buildNotificationLine(notification), widgetTextColor, widgetBorderColor);
+                wireNotificationOpen(row, notification);
+                rows.addView(row);
+            }
         }
+        updateNotificationPagerButtons(notificationWidget);
 
         if (scrollView != null) {
             scrollView.post(() -> scrollView.fullScroll(View.FOCUS_UP));
         }
+    }
+
+    private void wireNotificationOpen(TextView row, NotificationService.Notification notification) {
+        if (row == null || notification == null || notification.pendingIntent == null) {
+            return;
+        }
+        row.setClickable(true);
+        row.setFocusable(true);
+        row.setOnClickListener(v -> {
+            try {
+                notification.pendingIntent.send();
+            } catch (PendingIntent.CanceledException e) {
+                Tuils.sendOutput(Color.RED, mContext, e.toString());
+            }
+        });
     }
 
     private TextView buildNotificationRow(CharSequence text, int widgetTextColor, int widgetBorderColor) {
@@ -3380,6 +3756,75 @@ public class UIManager implements OnTouchListener {
         row.setText(text);
         row.setBackground(ohi.andre.consolelauncher.tuils.TuiWidgetDecorator.getRowBackground(mContext, widgetBorderColor));
         return row;
+    }
+
+    private TextView buildNotificationDetailRow(NotificationService.Notification notification, int widgetTextColor, int widgetBorderColor) {
+        TextView row = new TextView(mContext);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        row.setLayoutParams(lp);
+        row.setTypeface(Tuils.getTypeface(mContext));
+        row.setTextSize(12);
+        row.setTextColor(widgetTextColor);
+        row.setText(buildNotificationDetail(notification));
+        row.setSingleLine(false);
+        row.setEllipsize(null);
+        row.setGravity(Gravity.TOP);
+        row.setMinLines(notificationCompactForKeyboard ? 1 : 4);
+        row.setMaxLines(notificationCompactForKeyboard ? 2 : 6);
+        row.setPadding((int) Tuils.dpToPx(mContext, 6),
+                (int) Tuils.dpToPx(mContext, notificationCompactForKeyboard ? 5 : 10),
+                (int) Tuils.dpToPx(mContext, 6),
+                (int) Tuils.dpToPx(mContext, notificationCompactForKeyboard ? 5 : 10));
+        return row;
+    }
+
+    private CharSequence buildNotificationDetail(NotificationService.Notification notification) {
+        String appName = notification.appName;
+        if (TextUtils.isEmpty(appName)) {
+            appName = notification.pkg;
+        }
+        String title = cleanNotificationValue(notification.title);
+        String body = cleanNotificationValue(notification.body);
+        String fallback = cleanNotificationValue(notification.preview);
+        if (TextUtils.isEmpty(fallback)) {
+            fallback = cleanNotificationValue(notification.text);
+        }
+
+        StringBuilder out = new StringBuilder();
+        out.append(currentNotificationIndex + 1)
+                .append(" / ")
+                .append(currentOverlayNotifications.size())
+                .append("    ")
+                .append(appName != null ? appName : "Notification");
+        if (!TextUtils.isEmpty(title)) {
+            out.append(Tuils.NEWLINE).append(Tuils.NEWLINE).append(title);
+        }
+        if (!TextUtils.isEmpty(body)) {
+            out.append(Tuils.NEWLINE).append(body);
+        } else if (!TextUtils.isEmpty(fallback)) {
+            out.append(Tuils.NEWLINE).append(fallback);
+        } else {
+            out.append(Tuils.NEWLINE).append(Tuils.NEWLINE).append("No readable content");
+        }
+        if (isCurrentNotificationReplyable()) {
+            out.append(Tuils.NEWLINE).append("reply available");
+        }
+        return out.toString();
+    }
+
+    private String cleanNotificationValue(String value) {
+        if (value == null) {
+            return Tuils.EMPTYSTRING;
+        }
+        String clean = value.trim();
+        if (clean.length() == 0 || "null".equalsIgnoreCase(clean)) {
+            return Tuils.EMPTYSTRING;
+        }
+        if (clean.contains("%pkg") || clean.contains("%t") || clean.contains("--- null")) {
+            return Tuils.EMPTYSTRING;
+        }
+        clean = clean.replaceAll("(?i)\\bnull\\b", "").replaceAll("\\s+---\\s*$", "").trim();
+        return clean;
     }
 
     private CharSequence buildNotificationLine(NotificationService.Notification notification) {
@@ -3427,6 +3872,152 @@ public class UIManager implements OnTouchListener {
                 notificationWidget.getPaddingRight(),
                 (int) Tuils.dpToPx(mContext, notificationCompactForKeyboard ? 6 : 12)
         );
+    }
+
+    private void styleNotificationPagerButton(View button) {
+        if (!(button instanceof TextView)) return;
+        TextView text = (TextView) button;
+        text.setTextColor(AppearanceSettings.moduleNameTextColor());
+        text.setTypeface(Tuils.getTypeface(mContext), Typeface.BOLD);
+        text.setBackground(ohi.andre.consolelauncher.tuils.TuiWidgetDecorator.getRowBackground(
+                mContext,
+                AppearanceSettings.notificationWidgetBorderColor()));
+    }
+
+    private void clampNotificationIndex() {
+        if (currentOverlayNotifications.isEmpty()) {
+            currentNotificationIndex = 0;
+            return;
+        }
+        if (currentNotificationIndex < 0) {
+            currentNotificationIndex = 0;
+        } else if (currentNotificationIndex >= currentOverlayNotifications.size()) {
+            currentNotificationIndex = currentOverlayNotifications.size() - 1;
+        }
+    }
+
+    private void preserveNotificationReplyFocus(String focusKey) {
+        if (!ModulePromptManager.isNotificationReplyActive(mContext)) {
+            notificationReplyFocusKey = null;
+            return;
+        }
+
+        if (!TextUtils.isEmpty(focusKey)) {
+            int index = findNotificationIndexByKey(focusKey);
+            if (index >= 0) {
+                currentNotificationIndex = index;
+                notificationReplyFocusKey = focusKey;
+                return;
+            }
+        }
+
+        String pkg = ModulePromptManager.getNotificationReplyPackage(mContext);
+        int packageIndex = findNotificationIndexByPackage(pkg);
+        if (packageIndex >= 0) {
+            currentNotificationIndex = packageIndex;
+            notificationReplyFocusKey = notificationKey(currentOverlayNotifications.get(packageIndex));
+        }
+    }
+
+    private int findNotificationIndexByKey(String key) {
+        if (TextUtils.isEmpty(key)) return -1;
+        for (int i = 0; i < currentOverlayNotifications.size(); i++) {
+            if (TextUtils.equals(key, notificationKey(currentOverlayNotifications.get(i)))) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private int findNotificationIndexByPackage(String pkg) {
+        if (TextUtils.isEmpty(pkg)) return -1;
+        for (int i = 0; i < currentOverlayNotifications.size(); i++) {
+            if (TextUtils.equals(pkg, currentOverlayNotifications.get(i).pkg)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private String notificationKey(NotificationService.Notification notification) {
+        if (notification == null) return null;
+        return safeNotificationPart(notification.pkg)
+                + "|"
+                + safeNotificationPart(notification.title)
+                + "|"
+                + safeNotificationPart(notification.body)
+                + "|"
+                + safeNotificationPart(notification.preview);
+    }
+
+    private String safeNotificationPart(String value) {
+        return value == null ? "" : value.trim();
+    }
+
+    private void updateNotificationPagerButtons(View notificationWidget) {
+        if (notificationWidget == null) return;
+        boolean replyActive = ModulePromptManager.isNotificationReplyActive(mContext);
+        boolean enabled = ModuleManager.NOTIFICATIONS.equals(activeModule) && currentOverlayNotifications.size() > 1 && !replyActive;
+        TextView prev = notificationWidget.findViewById(R.id.notification_widget_prev);
+        TextView next = notificationWidget.findViewById(R.id.notification_widget_next);
+        if (prev != null) {
+            prev.setVisibility(ModuleManager.NOTIFICATIONS.equals(activeModule) ? View.VISIBLE : View.GONE);
+            prev.setEnabled(enabled);
+            prev.setAlpha(enabled ? 1f : 0.35f);
+        }
+        if (next != null) {
+            next.setVisibility(ModuleManager.NOTIFICATIONS.equals(activeModule) ? View.VISIBLE : View.GONE);
+            next.setEnabled(enabled);
+            next.setAlpha(enabled ? 1f : 0.35f);
+        }
+    }
+
+    public void nextNotificationPage() {
+        if (currentOverlayNotifications.isEmpty()) return;
+        if (ModulePromptManager.isNotificationReplyActive(mContext)) return;
+        currentNotificationIndex = (currentNotificationIndex + 1) % currentOverlayNotifications.size();
+        refreshNotificationModuleView();
+    }
+
+    public void previousNotificationPage() {
+        if (currentOverlayNotifications.isEmpty()) return;
+        if (ModulePromptManager.isNotificationReplyActive(mContext)) return;
+        currentNotificationIndex = (currentNotificationIndex - 1 + currentOverlayNotifications.size()) % currentOverlayNotifications.size();
+        refreshNotificationModuleView();
+    }
+
+    public void startCurrentNotificationReply() {
+        NotificationService.Notification notification = currentNotification();
+        if (notification == null) {
+            Tuils.sendOutput(mContext, "No notification selected.");
+            return;
+        }
+        if (!isCurrentNotificationReplyable()) {
+            Tuils.sendOutput(mContext, "Selected notification is not replyable. Bind the app with reply -bind first.");
+            return;
+        }
+        notificationReplyFocusKey = notificationKey(notification);
+        ModulePromptManager.startNotificationReply(mContext, notification.pkg, notification.appName);
+        refreshSuggestionsForActiveModule();
+    }
+
+    private boolean isCurrentNotificationReplyable() {
+        NotificationService.Notification notification = currentNotification();
+        return notification != null
+                && ReplyManager.instance != null
+                && ReplyManager.instance.canReplyTo(notification.pkg);
+    }
+
+    private NotificationService.Notification currentNotification() {
+        if (currentOverlayNotifications.isEmpty()) return null;
+        clampNotificationIndex();
+        return currentOverlayNotifications.get(currentNotificationIndex);
+    }
+
+    private void refreshNotificationModuleView() {
+        if (ModuleManager.NOTIFICATIONS.equals(activeModule)) {
+            showHomeModule(ModuleManager.NOTIFICATIONS);
+        }
     }
 
     private void updateContextContainerVisibility(View rootView) {
@@ -3482,6 +4073,7 @@ public class UIManager implements OnTouchListener {
 
         try {
             GradientDrawable gd = (GradientDrawable) androidx.core.content.res.ResourcesCompat.getDrawable(mContext.getResources(), R.drawable.apps_drawer_border, null).mutate();
+            gd.setCornerRadius(Tuils.dpToPx(mContext, AppearanceSettings.moduleCornerRadius()));
             if (useDashed) {
                 gd.setStroke((int) Tuils.dpToPx(mContext, 1.5f), borderColor, Tuils.dpToPx(mContext, dash), Tuils.dpToPx(mContext, gap));
             } else {
@@ -3494,6 +4086,7 @@ public class UIManager implements OnTouchListener {
         try {
             GradientDrawable gd = (GradientDrawable) androidx.core.content.res.ResourcesCompat.getDrawable(mContext.getResources(), R.drawable.apps_drawer_header_border, null).mutate();
             if (gd != null) {
+                gd.setCornerRadius(Tuils.dpToPx(mContext, AppearanceSettings.headerCornerRadius()));
                 if (useDashed) {
                     gd.setStroke((int) Tuils.dpToPx(mContext, 1.5f), borderColor, Tuils.dpToPx(mContext, dash), Tuils.dpToPx(mContext, gap));
                 } else {
@@ -3559,17 +4152,18 @@ public class UIManager implements OnTouchListener {
 
     private void addGroupTab(String label, String groupName, int drawerColor, int borderColor, int widgetBgColor, boolean isAll) {
         TextView tab = new TextView(mContext);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, (int) Tuils.dpToPx(mContext, 34));
-        lp.rightMargin = (int) Tuils.dpToPx(mContext, 6);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (int) Tuils.dpToPx(mContext, 34));
+        lp.bottomMargin = (int) Tuils.dpToPx(mContext, 4);
         tab.setLayoutParams(lp);
         tab.setGravity(Gravity.CENTER);
-        tab.setPadding((int) Tuils.dpToPx(mContext, 12), 0, (int) Tuils.dpToPx(mContext, 12), 0);
+        tab.setPadding((int) Tuils.dpToPx(mContext, 2), 0, (int) Tuils.dpToPx(mContext, 2), 0);
         tab.setText(label);
         tab.setMaxLines(1);
         tab.setEllipsize(TextUtils.TruncateAt.END);
-        tab.setTextSize(10);
+        tab.setTextSize(9.5f);
         tab.setTypeface(Tuils.getTypeface(mContext), Typeface.BOLD);
-        tab.setMinWidth((int) Tuils.dpToPx(mContext, 54));
+        tab.setMinWidth(0);
+        tab.setMinimumWidth(0);
 
         boolean selected = (isAll && selectedAppsDrawerGroup == null) || (groupName != null && groupName.equals(selectedAppsDrawerGroup));
         int selectedColor = getDrawerSelectionColor(drawerColor, widgetBgColor);

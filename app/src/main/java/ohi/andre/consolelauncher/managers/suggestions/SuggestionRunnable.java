@@ -19,6 +19,7 @@ import android.content.Context;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.HorizontalScrollView;
@@ -31,7 +32,9 @@ import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.main.MainPack;
 import ohi.andre.consolelauncher.managers.AppsManager;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
+import ohi.andre.consolelauncher.managers.settings.AppearanceSettings;
 import ohi.andre.consolelauncher.managers.xml.options.Suggestions;
+import ohi.andre.consolelauncher.tuils.Tuils;
 
 public class SuggestionRunnable implements Runnable {
 
@@ -172,7 +175,7 @@ public class SuggestionRunnable implements Runnable {
                     }
                 }
 
-                if(bgColor != Integer.MAX_VALUE) sggView.setBackgroundColor(bgColor);
+                if(bgColor != Integer.MAX_VALUE) sggView.setBackgroundDrawable(getSuggestionColorBg(pack.context, bgColor));
                 else sggView.setBackgroundDrawable(getSuggestionBg(pack.context, s.type));
                 if(foreColor != Integer.MAX_VALUE) sggView.setTextColor(foreColor);
                 else sggView.setTextColor(getSuggestionTextColor(s.type));
@@ -206,23 +209,31 @@ public class SuggestionRunnable implements Runnable {
         } else {
             switch (type) {
                 case SuggestionsManager.Suggestion.TYPE_APP: case SuggestionsManager.Suggestion.TYPE_APPGP:
-                    return new ColorDrawable(suggAppBg);
+                    return getSuggestionColorBg(context, suggAppBg);
                 case SuggestionsManager.Suggestion.TYPE_ALIAS:
-                    return new ColorDrawable(suggAliasBg);
+                    return getSuggestionColorBg(context, suggAliasBg);
                 case SuggestionsManager.Suggestion.TYPE_COMMAND:
                 case SuggestionsManager.Suggestion.TYPE_MODULE:
-                    return new ColorDrawable(suggCmdBg);
+                    return getSuggestionColorBg(context, suggCmdBg);
                 case SuggestionsManager.Suggestion.TYPE_CONTACT:
                 case SuggestionsManager.Suggestion.TYPE_CONTACT_ROOT:
-                    return new ColorDrawable(suggContactBg);
+                    return getSuggestionColorBg(context, suggContactBg);
                 case SuggestionsManager.Suggestion.TYPE_FILE: case SuggestionsManager.Suggestion.TYPE_CONFIGFILE:
-                    return new ColorDrawable(suggFileBg);
+                    return getSuggestionColorBg(context, suggFileBg);
                 case SuggestionsManager.Suggestion.TYPE_SONG:
-                    return new ColorDrawable(suggSongBg);
+                    return getSuggestionColorBg(context, suggSongBg);
                 default:
-                    return new ColorDrawable(suggDefaultBg);
+                    return getSuggestionColorBg(context, suggDefaultBg);
             }
         }
+    }
+
+    private Drawable getSuggestionColorBg(Context context, int color) {
+        GradientDrawable bg = new GradientDrawable();
+        bg.setShape(GradientDrawable.RECTANGLE);
+        bg.setCornerRadius(Tuils.dpToPx(context, AppearanceSettings.moduleCornerRadius()));
+        bg.setColor(color);
+        return bg;
     }
 
     public int getSuggestionTextColor(int type) {

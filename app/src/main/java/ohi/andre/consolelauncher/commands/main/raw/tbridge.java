@@ -1,12 +1,9 @@
 package ohi.andre.consolelauncher.commands.main.raw;
 
-import java.io.File;
-
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
 import ohi.andre.consolelauncher.commands.ExecutePack;
 import ohi.andre.consolelauncher.commands.main.MainPack;
-import ohi.andre.consolelauncher.managers.file.FileBackendManager;
 import ohi.andre.consolelauncher.managers.termux.TermuxBridgeManager;
 
 public class tbridge implements CommandAbstraction {
@@ -50,14 +47,17 @@ public class tbridge implements CommandAbstraction {
 
         String[] parts = input.trim().split("\\s+", 2);
         String option = parts[0].toLowerCase();
-        String path = parts.length > 1 ? parts[1].trim() : null;
 
-        if ("-status".equals(option)) {
+        if ("-status".equals(option) || "-doctor".equals(option)) {
             return localStatus(info);
         }
 
         if ("-setup".equals(option)) {
             return setupText();
+        }
+
+        if ("-dirs".equals(option) || "-files".equals(option) || "-ls".equals(option)) {
+            return retiredFileListingMessage();
         }
 
         if (!ensureReady(info)) {
@@ -69,22 +69,6 @@ public class tbridge implements CommandAbstraction {
             return "Termux bridge probe dispatched.";
         }
 
-        String resolved = resolvePath(info, path);
-        if ("-dirs".equals(option)) {
-            TermuxBridgeManager.dispatchShell(info.context, "dirs " + resolved, LIST_DIRS_SCRIPT, TermuxBridgeManager.TERMUX_HOME, resolved);
-            return "Termux bridge listing directories: " + resolved;
-        }
-
-        if ("-files".equals(option)) {
-            TermuxBridgeManager.dispatchShell(info.context, "files " + resolved, LIST_FILES_SCRIPT, TermuxBridgeManager.TERMUX_HOME, resolved);
-            return "Termux bridge listing files: " + resolved;
-        }
-
-        if ("-ls".equals(option)) {
-            TermuxBridgeManager.dispatchShell(info.context, "ls " + resolved, LIST_ALL_SCRIPT, TermuxBridgeManager.TERMUX_HOME, resolved);
-            return "Termux bridge listing: " + resolved;
-        }
-
         return info.res.getString(helpRes());
     }
 
@@ -92,12 +76,14 @@ public class tbridge implements CommandAbstraction {
         TermuxBridgeManager.BridgeStatus status = TermuxBridgeManager.status(info.context);
         StringBuilder builder = new StringBuilder();
         builder.append("Re:T-UI Termux Bridge").append('\n');
+        builder.append("role: scripts, modules, callbacks, automation").append('\n');
         builder.append("termux: ").append(status.termuxInstalled ? "installed" : "missing").append('\n');
         builder.append("RUN_COMMAND declared: ").append(status.runCommandDeclared ? "yes" : "no").append('\n');
         builder.append("RUN_COMMAND granted: ").append(status.runCommandGranted ? "yes" : "no").append('\n');
-        builder.append(FileBackendManager.statusLine(info.context)).append('\n');
+        builder.append("files: use the files command / Re:T-UI Files app").append('\n');
         builder.append("current path: ").append(info.currentDirectory.getAbsolutePath()).append('\n');
-        builder.append("probe: tbridge -probe");
+        builder.append("probe: tbridge -probe").append('\n');
+        builder.append("setup: tbridge -setup");
         return builder.toString();
     }
 
@@ -120,22 +106,21 @@ public class tbridge implements CommandAbstraction {
         return true;
     }
 
-    private String resolvePath(MainPack info, String path) {
-        if (path == null || path.length() == 0) {
-            return info.currentDirectory.getAbsolutePath();
-        }
-        File file = path.startsWith(File.separator) ? new File(path) : new File(info.currentDirectory, path);
-        return file.getAbsolutePath();
-    }
-
     private String setupText() {
-        return "Termux bridge setup:\n"
+        return "Termux bridge setup for scripts, modules, and automation:\n"
                 + "1. Install Termux.\n"
                 + "2. In Termux run: termux-setup-storage\n"
                 + "3. In Termux run: mkdir -p ~/.termux && echo allow-external-apps=true >> ~/.termux/termux.properties\n"
                 + "4. Restart Termux.\n"
                 + "5. Grant Re:T-UI the RUN_COMMAND permission from Android app settings.\n"
-                + "6. Run: tbridge -probe";
+                + "6. Run: tbridge -doctor\n"
+                + "\nUse files for file navigation. TBridge is now the Termux runtime for scripts and modules.";
+    }
+
+    private String retiredFileListingMessage() {
+        return "TBridge file listing is retired from the public command surface.\n"
+                + "Use files for interactive file navigation, or use ls/open/share with file_backend=termux for bridge-backed quick actions.\n"
+                + "TBridge now focuses on Termux runtime checks, scripts, modules, callbacks, and automation.";
     }
 
     @Override

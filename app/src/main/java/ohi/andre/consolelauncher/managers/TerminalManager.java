@@ -479,6 +479,14 @@ public class TerminalManager {
         onNewInput();
     }
 
+    public void executeQuietly(String cmd, Object obj) {
+        if (cmd == null || cmd.trim().length() == 0) {
+            return;
+        }
+        executer.execute(cmd.trim(), obj);
+        setupNewInput();
+    }
+
     public String getInput() {
         return mInputView.getText().toString();
     }

@@ -3,14 +3,19 @@ package ohi.andre.consolelauncher.commands.main.raw;
 import android.content.Intent;
 
 import java.io.File;
+import java.util.Arrays;
+
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import ohi.andre.consolelauncher.LauncherActivity;
 import ohi.andre.consolelauncher.R;
+import ohi.andre.consolelauncher.UIManager;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
 import ohi.andre.consolelauncher.commands.ExecutePack;
 import ohi.andre.consolelauncher.commands.main.MainPack;
 import ohi.andre.consolelauncher.commands.main.specific.APICommand;
 import ohi.andre.consolelauncher.commands.main.specific.ParamCommand;
+import ohi.andre.consolelauncher.managers.modules.ModuleManager;
 import ohi.andre.consolelauncher.managers.notifications.NotificationManager;
 import ohi.andre.consolelauncher.managers.notifications.NotificationService;
 import ohi.andre.consolelauncher.managers.settings.LauncherSettings;
@@ -206,6 +211,18 @@ public class notifications extends ParamCommand implements APICommand {
                 return null;
             }
         },
+        ls {
+            @Override
+            public int[] args() {
+                return new int[0];
+            }
+
+            @Override
+            public String exec(ExecutePack pack) {
+                NotificationManager manager = NotificationManager.create(pack.context);
+                return manager.describeRules();
+            }
+        },
         access {
             @Override
             public int[] args() {
@@ -245,6 +262,51 @@ public class notifications extends ParamCommand implements APICommand {
                 } catch (Exception e) {
                     return e.toString();
                 }
+            }
+        },
+        next {
+            @Override
+            public int[] args() {
+                return new int[0];
+            }
+
+            @Override
+            public String exec(ExecutePack pack) {
+                if (LauncherActivity.instance != null && LauncherActivity.instance.getUIManager() != null) {
+                    LauncherActivity.instance.runOnUiThread(() -> LauncherActivity.instance.getUIManager().nextNotificationPage());
+                    return null;
+                }
+                return "Notification module is not available.";
+            }
+        },
+        prev {
+            @Override
+            public int[] args() {
+                return new int[0];
+            }
+
+            @Override
+            public String exec(ExecutePack pack) {
+                if (LauncherActivity.instance != null && LauncherActivity.instance.getUIManager() != null) {
+                    LauncherActivity.instance.runOnUiThread(() -> LauncherActivity.instance.getUIManager().previousNotificationPage());
+                    return null;
+                }
+                return "Notification module is not available.";
+            }
+        },
+        reply {
+            @Override
+            public int[] args() {
+                return new int[0];
+            }
+
+            @Override
+            public String exec(ExecutePack pack) {
+                if (LauncherActivity.instance != null && LauncherActivity.instance.getUIManager() != null) {
+                    LauncherActivity.instance.runOnUiThread(() -> LauncherActivity.instance.getUIManager().startCurrentNotificationReply());
+                    return null;
+                }
+                return "Notification module is not available.";
             }
         },
         tutorial {
@@ -329,15 +391,17 @@ public class notifications extends ParamCommand implements APICommand {
     }
 
     private static String setNotificationTerminal(ExecutePack pack, boolean enabled) {
-        LauncherSettings.set(pack.context, Notifications.show_notifications, String.valueOf(enabled));
-
-        if (pack.context instanceof Reloadable) {
-            ((Reloadable) pack.context).addMessage("notifications", enabled ? "Notification terminal enabled" : "Notification terminal disabled");
-            ((Reloadable) pack.context).reload();
-            return Tuils.EMPTYSTRING;
+        if (enabled) {
+            ModuleManager.addToDock(pack.context, Arrays.asList(ModuleManager.NOTIFICATIONS));
+        } else {
+            ModuleManager.removeFromDock(pack.context, Arrays.asList(ModuleManager.NOTIFICATIONS));
         }
 
-        return enabled ? "Notification terminal enabled." : "Notification terminal disabled.";
+        Intent rebuild = new Intent(UIManager.ACTION_MODULE_COMMAND);
+        rebuild.putExtra(UIManager.EXTRA_MODULE_COMMAND, "rebuild");
+        LocalBroadcastManager.getInstance(pack.context.getApplicationContext()).sendBroadcast(rebuild);
+
+        return enabled ? "Notification module added to dock." : "Notification module removed from dock.";
     }
 
     @Override

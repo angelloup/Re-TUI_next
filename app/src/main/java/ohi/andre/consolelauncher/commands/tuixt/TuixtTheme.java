@@ -49,7 +49,7 @@ final class TuixtTheme {
         view.setTextSize(15);
         view.setGravity(android.view.Gravity.CENTER);
         view.setPadding(dp(context, 12), dp(context, 3), dp(context, 12), dp(context, 3));
-        view.setBackground(rect(context, surfaceColor(), borderColor(), 1.5f));
+        view.setBackground(rect(context, surfaceColor(), borderColor(), 1.5f, AppearanceSettings.headerCornerRadius()));
     }
 
     static void styleListItem(Context context, TextView view, boolean selected) {
@@ -100,9 +100,13 @@ final class TuixtTheme {
     }
 
     static GradientDrawable rect(Context context, int fill, int stroke, float strokeDp) {
+        return rect(context, fill, stroke, strokeDp, 1);
+    }
+
+    static GradientDrawable rect(Context context, int fill, int stroke, float strokeDp, int radiusDp) {
         GradientDrawable drawable = new GradientDrawable();
         drawable.setShape(GradientDrawable.RECTANGLE);
-        drawable.setCornerRadius(dp(context, 1));
+        drawable.setCornerRadius(dp(context, radiusDp));
         if (AppearanceSettings.dashedBorders()) {
             drawable.setStroke(
                     Math.max(1, dp(context, strokeDp)),

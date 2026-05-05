@@ -615,12 +615,28 @@ public enum Behavior implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "If true, expanded/collapsed output terminal state is restored until the user changes it";
+            return "Legacy output tray toggle. Use output_tray_mode=toggled for manual expanded/collapsed control";
         }
 
         @Override
         public String type() {
             return XMLPrefsSave.BOOLEAN;
+        }
+    },
+    output_tray_mode {
+        @Override
+        public String defaultValue() {
+            return "native";
+        }
+
+        @Override
+        public String info() {
+            return "Canonical output tray behavior: native, auto, or toggled";
+        }
+
+        @Override
+        public String type() {
+            return XMLPrefsSave.TEXT;
         }
     },
     alias_content_format {

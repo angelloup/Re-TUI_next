@@ -54,6 +54,7 @@ import ohi.andre.consolelauncher.managers.notifications.KeeperService;
 import ohi.andre.consolelauncher.managers.notifications.NotificationManager;
 import ohi.andre.consolelauncher.managers.notifications.NotificationMonitorService;
 import ohi.andre.consolelauncher.managers.notifications.NotificationService;
+import ohi.andre.consolelauncher.managers.modules.ModuleManager;
 import ohi.andre.consolelauncher.managers.settings.LauncherSettings;
 import ohi.andre.consolelauncher.managers.settings.NotificationSettings;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
@@ -309,7 +310,10 @@ public class LauncherActivity extends AppCompatActivity implements Reloadable {
             Tuils.toFile(e);
         }
 
-        boolean notifications = NotificationSettings.showTerminal();
+        boolean notifications = NotificationSettings.showTerminal()
+                || NotificationSettings.printToOutput()
+                || ModuleManager.getDock(this).contains(ModuleManager.NOTIFICATIONS)
+                || ModuleManager.NOTIFICATIONS.equals(ModuleManager.getActiveModule(this));
         if (notifications) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
                 try {

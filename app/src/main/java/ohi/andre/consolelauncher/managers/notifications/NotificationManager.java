@@ -311,6 +311,44 @@ public class NotificationManager implements XMLPrefsElement {
         return apps.size();
     }
 
+    public String describeRules() {
+        StringBuilder builder = new StringBuilder();
+        builder.append("Default app state: ")
+                .append(default_app_state ? "included" : "excluded")
+                .append(Tuils.NEWLINE);
+
+        builder.append("Included apps:");
+        boolean foundIncluded = false;
+        for(NotificatedApp app : apps) {
+            if(app.enabled) {
+                builder.append(Tuils.NEWLINE).append("- ").append(app.pkg);
+                foundIncluded = true;
+            }
+        }
+        if(!foundIncluded) builder.append(" []");
+
+        builder.append(Tuils.NEWLINE).append("Excluded apps:");
+        boolean foundExcluded = false;
+        for(NotificatedApp app : apps) {
+            if(!app.enabled) {
+                builder.append(Tuils.NEWLINE).append("- ").append(app.pkg);
+                foundExcluded = true;
+            }
+        }
+        if(!foundExcluded) builder.append(" []");
+
+        builder.append(Tuils.NEWLINE).append("Filters:");
+        if(filters.isEmpty()) {
+            builder.append(" []");
+        } else {
+            for(Pattern filter : filters) {
+                builder.append(Tuils.NEWLINE).append("- ").append(filter.pattern());
+            }
+        }
+
+        return builder.toString();
+    }
+
     public NotificatedApp getAppState(String pkg) {
         int index = Tuils.find(pkg, apps);
         if(index == -1) return null;

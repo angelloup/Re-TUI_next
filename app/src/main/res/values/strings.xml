@@ -204,17 +204,16 @@
         \n$ files &lt;command&gt;
         \n\nLaunches the Re:T-UI Files app with the current path, theme colors, terminal background, top margin, and font.
     </string>
-    <string name="help_tbridge">Use Termux as Re:T-UI\'s power-user file backend.
+    <string name="help_tbridge">Use Termux as Re:T-UI\'s power-user bridge for scripts, modules, callbacks, and automation.
         \nUsage:
         \ntbridge -status
+        \ntbridge -doctor
         \ntbridge -setup
         \ntbridge -probe
-        \ntbridge -ls [path]
-        \ntbridge -dirs [path]
-        \ntbridge -files [path]
-        \n\nConfig:
-        \nconfig -set file_backend auto|native|termux|off
-        \n\nThis bridge requires Termux, RUN_COMMAND permission, allow-external-apps=true, and termux-setup-storage for shared storage.
+        \n\nFor file navigation, use:
+        \nfiles
+        \n\nFor bridge-backed quick file actions, use ls/open/share with file_backend=termux.
+        \n\nThis bridge requires Termux, RUN_COMMAND permission, allow-external-apps=true, and termux-setup-storage.
     </string>
     <string name="help_retuitoken">Manage the Re:T-UI callback token for Termux, Tasker, and future modules.
         \n\nUsage:
@@ -238,13 +237,19 @@
         \n$ module -show notifications
         \n$ module -show timer
         \n$ module -show calendar
+        \n$ module -show reminder
+        \n$ module -prompt reminder add
+        \n$ module -prompt reminder edit
+        \n$ module -prompt reminder remove
         \n$ module -add server termux:/data/data/com.termux/files/home/retui/server-health.sh
+        \n$ module -add events termux:/data/data/com.termux/files/home/retui/events.sh
         \n$ module -refresh server
         \n$ module -rm server
         \n$ module -hide music
         \n$ module -dock add server
         \n$ module -dock remove music
-        \n$ module -close</string>
+        \n$ module -close
+        \n\nModules are backed by Termux scripts. Re:T-UI can safely resolve %RETUI_* placeholders before dispatch so scripts can consume launcher-provided values. Scripts emit ::title, ::body, and ::suggest metadata. Native prompt sessions let supported modules ask for user input step by step.</string>
     <!-- status -->
     <string name="battery_label">Battery:</string>
     <string name="mobile_data_label">Mobile data:</string>
@@ -306,7 +311,7 @@
         \n-rmfromgp [groupName] [appName] -> remove the given app from the given group
         \n-lsgp [OPTIONAL: groupName] -> list your groups, or list the content of the given group
     </string>
-    <string name="help_bluetooth">Toggle bluetooth</string>
+    <string name="help_bluetooth">Toggle Bluetooth on older Android versions, or open Bluetooth settings on modern Android versions where direct toggles are restricted.</string>
     <string name="help_brightness">Set the brightness of your device
         \n$ brightness [0-100]</string>
     <string name="help_clear">Clear the screen</string>
@@ -337,7 +342,10 @@
         \n-tutorial -> open the tutorial page
     </string>
     <string name="help_data">Toggle mobile data</string>
-    <string name="help_devutils">There\'s nothing interesting there</string>
+    <string name="help_devutils">Dev utilities.
+        \n$ devutils -notify title body
+        \n$ devutils -notify_reply title body
+        \n$ devutils -check_notifications</string>
     <string name="help_donate">Offer a coffee to the developer (PayPal only)</string>
     <string name="help_flash">Toggle the flashlight</string>
     <string name="help_hack">Play a fake hacking overlay animation</string>
@@ -459,7 +467,7 @@
         \n$ webhook -add myhook https://example.com/post "{\"status\":\"%1\"}"
         \n$ webhook myhook active
     </string>
-    <string name="help_wifi">Toggle wifi</string>
+    <string name="help_wifi">Toggle Wi-Fi on older Android versions, or open Wi-Fi settings on modern Android versions where direct toggles are restricted.</string>
     <string name="help_sms">Send an SMS.
         \n\nUsage:
         \n$ sms [contactName/number]
@@ -512,14 +520,18 @@
     <string name="help_notifications">-inc [appName] -> include an application
         \n-exc [appName] -> exclude an application
         \n-open -> open the Android notification shade
-        \n-on -> enable the notification terminal and reload the launcher
-        \n-off -> disable the notification terminal and reload the launcher
+        \n-next -> show the next notification in the module
+        \n-prev -> show the previous notification in the module
+        \n-reply -> reply to the selected module notification
+        \n-on -> add the notifications module to the dock
+        \n-off -> remove the notifications module from the dock
         \n-color [color] [appName] -> set the color to be used for the application
         \n-format [ID] [appName] -> apply the format with the given ID to the corresponding application
         \n-add_filter [ID] [filter] -> create a new filter with the given ID
         \n-add_format [ID] [format] -> create a new format with the given ID
         \n-rm_filter [ID] -> delete the filter having the given ID
         \n-rm_format [ID] -> delete the format having the given ID
+        \n-ls -> list included/excluded apps and content filters
         \n-access -> show the system settings page dedicated to the Notification Access
         \n-file -> open notifications.xml
         \n-tutorial -> show the tutorial page</string>
@@ -563,6 +575,8 @@
         \nUsage:
         \n$ ls
         \n$ ls [folder]
+        \n\nFor full browsing, use:
+        \n$ files
     </string>
     <string name="help_pwd">Print Re:T-UI\'s current file path.</string>
     <string name="help_ctrlc">Interrupt the current shell process and create a new one</string>
@@ -575,10 +589,11 @@
         \n$ shell cd ..
         \n$ shell grep query file.txt
     </string>
-    <string name="help_open">Open a file
+    <string name="help_open">Open a file.
         \nUsage:
         \n$ open [pathToFile]
-        \n$ termux-open [pathToFile]
+        \n\nFor interactive browsing, use:
+        \n$ files
     </string>
     <string name="help_intent">Dispatch Android intents from Re:T-UI.
         \nUsage:
@@ -591,6 +606,15 @@
         \n$ intent -view geo:0,0?q=home
         \n$ intent -activity -a android.intent.action.SEND -t text/plain --es android.intent.extra.TEXT "standup notes"
         \n$ intent -broadcast -a net.dinglisch.android.tasker.ACTION_TASK -p net.dinglisch.android.taskerm --es task_name Work
+    </string>
+    <string name="help_events">Create or open the editable upcoming events Termux module.
+        \nUsage:
+        \n$ events
+        \n$ events -access
+        \n$ events -module
+        \n$ module -add events termux:/data/data/com.termux/files/home/retui/events.sh
+        \n$ module -refresh events
+        \n$ module -show events
     </string>
 
     <string name="help_username">Change the username and device name: username [new_user] [new_device]</string>

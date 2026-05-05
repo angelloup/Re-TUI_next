@@ -611,6 +611,8 @@ public class NotificationService extends NotificationListenerService {
 
                             n.appName = appName;
                             n.preview = buildNotificationPreview(bundle, text);
+                            n.title = extractNotificationTitle(bundle);
+                            n.body = extractNotificationBody(bundle);
                             pushOverlayNotification(n);
 
                             s = TextUtils.replace(s, new String[]{PKG, APP, NEWLINE}, new CharSequence[]{pack, appName, Tuils.NEWLINE});
@@ -842,7 +844,7 @@ public class NotificationService extends NotificationListenerService {
     }
 
     private void loadConfig() {
-        enabled = NotificationSettings.showTerminal();
+        enabled = true;
         terminalNotifications = NotificationSettings.printToOutput();
         format = NotificationSettings.format();
         color = NotificationSettings.defaultColor();
@@ -863,8 +865,9 @@ public class NotificationService extends NotificationListenerService {
             queue.clear();
         }
 
+        overlayNotifications.clear();
+
         if (!enabled) {
-            overlayNotifications.clear();
             broadcastOverlayNotifications();
             return;
         }
@@ -874,19 +877,9 @@ public class NotificationService extends NotificationListenerService {
     }
 
     private String buildNotificationPreview(Bundle bundle, String fallback) {
-        if (bundle == null) {
-            return fallback;
-        }
-
-        CharSequence title = bundle.getCharSequence(android.app.Notification.EXTRA_TITLE);
-        CharSequence text = bundle.getCharSequence(android.app.Notification.EXTRA_TEXT);
-        CharSequence bigText = bundle.getCharSequence(android.app.Notification.EXTRA_BIG_TEXT);
-
-        String titleString = title != null ? title.toString().trim() : Tuils.EMPTYSTRING;
-        String bodyString = text != null ? text.toString().trim() : Tuils.EMPTYSTRING;
-        if (TextUtils.isEmpty(bodyString) && bigText != null) {
-            bodyString = bigText.toString().trim();
-        }
+        String titleString = extractNotificationTitle(bundle);
+        String bodyString = extractNotificationBody(bundle);
+        String fallbackString = cleanNotificationText(fallback);
 
         if (!TextUtils.isEmpty(titleString) && !TextUtils.isEmpty(bodyString)) {
             return titleString + " - " + bodyString;
@@ -897,7 +890,46 @@ public class NotificationService extends NotificationListenerService {
         if (!TextUtils.isEmpty(bodyString)) {
             return bodyString;
         }
-        return fallback;
+        return fallbackString;
+    }
+
+    private String extractNotificationTitle(Bundle bundle) {
+        if (bundle == null) {
+            return Tuils.EMPTYSTRING;
+        }
+
+        CharSequence title = bundle.getCharSequence(android.app.Notification.EXTRA_TITLE);
+        return cleanNotificationText(title != null ? title.toString() : null);
+    }
+
+    private String extractNotificationBody(Bundle bundle) {
+        if (bundle == null) {
+            return Tuils.EMPTYSTRING;
+        }
+
+        CharSequence text = bundle.getCharSequence(android.app.Notification.EXTRA_TEXT);
+        CharSequence bigText = bundle.getCharSequence(android.app.Notification.EXTRA_BIG_TEXT);
+
+        String bodyString = text != null ? text.toString().trim() : Tuils.EMPTYSTRING;
+        if (TextUtils.isEmpty(bodyString) && bigText != null) {
+            bodyString = bigText.toString().trim();
+        }
+
+        return cleanNotificationText(bodyString);
+    }
+
+    private String cleanNotificationText(String value) {
+        if (value == null) {
+            return Tuils.EMPTYSTRING;
+        }
+        String clean = value.trim();
+        if (TextUtils.isEmpty(clean) || "null".equalsIgnoreCase(clean)) {
+            return Tuils.EMPTYSTRING;
+        }
+        if (clean.contains("%pkg") || clean.contains("%t") || clean.contains("--- null")) {
+            return Tuils.EMPTYSTRING;
+        }
+        return clean.replaceAll("(?i)\\bnull\\b", "").replaceAll("\\s+---\\s*$", "").trim();
     }
 
     private void pushOverlayNotification(Notification notification) {
@@ -945,7 +977,7 @@ public class NotificationService extends NotificationListenerService {
 
     public static class Notification implements Parcelable {
         public long time;
-        public String text, pkg, appName, preview;
+        public String text, pkg, appName, preview, title, body;
         public PendingIntent pendingIntent;
 
         public Notification(long time, String text, String pkg, PendingIntent pi) {
@@ -961,6 +993,8 @@ public class NotificationService extends NotificationListenerService {
             pkg = in.readString();
             appName = in.readString();
             preview = in.readString();
+            title = in.readString();
+            body = in.readString();
             pendingIntent = in.readParcelable(PendingIntent.class.getClassLoader());
         }
 
@@ -988,6 +1022,8 @@ public class NotificationService extends NotificationListenerService {
             dest.writeString(pkg);
             dest.writeString(appName);
             dest.writeString(preview);
+            dest.writeString(title);
+            dest.writeString(body);
             dest.writeParcelable(pendingIntent, flags);
         }
     }

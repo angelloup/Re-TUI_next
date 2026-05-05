@@ -36,6 +36,7 @@ import ohi.andre.consolelauncher.managers.WebhookManager;
 import ohi.andre.consolelauncher.managers.HistoryManager;
 import ohi.andre.consolelauncher.managers.music.MusicManager2;
 import ohi.andre.consolelauncher.managers.music.MusicService;
+import ohi.andre.consolelauncher.managers.modules.ModulePromptManager;
 import ohi.andre.consolelauncher.managers.notifications.KeeperService;
 import ohi.andre.consolelauncher.managers.settings.MusicSettings;
 import ohi.andre.consolelauncher.managers.xml.XMLPrefsManager;
@@ -105,6 +106,7 @@ public class MainManager {
     private final String COMMANDS_PKG = "ohi.andre.consolelauncher.commands.main.raw";
 
     private CmdTrigger[] triggers = new CmdTrigger[] {
+            new ModulePromptTrigger(),
             new GroupTrigger(),
             new AliasTrigger(),
             new TuiCommandTrigger(),
@@ -487,6 +489,17 @@ public class MainManager {
         boolean trigger(MainPack info, String input) throws Exception;
     }
 
+    private class ModulePromptTrigger implements CmdTrigger {
+
+        @Override
+        public boolean trigger(MainPack info, String input) {
+            if (info == null || info.context == null || !ModulePromptManager.isActive(info.context)) {
+                return false;
+            }
+            return ModulePromptManager.handleInput(info.context, input);
+        }
+    }
+
     private class AliasTrigger implements CmdTrigger {
 
         @Override
@@ -564,7 +577,7 @@ public class MainManager {
                 String[] common = {"ping", "echo", "ls", "grep", "cat", "vi", "top", "ps", "ip"};
                 for (String c : common) {
                     if (cmd.equalsIgnoreCase(c)) {
-                        Tuils.sendOutput(mContext, "Command not found. You can install BusyBox using: bbman -install", TerminalManager.CATEGORY_OUTPUT);
+                        Tuils.sendOutput(mContext, "Command not found in the embedded shell. Use termux for Linux scripts, modules, and full shell tooling.", TerminalManager.CATEGORY_OUTPUT);
                         return true;
                     }
                 }

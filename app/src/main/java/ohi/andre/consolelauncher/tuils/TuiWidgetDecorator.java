@@ -36,15 +36,13 @@ public class TuiWidgetDecorator {
         // 1. Decorate Border
         View borderView = widgetRoot.findViewById(borderViewId);
         if (borderView != null) {
-            GradientDrawable gd = new GradientDrawable();
-            gd.setShape(GradientDrawable.RECTANGLE);
-            if (useDashed) {
-                gd.setStroke((int) Tuils.dpToPx(context, 1.5f), borderColor,
-                        Tuils.dpToPx(context, AppearanceSettings.dashLength()),
-                        Tuils.dpToPx(context, AppearanceSettings.dashGap()));
-            }
-            gd.setColor(widgetBgColor);
-            borderView.setBackground(gd);
+            borderView.setBackground(panelDrawable(
+                    context,
+                    widgetBgColor,
+                    borderColor,
+                    1.5f,
+                    AppearanceSettings.moduleCornerRadius(),
+                    useDashed));
         }
 
         // 2. Decorate Label
@@ -52,11 +50,13 @@ public class TuiWidgetDecorator {
         if (widgetLabel != null) {
             widgetLabel.setTextColor(textColor);
             widgetLabel.setTypeface(Tuils.getTypeface(context), Typeface.BOLD);
+            widgetLabel.setTextSize(AppearanceSettings.moduleHeaderTextSize());
             try {
                 GradientDrawable gd = (GradientDrawable) ResourcesCompat.getDrawable(
                         context.getResources(), R.drawable.apps_drawer_header_border, null);
                 if (gd != null) {
                     gd = (GradientDrawable) gd.mutate();
+                    gd.setCornerRadius(Tuils.dpToPx(context, AppearanceSettings.headerCornerRadius()));
                     if (useDashed) {
                         gd.setStroke((int) Tuils.dpToPx(context, 1.5f), borderColor,
                                 Tuils.dpToPx(context, AppearanceSettings.dashLength()),
@@ -82,7 +82,7 @@ public class TuiWidgetDecorator {
 
         GradientDrawable bg = new GradientDrawable();
         bg.setShape(GradientDrawable.RECTANGLE);
-        bg.setCornerRadius(Tuils.dpToPx(context, 4));
+        bg.setCornerRadius(Tuils.dpToPx(context, AppearanceSettings.moduleCornerRadius()));
         bg.setColor(rowBackground);
         if (AppearanceSettings.dashedBorders()) {
             bg.setStroke((int) Tuils.dpToPx(context, 1.2f), strokeColor,
@@ -90,5 +90,19 @@ public class TuiWidgetDecorator {
                     Tuils.dpToPx(context, AppearanceSettings.dashGap()));
         }
         return bg;
+    }
+
+    public static GradientDrawable panelDrawable(Context context, int fillColor, int borderColor,
+                                                 float strokeDp, int radiusDp, boolean dashed) {
+        GradientDrawable gd = new GradientDrawable();
+        gd.setShape(GradientDrawable.RECTANGLE);
+        gd.setCornerRadius(Tuils.dpToPx(context, radiusDp));
+        gd.setColor(fillColor);
+        if (dashed) {
+            gd.setStroke((int) Tuils.dpToPx(context, strokeDp), borderColor,
+                    Tuils.dpToPx(context, AppearanceSettings.dashLength()),
+                    Tuils.dpToPx(context, AppearanceSettings.dashGap()));
+        }
+        return gd;
     }
 }

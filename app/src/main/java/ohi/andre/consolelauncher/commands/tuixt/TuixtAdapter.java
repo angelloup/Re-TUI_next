@@ -9,6 +9,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
@@ -21,6 +22,7 @@ import java.util.Map;
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.managers.settings.LauncherSettings;
 import ohi.andre.consolelauncher.managers.xml.classes.XMLPrefsSave;
+import ohi.andre.consolelauncher.managers.xml.options.Behavior;
 
 public class TuixtAdapter extends RecyclerView.Adapter<TuixtAdapter.ViewHolder> {
 
@@ -73,12 +75,20 @@ public class TuixtAdapter extends RecyclerView.Adapter<TuixtAdapter.ViewHolder> 
         holder.input.removeTextChangedListener(holder.textWatcher);
         holder.toggle.setOnClickListener(null);
         holder.colorPreview.setOnClickListener(null);
+        holder.options.removeAllViews();
+        holder.options.setVisibility(View.GONE);
         holder.itemView.setBackground(TuixtTheme.rect(holder.itemView.getContext(), TuixtTheme.surfaceColor(), TuixtTheme.borderColor(), 1.25f));
         holder.title.setTextColor(TuixtTheme.accentColor());
         holder.description.setTextColor(TuixtTheme.textColor());
         TuixtTheme.styleInput(holder.itemView.getContext(), holder.input);
 
-        if (XMLPrefsSave.BOOLEAN.equals(item.type())) {
+        if (item == Behavior.output_tray_mode) {
+            holder.toggle.setVisibility(View.GONE);
+            holder.colorPreview.setVisibility(View.GONE);
+            holder.input.setVisibility(View.GONE);
+            holder.options.setVisibility(View.VISIBLE);
+            bindOptionSwitch(holder, item, new String[]{"native", "auto", "toggled"});
+        } else if (XMLPrefsSave.BOOLEAN.equals(item.type())) {
             holder.toggle.setVisibility(View.VISIBLE);
             holder.colorPreview.setVisibility(View.GONE);
             holder.input.setVisibility(View.GONE);
@@ -123,6 +133,37 @@ public class TuixtAdapter extends RecyclerView.Adapter<TuixtAdapter.ViewHolder> 
                 }
             };
             holder.input.addTextChangedListener(holder.textWatcher);
+        }
+    }
+
+    private void bindOptionSwitch(ViewHolder holder, XMLPrefsSave item, String[] options) {
+        String current = getCurrentValue(item);
+        if (current == null) {
+            current = item.defaultValue();
+        }
+        current = current.trim().toLowerCase(java.util.Locale.US);
+
+        for (String option : options) {
+            TextView button = new TextView(holder.itemView.getContext());
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1);
+            if (holder.options.getChildCount() > 0) {
+                params.leftMargin = TuixtTheme.dp(holder.itemView.getContext(), 6);
+            }
+            button.setLayoutParams(params);
+            button.setText(option.toUpperCase(java.util.Locale.US));
+            button.setGravity(android.view.Gravity.CENTER);
+            button.setSingleLine(true);
+            button.setPadding(
+                    TuixtTheme.dp(holder.itemView.getContext(), 6),
+                    TuixtTheme.dp(holder.itemView.getContext(), 8),
+                    TuixtTheme.dp(holder.itemView.getContext(), 6),
+                    TuixtTheme.dp(holder.itemView.getContext(), 8));
+            TuixtTheme.styleButton(holder.itemView.getContext(), button, option.equals(current));
+            button.setOnClickListener(v -> {
+                pendingChanges.put(item, option);
+                notifyDataSetChanged();
+            });
+            holder.options.addView(button);
         }
     }
 
@@ -264,6 +305,7 @@ public class TuixtAdapter extends RecyclerView.Adapter<TuixtAdapter.ViewHolder> 
     static class ViewHolder extends RecyclerView.ViewHolder {
         TextView title, description;
         TextView toggle;
+        LinearLayout options;
         View colorPreview;
         EditText input;
         TextWatcher textWatcher;
@@ -273,6 +315,7 @@ public class TuixtAdapter extends RecyclerView.Adapter<TuixtAdapter.ViewHolder> 
             title = itemView.findViewById(R.id.setting_title);
             description = itemView.findViewById(R.id.setting_description);
             toggle = itemView.findViewById(R.id.setting_switch);
+            options = itemView.findViewById(R.id.setting_options);
             colorPreview = itemView.findViewById(R.id.setting_color_preview);
             input = itemView.findViewById(R.id.setting_input);
         }

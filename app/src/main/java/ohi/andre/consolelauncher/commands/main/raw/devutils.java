@@ -1,7 +1,12 @@
 package ohi.andre.consolelauncher.commands.main.raw;
 
+import android.app.PendingIntent;
+import android.content.Intent;
+import android.os.Build;
+
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
+import androidx.core.app.RemoteInput;
 
 import java.util.List;
 
@@ -11,6 +16,7 @@ import ohi.andre.consolelauncher.commands.CommandAbstraction;
 import ohi.andre.consolelauncher.commands.ExecutePack;
 import ohi.andre.consolelauncher.commands.main.MainPack;
 import ohi.andre.consolelauncher.commands.main.specific.ParamCommand;
+import ohi.andre.consolelauncher.managers.notifications.DevReplyReceiver;
 import ohi.andre.consolelauncher.tuils.Tuils;
 
 /**
@@ -50,6 +56,65 @@ public class devutils extends ParamCommand {
                             .build());
 
                 return null;
+            }
+
+            @Override
+            public int[] args() {
+                return new int[] {CommandAbstraction.TEXTLIST};
+            }
+        },
+        notify_reply {
+            @Override
+            public String exec(ExecutePack pack) {
+                List<String> text = pack.getList();
+
+                String title, txt = null;
+                if(text.size() == 0) return "Usage: devutils -notify_reply <title> <text>";
+                else {
+                    title = text.remove(0);
+                    if(text.size() > 0) txt = Tuils.toPlanString(text, Tuils.SPACE);
+                }
+
+                String channelId = "dev_utils_channel";
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    android.app.NotificationChannel channel = new android.app.NotificationChannel(channelId, "Dev Utils", android.app.NotificationManager.IMPORTANCE_DEFAULT);
+                    android.app.NotificationManager notificationManager = (android.app.NotificationManager) pack.context.getSystemService(android.content.Context.NOTIFICATION_SERVICE);
+                    if (notificationManager != null) {
+                        notificationManager.createNotificationChannel(channel);
+                    }
+                }
+
+                RemoteInput remoteInput = new RemoteInput.Builder(DevReplyReceiver.RESULT_KEY)
+                        .setLabel("Reply")
+                        .build();
+
+                Intent replyIntent = new Intent(pack.context, DevReplyReceiver.class)
+                        .setAction(DevReplyReceiver.ACTION_DEV_REPLY);
+                PendingIntent replyPendingIntent = PendingIntent.getBroadcast(
+                        pack.context,
+                        DevReplyReceiver.NOTIFICATION_ID,
+                        replyIntent,
+                        pendingIntentFlags());
+
+                NotificationCompat.Action replyAction = new NotificationCompat.Action.Builder(
+                        R.mipmap.ic_launcher,
+                        "Reply",
+                        replyPendingIntent)
+                        .addRemoteInput(remoteInput)
+                        .setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY)
+                        .setAllowGeneratedReplies(true)
+                        .build();
+
+                NotificationManagerCompat.from(pack.context).notify(DevReplyReceiver.NOTIFICATION_ID,
+                        new NotificationCompat.Builder(pack.context, channelId)
+                                .setSmallIcon(R.mipmap.ic_launcher)
+                                .setContentTitle(title)
+                                .setContentText(txt)
+                                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                                .addAction(replyAction)
+                                .build());
+
+                return "Dev reply notification posted.";
             }
 
             @Override
@@ -128,5 +193,13 @@ public class devutils extends ParamCommand {
     @Override
     protected String doThings(ExecutePack pack) {
         return null;
+    }
+
+    private static int pendingIntentFlags() {
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            flags |= PendingIntent.FLAG_MUTABLE;
+        }
+        return flags;
     }
 }

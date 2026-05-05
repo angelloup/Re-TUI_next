@@ -1084,6 +1084,86 @@ public enum Ui implements XMLPrefsSave {
         public String info() {
             return "Length of the gap in the dashed border (dp)";
         }
+    },
+    module_corner_radius {
+        @Override
+        public String defaultValue() {
+            return "0";
+        }
+
+        @Override
+        public String type() {
+            return XMLPrefsSave.INTEGER;
+        }
+
+        @Override
+        public String info() {
+            return "Rounded corner radius for module panels and module controls (dp)";
+        }
+    },
+    output_corner_radius {
+        @Override
+        public String defaultValue() {
+            return "0";
+        }
+
+        @Override
+        public String type() {
+            return XMLPrefsSave.INTEGER;
+        }
+
+        @Override
+        public String info() {
+            return "Rounded corner radius for the output terminal panel (dp)";
+        }
+    },
+    header_corner_radius {
+        @Override
+        public String defaultValue() {
+            return "0";
+        }
+
+        @Override
+        public String type() {
+            return XMLPrefsSave.INTEGER;
+        }
+
+        @Override
+        public String info() {
+            return "Rounded corner radius for module and output header boxes (dp)";
+        }
+    },
+    module_header_text_size {
+        @Override
+        public String defaultValue() {
+            return "14";
+        }
+
+        @Override
+        public String type() {
+            return XMLPrefsSave.INTEGER;
+        }
+
+        @Override
+        public String info() {
+            return "Text size for module header labels and close boxes (sp)";
+        }
+    },
+    output_header_text_size {
+        @Override
+        public String defaultValue() {
+            return "14";
+        }
+
+        @Override
+        public String type() {
+            return XMLPrefsSave.INTEGER;
+        }
+
+        @Override
+        public String info() {
+            return "Text size for output and overlay header labels (sp)";
+        }
     };
 
     @Override

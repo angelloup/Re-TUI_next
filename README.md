@@ -24,11 +24,11 @@ These updates ensure the launcher remains functional, secure, and performant on 
     *   **History:** Automatically tracks the last 5 unique sets of arguments for each webhook.
     *   **Suggestions:** Provides history-based autocomplete for `webhook [name]` arguments.
 *   **`post [url] [body]`**: Send raw HTTP POST requests directly from the terminal.
-*   **`bbman`**: The new BusyBox manager for installing and verifying Linux binaries.
+*   **`termux` / `module`**: Termux-backed scripts and custom modules are now the recommended way to add Linux-powered workflows.
 *   **ASCII Art System**: A new header system that displays custom ASCII art on the dashboard. Controlled via `show_ascii`, `ascii_index`, and `ascii_size` in `Ui.xml`.
 
 ### ✨ Enhanced Features
-*   **Built-in BusyBox Manager:** Gain access to 300+ Linux commands (ls, grep, awk, top, etc.) via the new `bbman -install` command.
+*   **Termux Execution Layer:** Keep Linux tooling, scripts, and custom modules in Termux while Re:T-UI stays focused on launcher UI and command routing.
 *   **Theme Preset Shortcut Buttons:** Enhanced the `theme -preset` command to show interactive shortcut buttons for presets.
 *   **Synchronized Theme UI:** Applying a preset now automatically colors the shortcut buttons (suggestions) to match the overall theme.
 *   **One-Tap Application:** Shortcut buttons for theme presets execute immediately upon clicking.
@@ -36,16 +36,17 @@ These updates ensure the launcher remains functional, secure, and performant on 
 
 ---
 
-## 🐧 BusyBox Integration
+## 🐧 Termux Integration
 
-To enable a full Linux environment, you can install BusyBox directly from the launcher:
+For a full Linux environment, use Termux as the execution layer:
 
-1.  Type `bbman -install` in the terminal.
-2.  The launcher will automatically detect your architecture, download the verified binary, and check its integrity.
-3.  Once finished, you can run any Linux command directly (e.g., `ls`, `ping`, `vi`).
-4.  To remove it at any time, use `bbman -remove`.
+1.  Install Termux.
+2.  Run `termux-setup-storage` in Termux.
+3.  Enable `allow-external-apps=true` in Termux properties.
+4.  Run `tbridge -doctor` in Re:T-UI to verify the bridge.
+5.  Use `termux`, `module`, and `files` for scripts, modules, and file workflows.
 
-**Security Note:** Binaries are sourced from the trusted EXALAB repository and are verified against hardcoded SHA-256 hashes to ensure they have not been tampered with.
+This keeps the launcher lean for Play Store builds while preserving power-user Linux workflows through an app that is designed to own them.
 
 ---
 
