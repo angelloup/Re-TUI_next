@@ -173,6 +173,29 @@
       color: var(--ink);
     }
 
+    .donate-button {
+      position: fixed;
+      right: max(16px, env(safe-area-inset-right));
+      bottom: max(16px, env(safe-area-inset-bottom));
+      z-index: 5;
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      background: rgba(217, 139, 153, 0.92);
+      color: #080909;
+      padding: 10px 13px;
+      text-decoration: none;
+      font: 0.82rem "SFMono-Regular", Consolas, monospace;
+      box-shadow: 0 14px 38px rgba(0, 0, 0, 0.42);
+    }
+
+    .donate-button:hover,
+    .donate-button:focus-visible {
+      border-color: var(--cyan);
+      background: var(--cyan);
+      color: #080909;
+      outline: none;
+    }
+
     .phone-frame {
       justify-self: center;
       width: min(100%, 360px);
@@ -573,6 +596,12 @@
         text-align: center;
       }
 
+      .donate-button {
+        right: 12px;
+        bottom: 12px;
+        padding: 9px 11px;
+      }
+
       .split.customize-layout {
         grid-template-columns: minmax(132px, 42%) minmax(0, 1fr);
         gap: 14px;
@@ -626,6 +655,7 @@
   </style>
 </head>
 <body>
+  <a class="donate-button" href="https://github.com/DvilSpawn/Re-TUI/blob/master/.github/FUNDING.yml" aria-label="Open Re:T-UI funding options on GitHub">Donate</a>
   <main>
     <nav aria-label="Guide sections">
       <a href="#start">Start</a>
@@ -790,6 +820,7 @@
       <div class="feature-grid">
         <div class="tile"><h3>Stable release</h3><p>The Play Store build is the official consumer release and the cleanest normal-user path. Buying there is the simplest way to support ongoing development.</p></div>
         <div class="tile"><h3>Donate command</h3><p>Inside the launcher, run <code>donate</code>. Re:T-UI opens the current support destination from the app itself, so the link stays aligned with the installed build.</p></div>
+        <div class="tile"><h3>Free add-ons</h3><p>Re:T-UI add-ons stay available through GitHub. Start with <a href="https://github.com/DvilSpawn/Re-TUI-FM">Re:TUI-FM</a> for companion functionality without a separate purchase.</p></div>
         <div class="tile"><h3>GitHub testing</h3><p>Use <a href="https://github.com/DvilSpawn/Re-TUI/issues">GitHub issues</a> for reproducible bugs, test notes, and release feedback before changes become stable.</p></div>
         <div class="tile"><h3>GitHub and wiki</h3><p>Read the source on <a href="https://github.com/DvilSpawn/Re-TUI">GitHub</a>, track docs in the <a href="https://github.com/DvilSpawn/Re-TUI/wiki">wiki</a>, and use public issues for reproducible bugs.</p></div>
         <div class="tile"><h3>Module makers</h3><p>Share the Codex skill folder with users who want a one-prompt path from idea to Termux-backed Re:T-UI module script.</p></div>
