@@ -8,6 +8,7 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.graphics.Typeface;
 import android.os.Bundle;
+import android.text.InputType;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
@@ -50,12 +51,15 @@ public class ThemerActivity extends AppCompatActivity {
     public static final String SECTION_SYSTEM = "system";
     private static final int BACKUP_EXPORT_REQUEST = 201;
     private static final int BACKUP_RESTORE_REQUEST = 202;
+    private static final int SHAREABLE_CONFIG_EXPORT_REQUEST = 203;
 
     private RecyclerView recyclerView;
     private TextView header;
     private RecyclerView.Adapter<ViewHolder> sectionsAdapter;
     private final List<String> sectionItems = new ArrayList<>();
     private String section;
+    private Uri pendingBackupUri;
+    private Uri pendingRestoreUri;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -170,6 +174,8 @@ public class ThemerActivity extends AppCompatActivity {
                         }
                     } else if (fileName.equals("Backup")) {
                         launchBackupPicker();
+                    } else if (fileName.equals("Create Shareable Configuration")) {
+                        launchShareableConfigurationPicker();
                     } else if (fileName.equals("Restore")) {
                         launchRestorePicker();
                     } else {
@@ -351,7 +357,7 @@ public class ThemerActivity extends AppCompatActivity {
         } else if (SECTION_INTEGRATIONS.equals(section)) {
             return Arrays.asList("Preferred Music App: " + getPreferredMusicAppSummary());
         } else if (SECTION_SYSTEM.equals(section)) {
-            return Arrays.asList("Backup", "Restore", "View Crash Log");
+            return Arrays.asList("Backup", "Create Shareable Configuration", "Restore", "View Crash Log");
         }
 
         return Arrays.asList(
@@ -412,6 +418,18 @@ public class ThemerActivity extends AppCompatActivity {
             startActivityForResult(intent, BACKUP_EXPORT_REQUEST);
         } catch (ActivityNotFoundException e) {
             Toast.makeText(this, "Backup picker is unavailable on this device.", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void launchShareableConfigurationPicker() {
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("application/zip");
+        intent.putExtra(Intent.EXTRA_TITLE, BackupManager.defaultShareableConfigurationName());
+        try {
+            startActivityForResult(intent, SHAREABLE_CONFIG_EXPORT_REQUEST);
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(this, "Configuration picker is unavailable on this device.", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -511,6 +529,8 @@ public class ThemerActivity extends AppCompatActivity {
             finish();
         } else if (requestCode == BACKUP_EXPORT_REQUEST) {
             handleBackupResult(resultCode, data);
+        } else if (requestCode == SHAREABLE_CONFIG_EXPORT_REQUEST) {
+            handleShareableConfigurationResult(resultCode, data);
         } else if (requestCode == BACKUP_RESTORE_REQUEST) {
             handleRestoreResult(resultCode, data);
         }
@@ -522,11 +542,64 @@ public class ThemerActivity extends AppCompatActivity {
             return;
         }
 
+        pendingBackupUri = data.getData();
+        TuixtDialog.showOptions(this, "Backup Protection", Arrays.asList("Encrypt with Password", "Export Without Password"), which -> {
+            if (which == 0) {
+                showBackupPasswordDialog();
+            } else {
+                exportBackup(null);
+            }
+        });
+    }
+
+    private void showBackupPasswordDialog() {
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+
+        EditText password = passwordInput("Password");
+        EditText confirm = passwordInput("Confirm password");
+        content.addView(password, inputParams());
+        content.addView(confirm, inputParams());
+
+        TuixtDialog.showContent(this, "Backup Password", content, "Export", "Cancel", () -> {
+            String first = password.getText().toString();
+            String second = confirm.getText().toString();
+            if (first.length() == 0) {
+                Toast.makeText(this, "Password is required.", Toast.LENGTH_SHORT).show();
+                recyclerView.postDelayed(this::showBackupPasswordDialog, 250);
+                return;
+            }
+            if (!first.equals(second)) {
+                Toast.makeText(this, "Passwords do not match.", Toast.LENGTH_SHORT).show();
+                recyclerView.postDelayed(this::showBackupPasswordDialog, 250);
+                return;
+            }
+            exportBackup(first);
+        });
+    }
+
+    private void exportBackup(String password) {
         try {
-            BackupManager.exportBackup(this, data.getData());
+            BackupManager.exportBackup(this, pendingBackupUri, password);
             Toast.makeText(this, "Backup exported.", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
             Toast.makeText(this, e.getMessage() == null ? "Backup failed." : e.getMessage(), Toast.LENGTH_LONG).show();
+        } finally {
+            pendingBackupUri = null;
+        }
+    }
+
+    private void handleShareableConfigurationResult(int resultCode, Intent data) {
+        if (resultCode != RESULT_OK || data == null || data.getData() == null) {
+            Toast.makeText(this, "Configuration export cancelled.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        try {
+            BackupManager.exportShareableConfiguration(this, data.getData());
+            Toast.makeText(this, "Shareable configuration exported.", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Toast.makeText(this, e.getMessage() == null ? "Configuration export failed." : e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
 
@@ -543,9 +616,41 @@ public class ThemerActivity extends AppCompatActivity {
         } catch (Exception ignored) {
         }
 
+        pendingRestoreUri = uri;
         try {
-            BackupManager.importBackup(this, uri);
+            if (BackupManager.isEncryptedBackup(this, uri)) {
+                showRestorePasswordDialog();
+            } else {
+                restoreBackup(null);
+            }
+        } catch (Exception e) {
+            Toast.makeText(this, e.getMessage() == null ? "Restore failed." : e.getMessage(), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void showRestorePasswordDialog() {
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+
+        EditText password = passwordInput("Backup password");
+        content.addView(password, inputParams());
+
+        TuixtDialog.showContent(this, "Restore Password", content, "Restore", "Cancel", () -> {
+            String value = password.getText().toString();
+            if (value.length() == 0) {
+                Toast.makeText(this, "Password is required.", Toast.LENGTH_SHORT).show();
+                recyclerView.postDelayed(this::showRestorePasswordDialog, 250);
+                return;
+            }
+            restoreBackup(value);
+        });
+    }
+
+    private void restoreBackup(String password) {
+        try {
+            BackupManager.importBackup(this, pendingRestoreUri, password);
             Toast.makeText(this, "Backup restored. Reloading...", Toast.LENGTH_SHORT).show();
+            pendingRestoreUri = null;
             recyclerView.postDelayed(() -> {
                 if (LauncherActivity.instance != null) {
                     LauncherActivity.instance.reload();
@@ -554,7 +659,26 @@ public class ThemerActivity extends AppCompatActivity {
             }, 500);
         } catch (Exception e) {
             Toast.makeText(this, e.getMessage() == null ? "Restore failed." : e.getMessage(), Toast.LENGTH_LONG).show();
+            if (password != null && pendingRestoreUri != null) {
+                recyclerView.postDelayed(this::showRestorePasswordDialog, 500);
+            }
         }
+    }
+
+    private EditText passwordInput(String hint) {
+        EditText input = new EditText(this);
+        input.setHint(hint);
+        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        TuixtTheme.styleInput(this, input);
+        return input;
+    }
+
+    private LinearLayout.LayoutParams inputParams() {
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        params.setMargins(0, 0, 0, TuixtTheme.dp(this, 10));
+        return params;
     }
 
     private static class ViewHolder extends RecyclerView.ViewHolder {
