@@ -4,6 +4,8 @@ Modules are Re:T-UI-owned terminal panels. They are meant to be small workstatio
 
 They are not arbitrary Android plugins and they do not load user Java/Kotlin code into the launcher.
 
+For the phone-friendly walkthrough, use the hosted module guide: [Module Walkthrough](../modules.html).
+
 ## Current Module Commands
 
 - `module -ls`

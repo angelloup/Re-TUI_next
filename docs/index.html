@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Re:T-UI Field Guide</title>
-  <meta name="description" content="A visual, phone-first guide to Re:T-UI: commands, settings, modules, Termux, notifications, aliases, and troubleshooting.">
+  <title>Re:T-UI</title>
+  <meta name="description" content="A visual, phone-first showcase for Re:T-UI, the command-first Android launcher with terminal styling, modules, Termux integration, settings, files, and automation.">
   <style>
     :root {
       color-scheme: dark;
@@ -705,6 +705,7 @@
       <a href="#commands">Commands</a>
       <a href="#customize">Customize</a>
       <a href="#modules">Modules</a>
+      <a href="modules.html">Module walkthrough</a>
       <a href="#module-maker">Build modules</a>
       <a href="#termux">Termux</a>
       <a href="#notifications">Notifications</a>
@@ -715,19 +716,19 @@
 
     <section class="hero" id="start">
       <div>
-        <div class="eyebrow">A phone-first guide built from the Re:T-UI wiki</div>
+        <div class="eyebrow">A command-first Android launcher</div>
         <h1>Make Android feel like a workstation</h1>
-        <p class="lead">Re:T-UI is a command-first Android launcher: part home screen, part terminal desk, part configurable control panel. This guide walks users through the first commands, the settings hub, customization, modules, notifications, Termux scripts, and where to go when something needs troubleshooting.</p>
+        <p class="lead">Re:T-UI is a command-first Android launcher: part home screen, part terminal desk, part configurable control panel. This page shows what the launcher is and where to start; the deeper walkthroughs stay separate so the showcase stays clean.</p>
         <div class="meta" aria-label="Capture metadata">
-          <span>Visual Android walkthrough</span>
+          <span>Visual Android showcase</span>
           <span>Screen: 1260x2800</span>
-          <span>Updated: 4 May 2026</span>
-          <span>Phone-first user guide</span>
+          <span>Updated: 7 May 2026</span>
+          <span>Separate tutorial pages</span>
         </div>
         <div class="cta-row" aria-label="Project links">
           <a href="https://github.com/DvilSpawn/Re-TUI">GitHub repo</a>
           <a href="https://github.com/DvilSpawn/Re-TUI/wiki">Wiki</a>
-          <a href="https://github.com/DvilSpawn/Re-TUI">GitHub</a>
+          <a href="modules.html">Module walkthrough</a>
           <a href="#downloads">Downloads</a>
           <a class="secondary" href="#module-maker">Codex module skill</a>
           <a class="secondary" href="#support">Support Re:T-UI</a>
@@ -816,13 +817,16 @@
     <section class="guide" id="modules">
       <div class="kicker">Modules</div>
       <h2>Small terminal panels turn phone state into instruments.</h2>
-      <p>Modules are Re:T-UI-owned terminal panels. They are not arbitrary Android plugins; they are focused surfaces for status, controls, script output, and guided input flows.</p>
+      <p>Modules are Re:T-UI-owned terminal panels. This showcase only gives the shape of the system; the command-by-command walkthrough lives on its own page so the landing page stays focused.</p>
       <div class="feature-grid">
         <div class="tile"><h3>Built-ins</h3><p>Music, notifications, timer, calendar, and reminder are current built-in modules.</p></div>
         <div class="tile"><h3>Reminder sessions</h3><p><code>module -prompt reminder add</code> asks for text, date, time, and confirmation inside the terminal input flow.</p></div>
         <div class="tile"><h3>Script modules</h3><p>Termux scripts can print text or structured lines like <code>::title</code>, <code>::body</code>, and <code>::suggest</code>.</p></div>
       </div>
       <div class="callout">$ module -show reminder<br>$ module -dock add notifications<br>$ module -add server termux:/data/data/com.termux/files/home/retui/server-health.sh<br>$ module -refresh server</div>
+      <div class="cta-row">
+        <a href="modules.html">Open the full module walkthrough</a>
+      </div>
     </section>
 
     <section class="guide split" id="module-maker">
