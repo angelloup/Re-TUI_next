@@ -91,7 +91,7 @@ public class UnlockManager extends StatusManager {
     @Override
     public void start() {
         if (running) return;
-        super.start();
+        running = true;
         registerLockReceiver();
         handler.post(unlockTimeRunnable);
     }
@@ -99,7 +99,7 @@ public class UnlockManager extends StatusManager {
     @Override
     public void stop() {
         if (!running) return;
-        super.stop();
+        running = false;
         unregisterLockReceiver();
         handler.removeCallbacks(unlockTimeRunnable);
     }

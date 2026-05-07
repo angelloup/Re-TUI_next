@@ -43,20 +43,30 @@ fi
 
 echo -e "elapsed_s\tpid\tcpu_pct\trss_kb\tpss_kb\tjava_heap_kb\tnative_heap_kb\tthreads\tfd_count" > "$OUT"
 
+to_kb() {
+  case "$1" in
+    *G) awk "BEGIN {printf \"%.0f\", ${1%G} * 1024 * 1024}" ;;
+    *M) awk "BEGIN {printf \"%.0f\", ${1%M} * 1024}" ;;
+    *K) awk "BEGIN {printf \"%.0f\", ${1%K}}" ;;
+    *) printf '%s' "${1:-0}" ;;
+  esac
+}
+
 END=$((SECONDS + DURATION_SECONDS))
 while [ "$SECONDS" -lt "$END" ]; do
   ELAPSED=$((DURATION_SECONDS - (END - SECONDS)))
   TOP_LINE="$("${ADB[@]}" shell top -b -n 1 -p "$PID" 2>/dev/null | tr -d '\r' | awk -v pid="$PID" '$1 == pid {print; exit}')"
-  CPU="$(printf '%s\n' "$TOP_LINE" | awk '{for (i=1; i<=NF; i++) if ($i ~ /%$/) {gsub("%","",$i); print $i; exit}}')"
-  RSS="$(printf '%s\n' "$TOP_LINE" | awk '{print $(NF-4)}' | sed 's/K$//')"
+  CPU="$(printf '%s\n' "$TOP_LINE" | awk '{print $9; exit}')"
+  RSS_RAW="$(printf '%s\n' "$TOP_LINE" | awk '{print $6; exit}')"
+  RSS="$(to_kb "$RSS_RAW")"
 
   MEM="$("${ADB[@]}" shell dumpsys meminfo "$PKG" 2>/dev/null | tr -d '\r')"
   PSS="$(printf '%s\n' "$MEM" | awk '/TOTAL PSS:/ {print $3; exit}')"
   JAVA_HEAP="$(printf '%s\n' "$MEM" | awk '/Java Heap:/ {print $3; exit}')"
   NATIVE_HEAP="$(printf '%s\n' "$MEM" | awk '/Native Heap:/ {print $3; exit}')"
 
-  THREADS="$("${ADB[@]}" shell ls "/proc/$PID/task" 2>/dev/null | wc -l | tr -d ' ')"
-  FDS="$("${ADB[@]}" shell ls "/proc/$PID/fd" 2>/dev/null | wc -l | tr -d ' ')"
+  THREADS="$("${ADB[@]}" shell ls "/proc/$PID/task" 2>/dev/null | wc -l | tr -d ' ' || true)"
+  FDS="$("${ADB[@]}" shell ls "/proc/$PID/fd" 2>/dev/null | wc -l | tr -d ' ' || true)"
 
   echo -e "${ELAPSED}\t${PID}\t${CPU:-0}\t${RSS:-0}\t${PSS:-0}\t${JAVA_HEAP:-0}\t${NATIVE_HEAP:-0}\t${THREADS:-0}\t${FDS:-0}" >> "$OUT"
   sleep "$INTERVAL_SECONDS"

@@ -46,8 +46,8 @@ public class MusicVisualizerView extends View {
         paint.setStyle(Paint.Style.FILL);
         paint.setColor(barColor);
         for (int i = 0; i < BAR_COUNT; i++) {
-            heights[i] = 0.18f + (random.nextFloat() * 0.2f);
-            targets[i] = heights[i];
+            heights[i] = MIN_BAR;
+            targets[i] = MIN_BAR;
         }
         setAlpha(0.72f);
     }
@@ -108,7 +108,7 @@ public class MusicVisualizerView extends View {
 
         if (playing) {
             postInvalidateOnAnimation();
-        } else if (!isCollapsed()) {
+        } else if (!isCollapsed() && isCollapsing()) {
             postInvalidateOnAnimation();
         }
     }
@@ -126,6 +126,15 @@ public class MusicVisualizerView extends View {
     private boolean isCollapsed() {
         for (float height : heights) {
             if (height > MIN_BAR + 0.02f) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean isCollapsing() {
+        for (float target : targets) {
+            if (target > MIN_BAR + 0.02f) {
                 return false;
             }
         }

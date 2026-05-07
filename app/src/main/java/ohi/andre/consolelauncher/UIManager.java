@@ -304,6 +304,8 @@ public class UIManager implements OnTouchListener {
     private static final String OUTPUT_TRAY_MODE_AUTO = "auto";
     private static final String OUTPUT_TRAY_MODE_TOGGLED = "toggled";
     private boolean keyboardVisible = false;
+    private boolean hasLastLayoutState = false;
+    private int lastObservedRootHeight = -1;
     private LinearLayout moduleDock;
     private final LinkedHashMap<String, TextView> moduleDockButtons = new LinkedHashMap<>();
     private String activeModule = "";
@@ -647,6 +649,13 @@ public class UIManager implements OnTouchListener {
 
         final EditText inputView = (EditText) mRootView.findViewById(R.id.input_view);
         TextView prefixView = (TextView) mRootView.findViewById(R.id.prefix_view);
+        inputView.setCursorVisible(false);
+        inputView.setShowSoftInputOnFocus(false);
+        inputView.setOnClickListener(v -> {
+            inputView.setShowSoftInputOnFocus(true);
+            inputView.requestFocus();
+            imm.showSoftInput(inputView, InputMethodManager.SHOW_IMPLICIT);
+        });
 
         applyBgRect(mContext, mRootView.findViewById(R.id.input_group), bgRectColors[INPUT_BGCOLOR_INDEX], bgColors[INPUT_BGCOLOR_INDEX], margins[INPUTAREA_MARGINS_INDEX], strokeWidth, cornerRadius, useDashed, XMLPrefsManager.getColor(Theme.input_color));
         applyShadow(inputView, outlineColors[INPUT_BGCOLOR_INDEX], shadowXOffset, shadowYOffset, shadowRadius);
@@ -846,12 +855,16 @@ public class UIManager implements OnTouchListener {
 
     private void updateTerminalTrayToggleText() {
         if (terminalTrayToggle != null) {
+            String text;
             if (isOutputTrayNativeMode()) {
-                terminalTrayToggle.setText("OUTPUT");
+                text = "OUTPUT";
             } else if (isOutputTrayAutoMode()) {
-                terminalTrayToggle.setText(terminalTrayExpanded ? "OUTPUT AUTO v" : "OUTPUT AUTO ^");
+                text = terminalTrayExpanded ? "OUTPUT AUTO v" : "OUTPUT AUTO ^";
             } else {
-                terminalTrayToggle.setText(terminalTrayExpanded ? "OUTPUT v" : "OUTPUT ^");
+                text = terminalTrayExpanded ? "OUTPUT v" : "OUTPUT ^";
+            }
+            if (!TextUtils.equals(terminalTrayToggle.getText(), text)) {
+                terminalTrayToggle.setText(text);
             }
         }
     }
@@ -1730,7 +1743,25 @@ public class UIManager implements OnTouchListener {
 //        scrolllllll
         rootView.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
             int heightDiff = rootView.getRootView().getHeight() - rootView.getHeight();
-            keyboardVisible = heightDiff > UIUtils.dpToPx(context, 200);
+            boolean newKeyboardVisible = heightDiff > UIUtils.dpToPx(context, 200);
+            int rootHeight = rootView.getHeight();
+            boolean layoutStateChanged = !hasLastLayoutState
+                    || keyboardVisible != newKeyboardVisible
+                    || lastObservedRootHeight != rootHeight;
+            keyboardVisible = newKeyboardVisible;
+            hasLastLayoutState = true;
+            lastObservedRootHeight = rootHeight;
+            if (!layoutStateChanged) {
+                return;
+            }
+            if (mTerminalAdapter != null && mTerminalAdapter.getInputView() instanceof EditText) {
+                EditText terminalInput = (EditText) mTerminalAdapter.getInputView();
+                terminalInput.setCursorVisible(keyboardVisible);
+                terminalInput.setShowSoftInputOnFocus(keyboardVisible);
+                if (!keyboardVisible && terminalInput.hasFocus()) {
+                    terminalInput.clearFocus();
+                }
+            }
             setNotificationWidgetCompact(rootView, keyboardVisible);
             applyTerminalTrayState(false);
             if (keyboardVisible && XMLPrefsManager.getBoolean(Behavior.auto_scroll)) {
@@ -4579,12 +4610,21 @@ public class UIManager implements OnTouchListener {
     }
 
     public void openKeyboard() {
+        if (mTerminalAdapter.getInputView() instanceof EditText) {
+            ((EditText) mTerminalAdapter.getInputView()).setShowSoftInputOnFocus(true);
+        }
         mTerminalAdapter.requestInputFocus();
         imm.showSoftInput(mTerminalAdapter.getInputView(), InputMethodManager.SHOW_FORCED);
     }
 
     public void closeKeyboard() {
         imm.hideSoftInputFromWindow(mTerminalAdapter.getInputWindowToken(), 0);
+        if (mTerminalAdapter.getInputView() instanceof EditText) {
+            EditText terminalInput = (EditText) mTerminalAdapter.getInputView();
+            terminalInput.setCursorVisible(false);
+            terminalInput.setShowSoftInputOnFocus(false);
+            terminalInput.clearFocus();
+        }
     }
 
     public void onStart(boolean openKeyboardOnStart) {
