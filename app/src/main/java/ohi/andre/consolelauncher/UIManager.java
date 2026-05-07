@@ -652,12 +652,15 @@ public class UIManager implements OnTouchListener {
         inputView.setCursorVisible(false);
         inputView.setShowSoftInputOnFocus(false);
         if (inputView instanceof OutlineEditText) {
-            ((OutlineEditText) inputView).setIdleCursorVisible(true);
+            OutlineEditText outlineInput = (OutlineEditText) inputView;
+            outlineInput.setIdleCursorColor(XMLPrefsManager.getColor(Theme.cursor_color));
+            outlineInput.setIdleCursorVisible(true);
         }
         inputView.setOnClickListener(v -> {
             if (inputView instanceof OutlineEditText) {
                 ((OutlineEditText) inputView).setIdleCursorVisible(false);
             }
+            inputView.setCursorVisible(true);
             inputView.setShowSoftInputOnFocus(true);
             inputView.requestFocus();
             imm.showSoftInput(inputView, InputMethodManager.SHOW_IMPLICIT);
@@ -4621,6 +4624,7 @@ public class UIManager implements OnTouchListener {
     public void openKeyboard() {
         if (mTerminalAdapter.getInputView() instanceof EditText) {
             EditText terminalInput = (EditText) mTerminalAdapter.getInputView();
+            terminalInput.setCursorVisible(true);
             terminalInput.setShowSoftInputOnFocus(true);
             if (terminalInput instanceof OutlineEditText) {
                 ((OutlineEditText) terminalInput).setIdleCursorVisible(false);

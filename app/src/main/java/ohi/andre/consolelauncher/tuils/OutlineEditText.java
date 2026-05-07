@@ -10,6 +10,7 @@ public class OutlineEditText extends androidx.appcompat.widget.AppCompatEditText
     private int drawTimes = -1;
     private final Paint idleCursorPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private boolean idleCursorVisible = false;
+    private int idleCursorColor = 0xffffffff;
 
     public OutlineEditText(Context context) {
         super(context);
@@ -41,6 +42,14 @@ public class OutlineEditText extends androidx.appcompat.widget.AppCompatEditText
         invalidate();
     }
 
+    public void setIdleCursorColor(int color) {
+        if (idleCursorColor == color) {
+            return;
+        }
+        idleCursorColor = color;
+        invalidate();
+    }
+
     private void drawIdleCursor(Canvas canvas) {
         if (!idleCursorVisible || isCursorVisible()) {
             return;
@@ -53,15 +62,15 @@ public class OutlineEditText extends androidx.appcompat.widget.AppCompatEditText
             x += getPaint().measureText(text, 0, end);
         }
 
-        int top = getExtendedPaddingTop();
-        int bottom = getHeight() - getExtendedPaddingBottom();
-        if (bottom <= top) {
-            top = getPaddingTop();
-            bottom = getHeight() - getPaddingBottom();
-        }
+        float density = getResources().getDisplayMetrics().density;
+        int lineHeight = Math.max(getLineHeight(), (int) (18f * density));
+        int centerY = getHeight() / 2;
+        int top = Math.max(getPaddingTop(), centerY - (lineHeight / 2));
+        int bottom = Math.min(getHeight() - getPaddingBottom(), centerY + (lineHeight / 2));
+        float width = Math.max(3f * density, 3f);
 
-        idleCursorPaint.setColor(getCurrentTextColor());
-        idleCursorPaint.setStrokeWidth(Math.max(2f, getResources().getDisplayMetrics().density * 2f));
-        canvas.drawLine(x, top, x, bottom, idleCursorPaint);
+        idleCursorPaint.setColor(idleCursorColor);
+        idleCursorPaint.setStyle(Paint.Style.FILL);
+        canvas.drawRect(x, top, x + width, bottom, idleCursorPaint);
     }
 }
