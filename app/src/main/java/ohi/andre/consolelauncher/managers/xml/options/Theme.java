@@ -606,7 +606,7 @@ public enum Theme implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "The text color of the music widget";
+            return "Legacy music widget text color. Current modules use module_name_text_color";
         }
     },
     notification_widget_text_color {
@@ -617,7 +617,7 @@ public enum Theme implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "The text color of the notification terminal";
+            return "Legacy notification terminal text color. Current modules use module_name_text_color";
         }
     },
     music_widget_button_color {
@@ -628,7 +628,7 @@ public enum Theme implements XMLPrefsSave {
 
         @Override
         public String info() {
-            return "The color of the music widget buttons border";
+            return "Legacy music widget button border color. Current modules use module_button_border_color";
         }
     },
     module_button_bg_color {

@@ -16,6 +16,7 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.Typeface;
 import android.location.Location;
@@ -28,6 +29,7 @@ import android.os.Handler;
 import androidx.core.content.ContextCompat;
 import androidx.core.app.ActivityCompat;
 import androidx.core.graphics.ColorUtils;
+import androidx.core.graphics.drawable.DrawableCompat;
 import androidx.core.widget.TextViewCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import android.widget.ProgressBar;
@@ -303,6 +305,9 @@ public class UIManager implements OnTouchListener {
     private static final String OUTPUT_TRAY_MODE_NATIVE = "native";
     private static final String OUTPUT_TRAY_MODE_AUTO = "auto";
     private static final String OUTPUT_TRAY_MODE_TOGGLED = "toggled";
+    private static final String OUTPUT_HEADER_MODE_NORMAL = "normal";
+    private static final String OUTPUT_HEADER_MODE_ARROWS = "arrows";
+    private static final String OUTPUT_HEADER_MODE_NONE = "none";
     private boolean keyboardVisible = false;
     private boolean hasLastLayoutState = false;
     private int lastObservedRootHeight = -1;
@@ -764,10 +769,33 @@ public class UIManager implements OnTouchListener {
         if (terminalTrayToggle == null) {
             return;
         }
-        int outputColor = AppearanceSettings.notificationWidgetTextColor();
+        if (isOutputHeaderNone()) {
+            terminalTrayToggle.setVisibility(View.GONE);
+            terminalTrayToggle.setOnClickListener(null);
+            terminalTrayToggle.setCompoundDrawablesRelativeWithIntrinsicBounds(null, null, null, null);
+            return;
+        }
+
+        terminalTrayToggle.setVisibility(View.VISIBLE);
+        int outputColor = AppearanceSettings.moduleNameTextColor();
         terminalTrayToggle.setTextColor(outputColor);
         terminalTrayToggle.setTypeface(Tuils.getTypeface(mContext), Typeface.BOLD);
         terminalTrayToggle.setTextSize(AppearanceSettings.outputHeaderTextSize());
+        if (isOutputHeaderArrowsOnly()) {
+            terminalTrayToggle.setMinWidth((int) Tuils.dpToPx(mContext, 48));
+            terminalTrayToggle.setPadding(
+                    (int) Tuils.dpToPx(mContext, 9),
+                    (int) Tuils.dpToPx(mContext, 3),
+                    (int) Tuils.dpToPx(mContext, 9),
+                    (int) Tuils.dpToPx(mContext, 3));
+        } else {
+            terminalTrayToggle.setMinWidth((int) Tuils.dpToPx(mContext, 130));
+            terminalTrayToggle.setPadding(
+                    (int) Tuils.dpToPx(mContext, 12),
+                    (int) Tuils.dpToPx(mContext, 2),
+                    (int) Tuils.dpToPx(mContext, 12),
+                    (int) Tuils.dpToPx(mContext, 2));
+        }
         try {
             GradientDrawable gd = (GradientDrawable) androidx.core.content.res.ResourcesCompat.getDrawable(
                     mContext.getResources(), R.drawable.apps_drawer_header_border, null);
@@ -864,6 +892,24 @@ public class UIManager implements OnTouchListener {
 
     private void updateTerminalTrayToggleText() {
         if (terminalTrayToggle != null) {
+            if (isOutputHeaderNone()) {
+                terminalTrayToggle.setText("");
+                terminalTrayToggle.setCompoundDrawablesRelativeWithIntrinsicBounds(null, null, null, null);
+                terminalTrayToggle.setVisibility(View.GONE);
+                return;
+            }
+            terminalTrayToggle.setVisibility(View.VISIBLE);
+
+            boolean collapsed = !terminalTrayExpanded;
+            if (isOutputHeaderArrowsOnly()) {
+                terminalTrayToggle.setText("");
+                terminalTrayToggle.setCompoundDrawablePadding(0);
+                Drawable arrow = outputHeaderArrow(collapsed);
+                terminalTrayToggle.setCompoundDrawablesRelativeWithIntrinsicBounds(null, arrow, null, null);
+                return;
+            }
+
+            terminalTrayToggle.setCompoundDrawablesRelativeWithIntrinsicBounds(null, null, null, null);
             String text;
             if (isOutputTrayNativeMode()) {
                 text = "OUTPUT";
@@ -890,17 +936,45 @@ public class UIManager implements OnTouchListener {
         return OUTPUT_TRAY_MODE_TOGGLED.equals(outputTrayMode());
     }
 
+    private boolean isOutputHeaderArrowsOnly() {
+        return OUTPUT_HEADER_MODE_ARROWS.equals(outputHeaderMode());
+    }
+
+    private boolean isOutputHeaderNone() {
+        return OUTPUT_HEADER_MODE_NONE.equals(outputHeaderMode());
+    }
+
+    private String outputHeaderMode() {
+        return AppearanceSettings.outputHeaderMode();
+    }
+
+    private Drawable outputHeaderArrow(boolean collapsed) {
+        Drawable drawable = ContextCompat.getDrawable(mContext,
+                collapsed ? R.drawable.ic_chevron_up : R.drawable.ic_chevron_down);
+        if (drawable == null) {
+            return null;
+        }
+        drawable = DrawableCompat.wrap(drawable.mutate());
+        DrawableCompat.setTint(drawable, AppearanceSettings.moduleNameTextColor());
+        int size = (int) Tuils.dpToPx(mContext, 18);
+        drawable.setBounds(0, 0, size, size);
+        return drawable;
+    }
+
     private String outputTrayMode() {
         String mode = XMLPrefsManager.get(Behavior.output_tray_mode);
         if (mode != null) {
             mode = mode.trim().toLowerCase(java.util.Locale.US);
+        }
+        if (OUTPUT_TRAY_MODE_TOGGLED.equals(mode) && isOutputHeaderNone()) {
+            return OUTPUT_TRAY_MODE_NATIVE;
         }
         if (OUTPUT_TRAY_MODE_AUTO.equals(mode)
                 || OUTPUT_TRAY_MODE_TOGGLED.equals(mode)
                 || OUTPUT_TRAY_MODE_NATIVE.equals(mode)) {
             return mode;
         }
-        if (XMLPrefsManager.getBoolean(Behavior.toggle_output_state)) {
+        if (!isOutputHeaderNone() && XMLPrefsManager.getBoolean(Behavior.toggle_output_state)) {
             return OUTPUT_TRAY_MODE_TOGGLED;
         }
         return OUTPUT_TRAY_MODE_NATIVE;

@@ -88,6 +88,12 @@ public class TuixtAdapter extends RecyclerView.Adapter<TuixtAdapter.ViewHolder> 
             holder.input.setVisibility(View.GONE);
             holder.options.setVisibility(View.VISIBLE);
             bindOptionSwitch(holder, item, new String[]{"native", "auto", "toggled"});
+        } else if (item == Behavior.output_header_mode) {
+            holder.toggle.setVisibility(View.GONE);
+            holder.colorPreview.setVisibility(View.GONE);
+            holder.input.setVisibility(View.GONE);
+            holder.options.setVisibility(View.VISIBLE);
+            bindOptionSwitch(holder, item, new String[]{"normal", "arrows", "none"});
         } else if (XMLPrefsSave.BOOLEAN.equals(item.type())) {
             holder.toggle.setVisibility(View.VISIBLE);
             holder.colorPreview.setVisibility(View.GONE);

@@ -2,6 +2,7 @@ package ohi.andre.consolelauncher.managers.settings;
 
 import ohi.andre.consolelauncher.managers.xml.options.Theme;
 import ohi.andre.consolelauncher.managers.xml.options.Ui;
+import ohi.andre.consolelauncher.managers.xml.options.Behavior;
 
 public final class AppearanceSettings {
 
@@ -28,7 +29,7 @@ public final class AppearanceSettings {
     }
 
     public static int musicWidgetTextColor() {
-        return LauncherSettings.getColor(Theme.music_widget_text_color);
+        return moduleNameTextColor();
     }
 
     public static int notificationWidgetBorderColor() {
@@ -36,7 +37,7 @@ public final class AppearanceSettings {
     }
 
     public static int notificationWidgetTextColor() {
-        return LauncherSettings.getColor(Theme.notification_widget_text_color);
+        return moduleNameTextColor();
     }
 
     public static int terminalWindowBackground() {
@@ -89,6 +90,16 @@ public final class AppearanceSettings {
 
     public static int outputHeaderTextSize() {
         return clampTextSize(LauncherSettings.getInt(Ui.output_header_text_size));
+    }
+
+    public static String outputHeaderMode() {
+        String value = LauncherSettings.get(Behavior.output_header_mode);
+        if (value == null) return "normal";
+        value = value.trim().toLowerCase(java.util.Locale.US);
+        if ("arrows".equals(value) || "none".equals(value)) {
+            return value;
+        }
+        return "normal";
     }
 
     private static int clampRadius(int radius) {

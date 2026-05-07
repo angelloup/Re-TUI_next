@@ -639,6 +639,22 @@ public enum Behavior implements XMLPrefsSave {
             return XMLPrefsSave.TEXT;
         }
     },
+    output_header_mode {
+        @Override
+        public String defaultValue() {
+            return "normal";
+        }
+
+        @Override
+        public String info() {
+            return "Output header display: normal, arrows, or none. None hides the manual tray toggle.";
+        }
+
+        @Override
+        public String type() {
+            return XMLPrefsSave.TEXT;
+        }
+    },
     alias_content_format {
         @Override
         public String defaultValue() {
