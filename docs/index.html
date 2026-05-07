@@ -536,21 +536,6 @@
       font-size: 0.92rem;
     }
 
-    .code-card {
-      margin-top: 18px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: rgba(5, 5, 5, 0.52);
-      color: var(--ink);
-      padding: 14px;
-      font: 0.86rem "SFMono-Regular", Consolas, monospace;
-      overflow-wrap: anywhere;
-    }
-
-    .code-card .muted {
-      color: var(--muted);
-    }
-
     .note {
       margin-top: 20px;
       border: 1px solid var(--line);
@@ -704,13 +689,9 @@
       <a href="#downloads">Downloads</a>
       <a href="#commands">Commands</a>
       <a href="#customize">Customize</a>
-      <a href="#modules">Modules</a>
-      <a href="modules.html">Module walkthrough</a>
-      <a href="#module-maker">Build modules</a>
-      <a href="#termux">Termux</a>
-      <a href="#notifications">Notifications</a>
+      <a href="modules.html">Modules</a>
+      <a href="#integrations">Integrations</a>
       <a href="#support">Support</a>
-      <a href="#troubleshooting">Troubleshooting</a>
       <a href="privacy.html">Privacy</a>
     </nav>
 
@@ -728,9 +709,8 @@
         <div class="cta-row" aria-label="Project links">
           <a href="https://github.com/DvilSpawn/Re-TUI">GitHub repo</a>
           <a href="https://github.com/DvilSpawn/Re-TUI/wiki">Wiki</a>
-          <a href="modules.html">Module walkthrough</a>
+          <a href="modules.html">Modules</a>
           <a href="#downloads">Downloads</a>
-          <a class="secondary" href="#module-maker">Codex module skill</a>
           <a class="secondary" href="#support">Support Re:T-UI</a>
         </div>
       </div>
@@ -744,7 +724,7 @@
         <div class="kicker">First launch</div>
         <h2>The home screen is also the command line.</h2>
         <p>When Re:T-UI opens, it drops you into a terminal-style launcher. You can launch apps by name, type commands directly, use suggestions under the prompt, or open friendly surfaces such as <strong>settings</strong> and <strong>files</strong>.</p>
-        <p>The fastest way to learn the shape of the system is still the simplest terminal move: type <strong>help</strong>. For a focused explanation, type <strong>help &lt;command&gt;</strong>, such as <strong>help alias</strong>, <strong>help wallpaper</strong>, or <strong>help module</strong>.</p>
+        <p>The fastest way to learn the shape of the system is still the simplest terminal move: type <strong>help</strong>. For a focused explanation, type <strong>help &lt;command&gt;</strong>, such as <strong>help alias</strong>, <strong>help wallpaper</strong>, or <strong>help apps</strong>.</p>
         <div class="callout">$ help<br>$ help wallpaper<br>$ settings<br>$ files</div>
       </div>
       <figure>
@@ -781,8 +761,8 @@
         <div class="tile"><code>apps -ls</code><p>Inspect app visibility, details, groups, and drawer state.</p></div>
         <div class="tile"><code>wallpaper -auto</code><p>Derive a coordinated theme palette from the current wallpaper.</p></div>
         <div class="tile"><code>preset -save name</code><p>Save a stable theme snapshot after you like the look.</p></div>
-        <div class="tile"><code>module -ls</code><p>List built-in and script-backed terminal modules.</p></div>
-        <div class="tile"><code>notifications -access</code><p>Open Android notification access so Re:T-UI can display notification state.</p></div>
+        <div class="tile"><code>alias -add ll apps -ls</code><p>Create short commands for workflows you repeat often.</p></div>
+        <div class="tile"><code>search -gg query</code><p>Launch web searches without leaving the command-first flow.</p></div>
         <div class="tile"><code>termux -setup</code><p>Print the checklist for script dispatch through Termux.</p></div>
         <div class="tile"><code>debug -settings</code><p>Inspect effective runtime settings when the UI does not match what you expected.</p></div>
       </div>
@@ -814,46 +794,12 @@
       </div>
     </section>
 
-    <section class="guide" id="modules">
-      <div class="kicker">Modules</div>
-      <h2>Small terminal panels turn phone state into instruments.</h2>
-      <p>Modules are Re:T-UI-owned terminal panels. This showcase only gives the shape of the system; the command-by-command walkthrough lives on its own page so the landing page stays focused.</p>
-      <div class="feature-grid">
-        <div class="tile"><h3>Built-ins</h3><p>Music, notifications, timer, calendar, and reminder are current built-in modules.</p></div>
-        <div class="tile"><h3>Reminder sessions</h3><p><code>module -prompt reminder add</code> asks for text, date, time, and confirmation inside the terminal input flow.</p></div>
-        <div class="tile"><h3>Script modules</h3><p>Termux scripts can print text or structured lines like <code>::title</code>, <code>::body</code>, and <code>::suggest</code>.</p></div>
-      </div>
-      <div class="callout">$ module -show reminder<br>$ module -dock add notifications<br>$ module -add server termux:/data/data/com.termux/files/home/retui/server-health.sh<br>$ module -refresh server</div>
-      <div class="cta-row">
-        <a href="modules.html">Open the full module walkthrough</a>
-      </div>
-    </section>
-
-    <section class="guide split" id="module-maker">
+    <section class="guide split" id="integrations">
       <div class="copy">
-        <div class="kicker">Codex skill</div>
-        <h2>Generate Termux-backed modules without guessing the plumbing.</h2>
-        <p>The Re:T-UI module maker skill teaches Codex how to create launcher-friendly shell modules: scripts that print <code>::title</code>, <code>::body</code>, and <code>::suggest</code> lines, keep expensive work in Termux only when needed, and let Re:T-UI own UI behaviors such as pagination, reply prompts, refresh chips, and quiet module controls.</p>
-        <p>It is especially useful for small status panels like battery, server health, progress bars, weather, ASCII output, and notification-style pagers where the launcher should render the surface and the script should stay focused on clean data.</p>
-        <div class="terminal-list">
-          <div><strong>Launcher first:</strong> use Re:T-UI variables and module primitives when the launcher already knows the state.</div>
-          <div><strong>Termux when needed:</strong> use Linux tools and Termux:API for data that Android only exposes through the shell layer.</div>
-          <div><strong>Clean setup:</strong> keep Termux script commands separate from Re:T-UI registration commands.</div>
-        </div>
-      </div>
-      <div class="note">
-        <p><strong>Share the skill as a folder.</strong> A Codex user can install it by copying the folder below into their Codex skills directory.</p>
-        <div class="code-card">~/.codex/skills/retui-module-maker/<br><span class="muted">  SKILL.md<br>  references/module-contract.md<br>  references/linux-termux-programming.md<br>  references/pagination-and-reply.md</span></div>
-        <p>Once installed, a prompt can be as small as: <code>Use the retui-module-maker skill to build me a Tempo module.</code></p>
-      </div>
-    </section>
-
-    <section class="guide split" id="termux">
-      <div class="copy">
-        <div class="kicker">Termux and automation</div>
+        <div class="kicker">Integrations and automation</div>
         <h2>Re:T-UI can dispatch scripts, but Termux remains the real shell.</h2>
         <p>The launcher is designed for non-interactive script runs. Use <strong>termux -run</strong> for scripts that print output and exit. Open Termux directly for editors, SSH, REPLs, and long interactive work.</p>
-        <p>TBridge handles Termux diagnostics, script runtime support, module refreshes, callback/token tests, and future helper installation. Re:T-UI Files handles file navigation.</p>
+        <p>TBridge handles Termux diagnostics, script runtime support, callback/token tests, and future helper installation. Re:T-UI Files handles file navigation.</p>
         <div class="terminal-list">
           <div><strong>Setup:</strong> <code>termux -setup</code>, then enable external commands in Termux properties.</div>
           <div><strong>Scripts:</strong> create a stable folder such as <code>~/retui</code> and make scripts executable.</div>
@@ -861,21 +807,8 @@
         </div>
       </div>
       <div class="note">
-        <p><strong>Automation should stay inspectable.</strong> Prefer aliases, scripts, callbacks, modules, and webhooks that the user can read and edit.</p>
-        <p>Callbacks are token-gated and narrow. Re:T-UI accepts safe actions such as output, notify, and module updates. It does not accept arbitrary external command execution through callbacks.</p>
-      </div>
-    </section>
-
-    <section class="guide" id="notifications">
-      <div class="kicker">Notifications, apps, and files</div>
-      <h2>The launcher keeps Android pieces visible without becoming ordinary.</h2>
-      <div class="feature-grid">
-        <div class="tile"><h3>Notifications</h3><p>Use <code>notifications -on</code>, <code>-off</code>, <code>-prev</code>, <code>-next</code>, <code>-open</code>, and <code>-reply</code>. Bind reply actions with <code>reply -bind app</code>.</p></div>
-        <div class="tile"><h3>App drawer</h3><p>Typing an app name launches it. Use <code>apps</code> commands to hide apps, show apps, inspect details, and build drawer groups.</p></div>
-        <div class="tile"><h3>Re:T-UI Files</h3><p>Use <code>files</code> for a terminal-style file tree with commands like <code>cd</code>, <code>ls</code>, <code>open</code>, <code>share</code>, and <code>refresh</code>.</p></div>
-      </div>
-      <div class="note">
-        <p>If notifications appear in the wrong place, remember that the notification widget and output terminal history are separate surfaces. Check <strong>notifications.xml</strong> and <strong>debug -settings</strong>.</p>
+        <p><strong>Automation should stay inspectable.</strong> Prefer aliases, scripts, callbacks, and webhooks that the user can read and edit.</p>
+        <p>Callbacks are token-gated and narrow. Re:T-UI accepts safe actions such as output and notify. It does not accept arbitrary external command execution through callbacks.</p>
       </div>
     </section>
 
@@ -889,8 +822,7 @@
         <div class="tile"><h3>Free add-ons</h3><p>Re:T-UI add-ons stay available through GitHub. Start with <a href="https://github.com/DvilSpawn/Re-TUI-FM/releases">Re:TUI-FM</a> for companion functionality without a separate purchase.</p></div>
         <div class="tile"><h3>GitHub testing</h3><p>Use <a href="https://github.com/DvilSpawn/Re-TUI/issues">GitHub issues</a> for reproducible bugs, test notes, and release feedback before changes become stable.</p></div>
         <div class="tile"><h3>GitHub and wiki</h3><p>Read the source on <a href="https://github.com/DvilSpawn/Re-TUI">GitHub</a>, track docs in the <a href="https://github.com/DvilSpawn/Re-TUI/wiki">wiki</a>, and use public issues for reproducible bugs.</p></div>
-        <div class="tile"><h3>Module makers</h3><p>Share the Codex skill folder with users who want a one-prompt path from idea to Termux-backed Re:T-UI module script.</p></div>
-        <div class="tile"><h3>Community testing</h3><p>Small reports matter most when they include the command used, the module output, the Android version, and whether the build came from Play Store or a local test build.</p></div>
+        <div class="tile"><h3>Community testing</h3><p>Small reports matter most when they include the command used, the visible output, the Android version, and whether the build came from Play Store or a local test build.</p></div>
         <div class="tile"><h3>Privacy policy</h3><p>Read the <a href="privacy.html">privacy policy</a> for camera, notifications, contacts, calendar, phone, location, Termux, backup, and preset behavior.</p></div>
       </div>
     </section>

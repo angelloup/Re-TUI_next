@@ -393,6 +393,7 @@
       <a href="#calendar">Calendar</a>
       <a href="#reminder">Reminder</a>
       <a href="#custom">Custom</a>
+      <a href="#module-maker">Build</a>
       <a href="#troubleshooting">Troubleshooting</a>
     </nav>
 
@@ -653,6 +654,27 @@ $ module -dock add server</pre>
       </div>
       <div class="note">
         <p><strong>Battery rule:</strong> do not build modules around <code>while true</code> loops or one-second polling. Let the launcher show cached output while idle, then refresh from a command, suggestion, callback, or Android event.</p>
+      </div>
+    </section>
+
+    <section class="guide split" id="module-maker">
+      <div>
+        <div class="kicker">Build modules with Codex</div>
+        <h2>Generate Termux-backed modules without guessing the plumbing.</h2>
+        <p>The Re:T-UI module maker skill teaches Codex how to create launcher-friendly shell modules: scripts that print <code>::title</code>, <code>::body</code>, and <code>::suggest</code> lines, keep expensive work in Termux only when needed, and let Re:T-UI own UI behaviors such as pagination, reply prompts, refresh chips, and quiet module controls.</p>
+        <div class="command-list">
+          <div><strong>Launcher first:</strong> use Re:T-UI variables and module primitives when the launcher already knows the state.</div>
+          <div><strong>Termux when needed:</strong> use Linux tools and Termux:API for data Android only exposes through the shell layer.</div>
+          <div><strong>Clean setup:</strong> keep Termux script commands separate from Re:T-UI registration commands.</div>
+        </div>
+      </div>
+      <div class="note">
+        <p><strong>Share the skill as a folder.</strong> A Codex user can install it by copying the folder below into their Codex skills directory.</p>
+        <pre>~/.codex/skills/retui-module-maker/
+  SKILL.md
+  references/module-contract.md
+  references/linux-termux-programming.md
+  references/pagination-and-reply.md</pre>
       </div>
     </section>
 
