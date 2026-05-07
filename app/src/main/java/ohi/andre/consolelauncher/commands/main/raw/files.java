@@ -2,6 +2,7 @@ package ohi.andre.consolelauncher.commands.main.raw;
 
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.graphics.Color;
 
 import ohi.andre.consolelauncher.R;
 import ohi.andre.consolelauncher.commands.CommandAbstraction;
@@ -39,14 +40,16 @@ public class files implements CommandAbstraction {
             intent.putExtra("command", command);
         }
 
+        int terminalSurfaceColor = terminalSurfaceColor();
+
         intent.putExtra("theme_bg", XMLPrefsManager.getColor(Theme.bg_color));
         intent.putExtra("theme_text", XMLPrefsManager.getColor(Theme.output_color));
         intent.putExtra("theme_border", XMLPrefsManager.getColor(Theme.input_color));
-        intent.putExtra("terminal_bg", AppearanceSettings.terminalWindowBackground());
-        intent.putExtra("module_bg_color", AppearanceSettings.terminalWindowBackground());
+        intent.putExtra("terminal_bg", terminalSurfaceColor);
+        intent.putExtra("module_bg_color", terminalSurfaceColor);
         intent.putExtra("module_text_color", AppearanceSettings.moduleNameTextColor());
         intent.putExtra("module_border_color", AppearanceSettings.moduleButtonBorderColor());
-        intent.putExtra("module_header_bg_color", AppearanceSettings.terminalWindowBackground());
+        intent.putExtra("module_header_bg_color", terminalSurfaceColor);
         intent.putExtra("module_header_text_color", AppearanceSettings.moduleNameTextColor());
         intent.putExtra("module_button_bg_color", AppearanceSettings.moduleButtonBackgroundColor());
         intent.putExtra("module_button_text_color", AppearanceSettings.moduleNameTextColor());
@@ -80,6 +83,15 @@ public class files implements CommandAbstraction {
             return "Re:T-UI Files is not installed.";
         }
         return null;
+    }
+
+    private int terminalSurfaceColor() {
+        int terminalBg = AppearanceSettings.terminalWindowBackground();
+        if (Color.alpha(terminalBg) > 0) {
+            return terminalBg;
+        }
+        int outputBg = XMLPrefsManager.getColor(Theme.output_bgrectcolor);
+        return Color.alpha(outputBg) > 0 ? outputBg : terminalBg;
     }
 
     @Override
