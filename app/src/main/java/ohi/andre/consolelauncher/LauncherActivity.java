@@ -315,7 +315,6 @@ public class LauncherActivity extends AppCompatActivity implements Reloadable {
 
         boolean notifications = NotificationSettings.showTerminal()
                 || NotificationSettings.printToOutput()
-                || ModuleManager.getDock(this).contains(ModuleManager.NOTIFICATIONS)
                 || ModuleManager.NOTIFICATIONS.equals(ModuleManager.getActiveModule(this));
         if (notifications) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {

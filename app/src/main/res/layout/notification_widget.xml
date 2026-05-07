@@ -59,9 +59,9 @@
                     android:background="@android:color/transparent"
                     android:fontFamily="monospace"
                     android:gravity="center"
-                    android:text="&lt;"
+                    android:text="[previous]"
                     android:textColor="#FFFFFF"
-                    android:textSize="24sp" />
+                    android:textSize="14sp" />
 
                 <TextView
                     android:id="@+id/notification_widget_next"
@@ -72,9 +72,9 @@
                     android:background="@android:color/transparent"
                     android:fontFamily="monospace"
                     android:gravity="center"
-                    android:text="&gt;"
+                    android:text="[next]"
                     android:textColor="#FFFFFF"
-                    android:textSize="24sp" />
+                    android:textSize="14sp" />
             </LinearLayout>
         </LinearLayout>
     </FrameLayout>

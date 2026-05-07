@@ -23,7 +23,9 @@ public class NotificationMonitorService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        return START_STICKY;
+        ensureCollectorRunning();
+        stopSelf(startId);
+        return START_NOT_STICKY;
     }
 
     private void ensureCollectorRunning() {

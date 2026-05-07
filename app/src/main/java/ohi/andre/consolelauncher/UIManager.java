@@ -366,10 +366,12 @@ public class UIManager implements OnTouchListener {
     private final Runnable musicTimeRunnable = new Runnable() {
         @Override
         public void run() {
+            boolean shouldContinue = false;
             if ("internal".equals(activeMusicSource)) {
                 View musicWidget = mRootView.findViewById(R.id.music_widget);
                 if (musicWidget != null && musicWidget.getVisibility() == View.VISIBLE) {
                     if (mainPack != null && mainPack.player != null && mainPack.player.isPlaying()) {
+                        shouldContinue = true;
                         Intent intent = new Intent(ACTION_MUSIC_CHANGED);
                         int index = mainPack.player.getSongIndex();
                         if (index != -1) {
@@ -387,7 +389,9 @@ public class UIManager implements OnTouchListener {
                     }
                 }
             }
-            handler.postDelayed(this, 1000);
+            if (shouldContinue) {
+                handler.postDelayed(this, 1000);
+            }
         }
     };
 
@@ -804,13 +808,9 @@ public class UIManager implements OnTouchListener {
             return;
         }
 
-        int collapsedHeight = calculateCollapsedTerminalTrayHeight();
-        int expandedHeight = UIUtils.dpToPx(mContext, keyboardVisible ? 220 : 320);
         int rootHeight = mRootView != null ? mRootView.getHeight() : 0;
-        if (rootHeight > 0) {
-            int cap = (int) (rootHeight * (keyboardVisible ? 0.34f : 0.48f));
-            expandedHeight = Math.max(collapsedHeight, Math.min(expandedHeight, cap));
-        }
+        int collapsedHeight = calculateCollapsedTerminalTrayHeight();
+        int expandedHeight = calculateExpandedTerminalTrayHeight(rootHeight, collapsedHeight);
 
         ViewGroup.LayoutParams params = terminalContainer.getLayoutParams();
         int targetHeight;
@@ -834,6 +834,14 @@ public class UIManager implements OnTouchListener {
         if (refocusInput && mTerminalAdapter != null) {
             mTerminalAdapter.requestInputFocus();
         }
+    }
+
+    private int calculateExpandedTerminalTrayHeight(int rootHeight, int collapsedHeight) {
+        if (rootHeight <= 0) {
+            return Math.max(collapsedHeight, UIUtils.dpToPx(mContext, keyboardVisible ? 220 : 320));
+        }
+        float trayPercent = keyboardVisible ? 0.34f : 0.48f;
+        return Math.max(collapsedHeight, Math.round(rootHeight * trayPercent));
     }
 
     private void updateTerminalTrayToggleText() {
@@ -1049,9 +1057,11 @@ public class UIManager implements OnTouchListener {
         }
         styleMusicWidget(musicWidget);
         updateMusicModuleText(musicWidget);
+        scheduleInternalMusicTickerIfNeeded();
     }
 
     private void showNotificationsModule() {
+        ensureNotificationServiceForModule();
         View notificationWidget = LayoutInflater.from(mContext).inflate(R.layout.notification_widget, homeWidgetsContainer, false);
         homeWidgetsContainer.addView(notificationWidget);
         notificationWidget.setVisibility(View.VISIBLE);
@@ -1083,6 +1093,18 @@ public class UIManager implements OnTouchListener {
         }
         styleNotificationWidget(notificationWidget);
         LocalBroadcastManager.getInstance(mContext.getApplicationContext()).sendBroadcast(new Intent(ACTION_REQUEST_NOTIFICATION_FEED));
+    }
+
+    private void ensureNotificationServiceForModule() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN_MR2 || !Tuils.hasNotificationAccess(mContext)) {
+            return;
+        }
+        try {
+            mContext.startService(new Intent(mContext, NotificationService.class));
+            NotificationService.requestListenerRebind(mContext);
+        } catch (Exception e) {
+            Tuils.log(e);
+        }
     }
 
     private void showTextModule(String module, String text) {
@@ -1670,6 +1692,7 @@ public class UIManager implements OnTouchListener {
                             }
                         } catch (Exception ignored) {}
                     }
+                    scheduleInternalMusicTickerIfNeeded();
                 } else if (action.equals(ACTION_NOTIFICATION_FEED)) {
                     ArrayList<NotificationService.Notification> notifications = intent.getParcelableArrayListExtra(EXTRA_NOTIFICATION_LIST);
                     updateNotificationWidget(rootView, notifications);
@@ -3856,7 +3879,7 @@ public class UIManager implements OnTouchListener {
         View border = notificationWidget.findViewById(R.id.notification_widget_border);
         if (border != null) {
             ViewGroup.LayoutParams lp = border.getLayoutParams();
-            lp.height = (int) Tuils.dpToPx(mContext, notificationCompactForKeyboard ? 58 : 132);
+            lp.height = calculateNotificationWidgetHeight();
             border.setLayoutParams(lp);
         }
 
@@ -3872,6 +3895,15 @@ public class UIManager implements OnTouchListener {
                 notificationWidget.getPaddingRight(),
                 (int) Tuils.dpToPx(mContext, notificationCompactForKeyboard ? 6 : 12)
         );
+    }
+
+    private int calculateNotificationWidgetHeight() {
+        int rootHeight = mRootView != null ? mRootView.getHeight() : 0;
+        if (rootHeight <= 0) {
+            return (int) Tuils.dpToPx(mContext, notificationCompactForKeyboard ? 58 : 132);
+        }
+        float modulePercent = notificationCompactForKeyboard ? 0.08f : 0.18f;
+        return Math.round(rootHeight * modulePercent);
     }
 
     private void styleNotificationPagerButton(View button) {
@@ -4646,8 +4678,26 @@ public class UIManager implements OnTouchListener {
         if (unlockManager != null) unlockManager.stop();
     }
 
+    private void scheduleInternalMusicTickerIfNeeded() {
+        if (handler == null) {
+            return;
+        }
+        handler.removeCallbacks(musicTimeRunnable);
+        if (!"internal".equals(activeMusicSource)) {
+            return;
+        }
+        View musicWidget = mRootView != null ? mRootView.findViewById(R.id.music_widget) : null;
+        if (musicWidget != null
+                && musicWidget.getVisibility() == View.VISIBLE
+                && mainPack != null
+                && mainPack.player != null
+                && mainPack.player.isPlaying()) {
+            handler.post(musicTimeRunnable);
+        }
+    }
+
     public void resume() {
-        handler.post(musicTimeRunnable);
+        scheduleInternalMusicTickerIfNeeded();
         scheduleTypefaceRefreshes();
 
         if (ramManager != null) ramManager.start();

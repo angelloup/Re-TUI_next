@@ -81,6 +81,7 @@ public class NotificationService extends NotificationListenerService {
     boolean enabled, click, longClick, active, terminalNotifications;
 
     Queue<StatusBarNotification> queue;
+    private final Object queueLock = new Object();
 
     final String PKG = "%pkg", APP = "%app", NEWLINE = "%n";
     final Pattern timePattern = Pattern.compile("^%t[0-9]*$");
@@ -186,6 +187,7 @@ public class NotificationService extends NotificationListenerService {
         @Override
         public void onPlaybackStateChanged(PlaybackState state) {
             broadcastMediaMetadata();
+            scheduleMediaProgressUpdates();
         }
     };
 
@@ -238,6 +240,7 @@ public class NotificationService extends NotificationListenerService {
             }
         }
         broadcastMediaMetadata();
+        scheduleMediaProgressUpdates();
     }
 
     private void broadcastMediaMetadata() {
@@ -387,17 +390,46 @@ public class NotificationService extends NotificationListenerService {
         @Override
         public void run() {
             boolean anyPlaying = false;
-            for (MediaController controller : activeControllers) {
-                PlaybackState state = controller.getPlaybackState();
-                if (state != null && state.getState() == PlaybackState.STATE_PLAYING) {
-                    anyPlaying = true;
-                    break;
+            synchronized (activeControllers) {
+                for (MediaController controller : activeControllers) {
+                    PlaybackState state = controller.getPlaybackState();
+                    if (state != null && state.getState() == PlaybackState.STATE_PLAYING) {
+                        anyPlaying = true;
+                        break;
+                    }
                 }
             }
             if (anyPlaying) {
                 broadcastMediaMetadata();
+                handler.postDelayed(this, 1000);
             }
-            handler.postDelayed(this, 1000);
+        }
+    };
+
+    private final Runnable pastNotificationCleanupRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (!active || pastNotifications == null || pastNotifications.isEmpty()) {
+                return;
+            }
+
+            long now = System.currentTimeMillis();
+            Iterator<Map.Entry<String, List<Notification>>> entries = pastNotifications.entrySet().iterator();
+            while (entries.hasNext()) {
+                Map.Entry<String, List<Notification>> entry = entries.next();
+                List<Notification> notifications = entry.getValue();
+                Iterator<Notification> it = notifications.iterator();
+                while (it.hasNext()) {
+                    if (now - it.next().time >= UPDATE_TIME) it.remove();
+                }
+                if (notifications.isEmpty()) {
+                    entries.remove();
+                }
+            }
+
+            if (!pastNotifications.isEmpty()) {
+                handler.postDelayed(this, UPDATE_TIME);
+            }
         }
     };
 
@@ -605,8 +637,10 @@ public class NotificationService extends NotificationListenerService {
                                 List<Notification> ns = new ArrayList<>();
                                 ns.add(n);
                                 pastNotifications.put(pack, ns);
+                                schedulePastNotificationCleanup();
                             } else if(found == 0) {
                                 pastNotifications.get(pack).add(n);
+                                schedulePastNotificationCleanup();
                             }
 
                             n.appName = appName;
@@ -645,11 +679,14 @@ public class NotificationService extends NotificationListenerService {
                         }
                     }
 
-                    try {
-                        sleep(UPDATE_TIME);
-                    } catch (InterruptedException e) {
-                        Tuils.log(e);
-                        return;
+                    synchronized (queueLock) {
+                        while (!isInterrupted() && (queue == null || queue.isEmpty())) {
+                            try {
+                                queueLock.wait();
+                            } catch (InterruptedException e) {
+                                return;
+                            }
+                        }
                     }
                 }
             }
@@ -657,24 +694,6 @@ public class NotificationService extends NotificationListenerService {
 
         manager = getPackageManager();
         pastNotifications = new HashMap<>();
-
-        handler.post(new Runnable() {
-            @Override
-            public void run() {
-                long now = System.currentTimeMillis();
-
-                for (Map.Entry<String, List<Notification>> entry : pastNotifications.entrySet()) {
-                    List<Notification> notifications = entry.getValue();
-
-                    Iterator<Notification> it = notifications.iterator();
-                    while (it.hasNext()) {
-                        if (now - it.next().time >= UPDATE_TIME) it.remove();
-                    }
-                }
-
-                handler.postDelayed(this, UPDATE_TIME);
-            }
-        });
 
         queue = new ArrayBlockingQueue<>(5);
         LocalBroadcastManager.getInstance(this).registerReceiver(feedRequestReceiver, new android.content.IntentFilter(ACTION_REQUEST_NOTIFICATION_FEED));
@@ -684,7 +703,7 @@ public class NotificationService extends NotificationListenerService {
         bgThread.start();
 
         setupMediaSession();
-        handler.post(progressUpdateRunnable);
+        scheduleMediaProgressUpdates();
 
         active = true;
     }
@@ -709,6 +728,8 @@ public class NotificationService extends NotificationListenerService {
 
     private void dispose() {
         cancelExternalMusicClear();
+        handler.removeCallbacks(progressUpdateRunnable);
+        handler.removeCallbacks(pastNotificationCleanupRunnable);
         LocalBroadcastManager.getInstance(this).unregisterReceiver(controlReceiver);
         if (mediaSessionManager != null && sessionsChangedListener != null) {
             mediaSessionManager.removeOnActiveSessionsChangedListener(sessionsChangedListener);
@@ -730,6 +751,9 @@ public class NotificationService extends NotificationListenerService {
         }
 
         bgThread.interrupt();
+        synchronized (queueLock) {
+            queueLock.notifyAll();
+        }
         bgThread = null;
 
         if(pastNotifications != null) {
@@ -774,6 +798,7 @@ public class NotificationService extends NotificationListenerService {
         }
 
         queue.offer(sbn);
+        notifyNotificationWorker();
     }
 
     private void handleMediaSessionToken(android.media.session.MediaSession.Token token, String packageName) {
@@ -834,6 +859,7 @@ public class NotificationService extends NotificationListenerService {
             for (StatusBarNotification sbn : activeNotifications) {
                 if (sbn != null) {
                     queue.offer(sbn);
+                    notifyNotificationWorker();
                 }
             }
         } catch (SecurityException e) {
@@ -856,6 +882,34 @@ public class NotificationService extends NotificationListenerService {
             notificationManager.dispose();
         }
         notificationManager = NotificationManager.create(this);
+    }
+
+    private void scheduleMediaProgressUpdates() {
+        handler.removeCallbacks(progressUpdateRunnable);
+        boolean anyPlaying = false;
+        synchronized (activeControllers) {
+            for (MediaController controller : activeControllers) {
+                PlaybackState state = controller.getPlaybackState();
+                if (state != null && state.getState() == PlaybackState.STATE_PLAYING) {
+                    anyPlaying = true;
+                    break;
+                }
+            }
+        }
+        if (anyPlaying) {
+            handler.post(progressUpdateRunnable);
+        }
+    }
+
+    private void schedulePastNotificationCleanup() {
+        handler.removeCallbacks(pastNotificationCleanupRunnable);
+        handler.postDelayed(pastNotificationCleanupRunnable, UPDATE_TIME);
+    }
+
+    private void notifyNotificationWorker() {
+        synchronized (queueLock) {
+            queueLock.notifyAll();
+        }
     }
 
     private void reloadNotificationConfig() {
