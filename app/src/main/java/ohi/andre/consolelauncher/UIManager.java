@@ -651,7 +651,13 @@ public class UIManager implements OnTouchListener {
         TextView prefixView = (TextView) mRootView.findViewById(R.id.prefix_view);
         inputView.setCursorVisible(false);
         inputView.setShowSoftInputOnFocus(false);
+        if (inputView instanceof OutlineEditText) {
+            ((OutlineEditText) inputView).setIdleCursorVisible(true);
+        }
         inputView.setOnClickListener(v -> {
+            if (inputView instanceof OutlineEditText) {
+                ((OutlineEditText) inputView).setIdleCursorVisible(false);
+            }
             inputView.setShowSoftInputOnFocus(true);
             inputView.requestFocus();
             imm.showSoftInput(inputView, InputMethodManager.SHOW_IMPLICIT);
@@ -1758,6 +1764,9 @@ public class UIManager implements OnTouchListener {
                 EditText terminalInput = (EditText) mTerminalAdapter.getInputView();
                 terminalInput.setCursorVisible(keyboardVisible);
                 terminalInput.setShowSoftInputOnFocus(keyboardVisible);
+                if (terminalInput instanceof OutlineEditText) {
+                    ((OutlineEditText) terminalInput).setIdleCursorVisible(!keyboardVisible);
+                }
                 if (!keyboardVisible && terminalInput.hasFocus()) {
                     terminalInput.clearFocus();
                 }
@@ -4611,7 +4620,11 @@ public class UIManager implements OnTouchListener {
 
     public void openKeyboard() {
         if (mTerminalAdapter.getInputView() instanceof EditText) {
-            ((EditText) mTerminalAdapter.getInputView()).setShowSoftInputOnFocus(true);
+            EditText terminalInput = (EditText) mTerminalAdapter.getInputView();
+            terminalInput.setShowSoftInputOnFocus(true);
+            if (terminalInput instanceof OutlineEditText) {
+                ((OutlineEditText) terminalInput).setIdleCursorVisible(false);
+            }
         }
         mTerminalAdapter.requestInputFocus();
         imm.showSoftInput(mTerminalAdapter.getInputView(), InputMethodManager.SHOW_FORCED);
@@ -4623,6 +4636,9 @@ public class UIManager implements OnTouchListener {
             EditText terminalInput = (EditText) mTerminalAdapter.getInputView();
             terminalInput.setCursorVisible(false);
             terminalInput.setShowSoftInputOnFocus(false);
+            if (terminalInput instanceof OutlineEditText) {
+                ((OutlineEditText) terminalInput).setIdleCursorVisible(true);
+            }
             terminalInput.clearFocus();
         }
     }
