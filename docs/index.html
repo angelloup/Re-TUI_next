@@ -381,8 +381,16 @@
       margin-top: 22px;
     }
 
+    .download-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 22px;
+    }
+
     .tile,
-    .step {
+    .step,
+    .download-card {
       min-height: 132px;
       border: 1px solid var(--line);
       border-radius: 8px;
@@ -412,9 +420,41 @@
     }
 
     .tile p,
-    .step p {
+    .step p,
+    .download-card p {
       margin: 8px 0 0;
       font-size: 0.92rem;
+    }
+
+    .download-card {
+      display: grid;
+      align-content: start;
+      min-height: 190px;
+      padding: 18px;
+    }
+
+    .download-link {
+      justify-self: start;
+      margin-top: 18px;
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      background: rgba(217, 139, 153, 0.17);
+      color: var(--ink);
+      padding: 9px 12px;
+      text-decoration: none;
+      font: 0.82rem "SFMono-Regular", Consolas, monospace;
+    }
+
+    .download-link.secondary {
+      border-color: var(--line);
+      background: rgba(32, 35, 34, 0.76);
+      color: var(--muted);
+    }
+
+    .download-link:focus-visible,
+    .download-link:hover {
+      border-color: var(--cyan);
+      color: var(--ink);
     }
 
     .callout {
@@ -558,7 +598,8 @@
       }
 
       .command-grid,
-      .feature-grid {
+      .feature-grid,
+      .download-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
@@ -631,7 +672,8 @@
     }
 
     @media (max-width: 520px) {
-      .command-grid {
+      .command-grid,
+      .download-grid {
         grid-template-columns: 1fr;
       }
     }
@@ -659,6 +701,7 @@
   <main>
     <nav aria-label="Guide sections">
       <a href="#start">Start</a>
+      <a href="#downloads">Downloads</a>
       <a href="#commands">Commands</a>
       <a href="#customize">Customize</a>
       <a href="#modules">Modules</a>
@@ -685,6 +728,7 @@
           <a href="https://github.com/DvilSpawn/Re-TUI">GitHub repo</a>
           <a href="https://github.com/DvilSpawn/Re-TUI/wiki">Wiki</a>
           <a href="https://github.com/DvilSpawn/Re-TUI">GitHub</a>
+          <a href="#downloads">Downloads</a>
           <a class="secondary" href="#module-maker">Codex module skill</a>
           <a class="secondary" href="#support">Support Re:T-UI</a>
         </div>
@@ -706,6 +750,24 @@
         <img src="phone-blog-assets/02-help-command.png" alt="Re:T-UI help command output listing available commands">
         <figcaption>The help command turns the launcher into its own manual.</figcaption>
       </figure>
+    </section>
+
+    <section class="guide" id="downloads">
+      <div class="kicker">Downloads</div>
+      <h2>Choose the path that fits your situation.</h2>
+      <p>Re:T-UI is available as a paid Play Store build for people who want the simplest install path and want to support development. A free GitHub download path is also planned for users who cannot pay, do not want to pay, or prefer to install directly from the project.</p>
+      <div class="download-grid">
+        <div class="download-card">
+          <h3>Play Store</h3>
+          <p>Buy the launcher here if you want the easiest install/update path and want to support ongoing Re:T-UI work through the store purchase.</p>
+          <a class="download-link" href="https://play.google.com/store/apps/details?id=com.dvil.tui_renewed">Open Play Store</a>
+        </div>
+        <div class="download-card">
+          <h3>GitHub download</h3>
+          <p>Use this path to get the launcher for free if you cannot pay, do not want to pay, or prefer to install the APK directly from GitHub releases.</p>
+          <a class="download-link secondary" href="https://github.com/DvilSpawn/Re-TUI/releases">GitHub release placeholder</a>
+        </div>
+      </div>
     </section>
 
     <section class="guide" id="commands">
