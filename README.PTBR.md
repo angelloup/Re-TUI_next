@@ -1,1 +1,125 @@
+# Re:T-UI Console Launcher
 
+Fork pessoal e continuação do original T-UI launcher, atualizado para a versão moderna do Android e contunuos testes em dispositivos.
+
+# AI DISCLAIMER:
+
+> CODEX AND GOOGLE GEMINI Used for code health and troubleshooting
+
+---
+
+## 🚀 Recent Changes & Modernization
+
+Estas atualizações 
+These updates ensure the launcher remains functional, secure, and performant on modern Android devices (Android 11 through Android 14+).
+
+> **Pro Tip:** On the very first install, if background transparency does not take effect immediately, simply type \`restart\` in the terminal and press enter.
+
+### ⌨️ New Commands
+*   **`username [user] [device]`**: Instantly customize your terminal prompt. Changes both the username and device name and reloads the UI to apply.
+*   **`theme -preset [name]`**: Rapidly switch between high-quality pre-configured themes.
+    *   **Available Presets:** `blue`, `red`, `green`, `pink`, `bw`, `cyberpunk`.
+    *   **Smart Suggestions:** Applying a preset automatically colors the suggestion bar and shortcut buttons to match the aesthetic.
+*   **`webhook`**: A scalable Webhook system featuring template-based HTTP POST requests.
+    *   **Substitution:** Supports `%n` parameter substitution (e.g., `%1` for the first argument).
+    *   **History:** Automatically tracks the last 5 unique sets of arguments for each webhook.
+    *   **Suggestions:** Provides history-based autocomplete for `webhook [name]` arguments.
+*   **`post [url] [body]`**: Send raw HTTP POST requests directly from the terminal.
+*   **`termux` / `module`**: Termux-backed scripts and custom modules are now the recommended way to add Linux-powered workflows.
+*   **ASCII Art System**: A new header system that displays custom ASCII art on the dashboard. Controlled via `show_ascii`, `ascii_index`, and `ascii_size` in `Ui.xml`.
+
+### ✨ Enhanced Features
+*   **Termux Execution Layer:** Keep Linux tooling, scripts, and custom modules in Termux while Re:T-UI stays focused on launcher UI and command routing.
+*   **Theme Preset Shortcut Buttons:** Enhanced the `theme -preset` command to show interactive shortcut buttons for presets.
+*   **Synchronized Theme UI:** Applying a preset now automatically colors the shortcut buttons (suggestions) to match the overall theme.
+*   **One-Tap Application:** Shortcut buttons for theme presets execute immediately upon clicking.
+*   **Expanded Status Bar:** Support for up to 10 status lines (tv0-tv9) for richer information display.
+
+---
+
+## 🐧 Termux Integration
+
+For a full Linux environment, use Termux as the execution layer:
+
+1.  Install Termux.
+2.  Run `termux-setup-storage` in Termux.
+3.  Enable `allow-external-apps=true` in Termux properties.
+4.  Run `tbridge -doctor` in Re:T-UI to verify the bridge.
+5.  Use `termux`, `module`, and `files` for scripts, modules, and file workflows.
+
+This keeps the launcher lean for Play Store builds while preserving power-user Linux workflows through an app that is designed to own them.
+
+---
+
+## 🛠 Modern Build System
+*   **Target SDK:** Updated to **API 36**.
+*   **Min SDK:** API 21 (Android 5.0).
+*   **AndroidX Migration:** Fully migrated from legacy Support Libraries to **AndroidX**.
+*   **Gradle & AGP:** Updated to Gradle 8.2 and Android Gradle Plugin 8.2.0.
+*   **Java Compatibility:** Built with **Java 17** support.
+
+---
+
+## 🧪 Future Ideas
+*   **Animated ASCII Art:** Explore a low-power animated ASCII header using an AsciiAnimator-style plain text format with `[frame]` separators, capped FPS, and lifecycle-aware playback.
+
+---
+
+## 📦 Release Channels and Support
+
+Re:T-UI now has a clear channel split:
+
+*   **Play Store:** Official stable release for normal users and the primary way to support development.
+*   **Firebase App Distribution:** Official beta/testing channel for preview builds and rapid validation. Join the testing group here: **[Firebase Testing Group](https://appdistribution.firebase.dev/i/c9e19a871392ea7a)**.
+*   **GitHub:** Source code, docs, issue tracking, and self-built/community workflows.
+
+Support expectations follow that split:
+
+*   **Play Store builds:** Fully supported.
+*   **Firebase builds:** Supported on a testing / best-effort basis.
+*   **Self-built or forked builds:** Community / best-effort only.
+
+The project stays public because Re:T-UI benefits from open development, but the Play Store build is the canonical polished release for everyday use.
+
+For more detail, see **[docs/wiki/Support-and-Release-Channels.md](./docs/wiki/Support-and-Release-Channels.md)**.
+
+---
+
+## 🛡 Security Hardening (OWASP MASVS Compliance)
+
+This project has been audited and hardened following the **OWASP Mobile Application Security Verification Standard (MASVS)**.
+
+### 📦 MASVS-STORAGE: Data Storage and Privacy
+*   **Storage Work In Progress:** Re:T-UI is being modernized for safer storage handling across recent Android versions, with active work around launcher config compatibility and recovery.
+*   **Backup Protection:** `android:allowBackup` is set to `false` to prevent sensitive data extraction via ADB backups (MASVS-STORAGE-1).
+*   **Secure File Sharing:** Uses `FileProvider` for secure, permission-based file sharing instead of vulnerable `file://` URIs.
+
+### 🌐 MASVS-NETWORK: Network Communication
+*   **Enforced TLS:** `android:usesCleartextTraffic` is disabled globally. All network communications are forced over **HTTPS** (TLS 1.2+).
+*   **Hardened Service Endpoints:** Internal services (Weather API, Connectivity checks) have been upgraded to secure HTTPS endpoints (MASVS-NETWORK-1).
+
+### ⚙️ MASVS-PLATFORM: Platform Interaction
+*   **Signature-Level Protection:** Implemented a custom permission `ohi.andre.consolelauncher.permission.RECEIVE_CMD` with `protectionLevel="signature"`. This ensures only apps signed with the same developer key can programmatically send commands to the launcher.
+*   **Intent Security:** All system-bound `PendingIntents` use the `FLAG_IMMUTABLE` flag to prevent intent redirection attacks (Android 12+ requirement).
+*   **Receiver Security:** All Broadcast Receivers are registered with appropriate export flags (`RECEIVER_EXPORTED` or `RECEIVER_NOT_EXPORTED`) to prevent unauthorized external triggers.
+
+### 🛠 MASVS-CODE: Code Quality & Build Settings
+*   **Minification & Obfuscation:** Release builds have R8/Proguard enabled (`minifyEnabled true`) to shrink resources and obfuscate code, making reverse engineering more difficult (MASVS-RESILIENCE-1).
+*   **Foreground Service Security:** Updated to comply with Android 14's strict foreground service types (`specialUse`, `mediaPlayback`).
+
+---
+
+## 🔗 Useful Links
+
+**Project repo**&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-->&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**[GitHub.com](https://github.com/DvilSpawn/Re-TUI)**<br>
+**Project wiki**&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-->&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**[GitHub Wiki](https://github.com/DvilSpawn/Re-TUI/wiki)**<br>
+**Wiki in repo**&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-->&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**[docs/wiki/Home.md](./docs/wiki/Home.md)**<br>
+**Community**&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-->&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**[Reddit](https://www.reddit.com/r/tui_launcher/)**<br>
+**Chat**&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-->&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**[Telegram](https://t.me/tuilauncher)**<br>
+
+## 📚 Open Source Libraries
+* [**CompareString2**](https://github.com/fAndreuzzi/CompareString2)
+* [**OkHttp**](https://github.com/square/okhttp)
+* [**HTML cleaner**](http://htmlcleaner.sourceforge.net/)
+* [**JsonPath**](https://github.com/json-path/JsonPath)
+* [**jsoup**](https://github.com/jhy/jsoup/)
